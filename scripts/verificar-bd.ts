@@ -177,7 +177,13 @@ async function main() {
   // superusuario o dueño de las tablas, las 83 políticas no se aplican
   // NUNCA y el aislamiento entre empresas es decorativo.
   const urlApp = process.env.DATABASE_URL ?? '';
-  const usuarioApp = /\/\/([^:]+):/.exec(urlApp)?.[1];
+  const usuarioEnLaUrl = /\/\/([^:]+):/.exec(urlApp)?.[1];
+  // El pooler de Supabase enruta con un usuario "<rol>.<proyecto>", pero
+  // el rol de Postgres es solo la primera parte: el sufijo no existe en
+  // `pg_roles` y buscarlo tal cual daba un falso fallo.
+  const usuarioApp = usuarioEnLaUrl?.includes('.')
+    ? usuarioEnLaUrl.slice(0, usuarioEnLaUrl.indexOf('.'))
+    : usuarioEnLaUrl;
   if (usuarioApp) {
     const rol: any[] = await prisma.$queryRawUnsafe(
       `SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname = '${usuarioApp.replace(/'/g, "''")}'`
