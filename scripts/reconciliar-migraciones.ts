@@ -1,25 +1,33 @@
 /**
- * Pone al día el registro de migraciones cuando una carpeta se renombra.
+ * Deja el historial de migraciones y el esquema en un estado coherente
+ * antes de `prisma migrate deploy`.
  *
- * POR QUÉ EXISTE: `20260719230128_asset_amenity_attachments` ordenaba
- * ANTES que `20260720024752_init`, que es la que crea las tablas. En una
- * base vacía —producción— `prisma migrate deploy` moría en la primera
- * migración con «relation "amenities" does not exist». Se renombró a
- * `20260720030000_asset_amenity_attachments` para que caiga después.
+ * POR QUÉ EXISTE: la base de producción no se creó con migraciones.
+ * Se comprobó desplegando el 5 de agosto de 2026:
  *
- * El problema del renombrado: en una base donde YA se aplicó con el
- * nombre viejo, Prisma ve el nombre nuevo como pendiente e intenta
- * aplicarlo otra vez, y falla porque las columnas ya existen. Este
- * guion cambia el nombre en la bitácora `_prisma_migrations` para que
- * coincida con la carpeta.
+ *  1. No tenía la tabla `_prisma_migrations` pero sí 97 tablas
+ *     (`migrate deploy` aborta con P3005 sobre una base no vacía).
+ *  2. Y su esquema está INCOMPLETO: le faltan tablas que el modelo
+ *     declara —`condominium_supervisors` entre otras—, porque se generó
+ *     con `db push` desde una versión anterior de `schema.prisma`.
  *
- * Es idempotente y no toca datos: solo la tabla de control de Prisma.
- * En una base nueva no hace nada.
+ * O sea que no basta con dar la historia por aplicada: hay que poner el
+ * esquema al día primero. Para eso está `db push`, que crea lo que
+ * falta. Se ejecuta **sin `--accept-data-loss`**, así que si algún
+ * cambio exigiera borrar datos, falla en vez de destruirlos.
+ *
+ * Tres caminos:
+ *  - Base vacía            → no hace nada; `migrate deploy` la construye.
+ *  - Esquema al día        → solo resuelve renombrados de carpeta.
+ *  - Esquema incompleto o
+ *    sin historia fiable   → `db push` + dar toda la historia por aplicada.
+ *
+ * Nunca toca datos: solo estructura y la bitácora de control de Prisma.
  */
 import { execFileSync } from 'node:child_process';
 import { readdirSync } from 'node:fs';
 import path from 'node:path';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 
 const RENOMBRADAS: Array<{ viejo: string; nuevo: string }> = [
   {
@@ -28,48 +36,50 @@ const RENOMBRADAS: Array<{ viejo: string; nuevo: string }> = [
   },
 ];
 
-/**
- * Migraciones que SÍ deben aplicarse aunque se establezca la línea base.
- *
- * Al dar por aplicada la historia de una base que se creó sin
- * migraciones, hay que dejar fuera las que traen cambios que esa base
- * todavía no tiene. Aquí solo los índices de rendimiento, que son
- * posteriores a la creación del esquema de producción.
- */
-const APLICAR_AUNQUE_HAYA_LINEA_BASE = new Set(['20260805_indices_rendimiento']);
-
 const RAIZ = path.resolve(__dirname, '..');
 
-/**
- * La base tiene tablas pero ninguna bitácora de migraciones: se creó
- * con `prisma db push` o aplicando SQL a mano. Es el caso de producción
- * (comprobado en el despliegue del 5 de agosto de 2026, error P3005).
- *
- * Se marcan como aplicadas todas las migraciones que ese esquema ya
- * refleja, para que `migrate deploy` no intente recrear tablas que
- * existen. Las de `APLICAR_AUNQUE_HAYA_LINEA_BASE` se dejan pendientes
- * a propósito.
- */
-function establecerLineaBase() {
-  const dir = path.join(RAIZ, 'prisma', 'migrations');
-  const migraciones = readdirSync(dir, { withFileTypes: true })
+function migracionesEnDisco(): string[] {
+  return readdirSync(path.join(RAIZ, 'prisma', 'migrations'), { withFileTypes: true })
     .filter((d) => d.isDirectory())
     .map((d) => d.name)
     .sort();
+}
+
+function correr(args: string[]) {
+  execFileSync('npx', args, { stdio: 'inherit', cwd: RAIZ });
+}
+
+/** Tablas que el modelo declara, con el nombre real que llevan en la base. */
+function tablasDelModelo(): string[] {
+  return Prisma.dmmf.datamodel.models.map((m) => m.dbName ?? m.name);
+}
+
+/**
+ * Pone el esquema al día y da toda la historia por aplicada.
+ *
+ * `db push` crea lo que falte a partir de `schema.prisma`. Después, las
+ * migraciones se marcan como aplicadas —incluidas las que `db push`
+ * acaba de materializar— para que a partir de ahora el historial sirva
+ * y los cambios siguientes viajen como migraciones normales.
+ */
+function adoptarEsquema() {
+  console.log('  poniendo el esquema al día con `prisma db push`…');
+  // Sin --accept-data-loss a propósito: preferimos fallar a borrar datos.
+  correr(['prisma', 'db', 'push', '--skip-generate']);
 
   let marcadas = 0;
-  for (const nombre of migraciones) {
-    if (APLICAR_AUNQUE_HAYA_LINEA_BASE.has(nombre)) {
-      console.log(`  ${nombre}: se deja PENDIENTE (trae cambios que la base no tiene).`);
-      continue;
+  for (const nombre of migracionesEnDisco()) {
+    try {
+      execFileSync('npx', ['prisma', 'migrate', 'resolve', '--applied', nombre], {
+        stdio: 'pipe',
+        cwd: RAIZ,
+      });
+      marcadas++;
+    } catch {
+      // Ya estaba marcada como aplicada: es el resultado que queremos.
     }
-    execFileSync('npx', ['prisma', 'migrate', 'resolve', '--applied', nombre], {
-      stdio: 'pipe',
-      cwd: RAIZ,
-    });
-    marcadas++;
   }
-  console.log(`  línea base establecida: ${marcadas} migración(es) dadas por aplicadas.`);
+  console.log(`  historial normalizado: ${marcadas} migración(es) marcadas.`);
 }
 
 async function main() {
@@ -81,27 +91,68 @@ async function main() {
   const prisma = new PrismaClient({ datasources: { db: { url } } });
 
   try {
-    const existe: any[] = await prisma.$queryRawUnsafe(
+    const hayBitacora: any[] = await prisma.$queryRawUnsafe(
       `SELECT to_regclass('public._prisma_migrations') IS NOT NULL AS hay`
     );
-    if (!existe[0]?.hay) {
-      // ¿Está realmente vacía, o solo le falta la bitácora?
-      const tablas: any[] = await prisma.$queryRawUnsafe(
-        `SELECT count(*)::int AS n FROM information_schema.tables
-          WHERE table_schema = 'public' AND table_type = 'BASE TABLE'`
-      );
-      if ((tablas[0]?.n ?? 0) === 0) {
-        console.log('  base vacía: las migraciones se aplicarán desde cero.');
-        return;
-      }
-      console.log(`  la base tiene ${tablas[0].n} tablas pero ningún historial de migraciones.`);
-      establecerLineaBase();
+
+    const cuantasTablas: any[] = await prisma.$queryRawUnsafe(
+      `SELECT count(*)::int AS n FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_type = 'BASE TABLE'`
+    );
+    const baseVacia = (cuantasTablas[0]?.n ?? 0) === 0;
+
+    if (baseVacia) {
+      console.log('  base vacía: las migraciones la construyen desde cero.');
       return;
     }
 
+    // ---------- ¿Quedó alguna migración a medias? ----------
+    // Una migración fallida bloquea TODO `migrate deploy` (P3018) hasta
+    // que se resuelva, así que se marca como revertida antes de nada.
+    if (hayBitacora[0]?.hay) {
+      const fallidas: any[] = await prisma.$queryRawUnsafe(
+        `SELECT migration_name FROM _prisma_migrations
+          WHERE finished_at IS NULL AND rolled_back_at IS NULL`
+      );
+      for (const f of fallidas) {
+        console.log(`  ${f.migration_name}: quedó a medias, se marca como revertida.`);
+        try {
+          execFileSync('npx', ['prisma', 'migrate', 'resolve', '--rolled-back', f.migration_name], {
+            stdio: 'pipe',
+            cwd: RAIZ,
+          });
+        } catch {
+          // Si Prisma no la reconoce, `db push` la deja sin efecto igual.
+        }
+      }
+    }
+
+    // ---------- ¿Está el esquema completo? ----------
+    const existentes: any[] = await prisma.$queryRawUnsafe(
+      `SELECT table_name FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_type = 'BASE TABLE'`
+    );
+    const enBase = new Set(existentes.map((t) => t.table_name));
+    const faltan = tablasDelModelo().filter((t) => !enBase.has(t));
+
+    if (faltan.length > 0) {
+      console.log(
+        `  al esquema le faltan ${faltan.length} tabla(s): ${faltan.slice(0, 6).join(', ')}${
+          faltan.length > 6 ? '…' : ''
+        }`
+      );
+      adoptarEsquema();
+      return;
+    }
+
+    if (!hayBitacora[0]?.hay) {
+      console.log('  el esquema está completo pero no hay historial de migraciones.');
+      adoptarEsquema();
+      return;
+    }
+
+    // ---------- Camino normal: solo renombrados ----------
     for (const { viejo, nuevo } of RENOMBRADAS) {
-      // Si ya está el nombre nuevo, no hay nada que hacer. Si estuvieran
-      // los dos, se borra el viejo: el nuevo es el que manda.
       const filas: any[] = await prisma.$queryRawUnsafe(
         `SELECT migration_name FROM _prisma_migrations WHERE migration_name IN ($1, $2)`,
         viejo,
@@ -129,6 +180,6 @@ async function main() {
 }
 
 main().catch((e) => {
-  console.error('No se pudo reconciliar el registro de migraciones:', e.message);
+  console.error('No se pudo reconciliar el estado de la base:', e.message);
   process.exit(1);
 });
