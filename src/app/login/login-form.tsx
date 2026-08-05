@@ -4,16 +4,21 @@ import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import { Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
+import Link from 'next/link';
 import { Logo } from '@/components/ui/logo';
 
 /**
  * Pantalla de acceso.
  *
- * Una sola columna centrada sobre vidrio líquido: masas de color de la
- * marca que derivan despacio detrás de una lámina translúcida. Los
- * campos van con línea inferior en vez de recuadro —menos tinta, y la
- * mirada sigue el texto y no la caja—, que es como se lee un formulario
- * cuando solo tiene dos campos.
+ * Una sola columna centrada, SIN contenedor: el formulario va suelto
+ * sobre el fondo. La lámina de vidrio que había detrás se quitó a
+ * pedido — con dos campos y un botón, un recuadro solo agrega borde.
+ * Lo que sostiene la lectura es la luz: masas de color de la marca que
+ * derivan despacio, una viñeta profunda y un halo detrás del texto.
+ *
+ * Los campos van con línea inferior en vez de recuadro —menos tinta, y
+ * la mirada sigue el texto y no la caja—, y el único elemento con
+ * cuerpo es el botón, que así queda como el punto de acción evidente.
  *
  * Los colores salen de las variables de marca, así que una empresa con
  * identidad propia vería su degradado sin tocar nada de aquí.
@@ -105,28 +110,35 @@ export function LoginForm() {
         />
 
         {/*
-          Viñeta profunda. Es lo que hace que el vidrio se vea vidrio:
-          sin un fondo oscuro alrededor, una lámina translúcida sobre
-          azul medio no se distingue del azul.
+          Viñeta profunda. Antes servía para que se distinguiera la
+          lámina de vidrio; ahora que el formulario va suelto es lo que
+          le da fondo al texto — sin ella, el blanco sobre azul medio
+          pierde contraste.
         */}
         <div className="absolute inset-0 bg-[radial-gradient(80%_65%_at_50%_50%,transparent_10%,rgb(3_8_20/0.72)_75%,rgb(3_8_20/0.92))]" />
+
+        {/*
+          Halo suave detrás del formulario. Reemplaza a la tarjeta: da
+          el asiento que necesita el texto sin dibujar ningún borde ni
+          recuadro, que es lo que se pidió.
+        */}
+        <div className="absolute left-1/2 top-1/2 h-[42rem] w-[42rem] max-w-[130vw] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgb(3_8_20/0.55)_0%,rgb(3_8_20/0.28)_45%,transparent_70%)]" />
       </div>
 
-      {/* ---------- Tarjeta ---------- */}
-      <div className="relative z-10 w-full max-w-[460px]">
-        <div className="mb-9 flex justify-center">
-          <Logo className="text-4xl" />
+      {/* ---------- Formulario, sin contenedor ---------- */}
+      <div className="relative z-10 w-full max-w-[420px]">
+        <div className="mb-10 flex justify-center">
+          <Logo className="text-[2.75rem]" />
         </div>
 
-        <div className="liquid-glass liquid-sheen relative rounded-[28px] px-8 py-9 sm:px-10">
-          <h1 className="text-center font-sans text-[1.6rem] font-bold leading-tight text-white">
-            Bienvenido de nuevo
-          </h1>
-          <p className="mt-1.5 text-center text-sm text-white/60">
-            Consulta fácil. Vive en comunidad.
-          </p>
+        <h1 className="text-center font-sans text-[1.75rem] font-bold leading-tight tracking-tight text-white">
+          Bienvenido de nuevo
+        </h1>
+        <p className="mt-2 text-center text-sm text-white/55">
+          Consulta fácil. Vive en comunidad.
+        </p>
 
-          <form onSubmit={handleSubmit} className="mt-9 space-y-7">
+        <form onSubmit={handleSubmit} className="mt-11 space-y-7">
             <div>
               <label htmlFor="email" className="liquid-label">
                 Correo electrónico
@@ -194,10 +206,18 @@ export function LoginForm() {
                 )}
               </span>
             </button>
-          </form>
-        </div>
 
-        <p className="mt-7 text-center text-xs leading-relaxed text-white/45">
+          <p className="!mt-6 text-center">
+            <Link
+              href="/recuperar"
+              className="text-sm font-medium text-white/70 underline decoration-white/25 underline-offset-4 transition hover:text-white hover:decoration-white/60"
+            >
+              Restablecer contraseña
+            </Link>
+          </p>
+        </form>
+
+        <p className="mt-9 text-center text-xs leading-relaxed text-white/40">
           ¿Problemas para ingresar? Contacta a la administración de tu condominio.
         </p>
       </div>

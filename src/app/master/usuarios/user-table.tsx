@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import { KeyRound, Lock, Unlock, Eye } from 'lucide-react';
 import { Modal } from '@/components/ui/modal';
 import { StatusChip } from '@/components/ui/status-chip';
-import { resetPasswordAction, setUserStatusAction } from '../actions';
-import { Credenciales } from '../empresas/new-company-form';
+import { setUserStatusAction } from '../actions';
+import { ResetForm } from './reset-form';
 import { UserDetail } from './user-detail';
 
 const ROL: Record<string, string> = {
@@ -29,22 +29,11 @@ export type UsuarioFila = {
 };
 
 export function UserTable({ usuarios }: { usuarios: UsuarioFila[] }) {
-  const [reset, setReset] = useState<{ email: string; password: string } | null>(null);
+  const [reset, setReset] = useState<UsuarioFila | null>(null);
   const [detalle, setDetalle] = useState<UsuarioFila | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [, start] = useTransition();
   const router = useRouter();
-
-  function restablecer(u: UsuarioFila) {
-    if (!window.confirm(`¿Restablecer la contraseña de ${u.fullName}? La actual dejará de servir.`)) return;
-    setError(null);
-    start(async () => {
-      const r = await resetPasswordAction(u.id);
-      if (r.error) setError(r.error);
-      else if (r.email && r.password) setReset({ email: r.email, password: r.password });
-      router.refresh();
-    });
-  }
 
   function alternar(u: UsuarioFila) {
     start(async () => {
@@ -106,7 +95,7 @@ export function UserTable({ usuarios }: { usuarios: UsuarioFila[] }) {
                       </button>
                       <button
                         type="button"
-                        onClick={() => restablecer(u)}
+                        onClick={() => setReset(u)}
                         title="Restablecer contraseña"
                         className="rounded-lg p-1.5 text-muted hover:bg-canvas hover:text-royal"
                       >
@@ -138,8 +127,19 @@ export function UserTable({ usuarios }: { usuarios: UsuarioFila[] }) {
       )}
 
       {reset && (
-        <Modal title="Contraseña restablecida" onClose={() => setReset(null)}>
-          <Credenciales email={reset.email} password={reset.password} onCerrar={() => setReset(null)} />
+        <Modal
+          title="Restablecer contraseña"
+          subtitle={reset.email}
+          onClose={() => setReset(null)}
+        >
+          <ResetForm
+            userId={reset.id}
+            nombre={reset.fullName}
+            onListo={() => {
+              setReset(null);
+              router.refresh();
+            }}
+          />
         </Modal>
       )}
     </>

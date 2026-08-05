@@ -8,6 +8,21 @@ import { authConfig } from '@/lib/auth.config';
 // configuración compartida.
 const { auth } = NextAuth(authConfig);
 
+/**
+ * Rutas que se ven sin sesión. Las de recuperación tienen que estar
+ * aquí por definición: quien no puede entrar es justamente quien las
+ * necesita.
+ */
+function esPublica(pathname: string): boolean {
+  return (
+    pathname === '/login' ||
+    pathname === '/recuperar' ||
+    pathname === '/restablecer' ||
+    pathname.startsWith('/restablecer/') ||
+    pathname.startsWith('/api/auth')
+  );
+}
+
 // Tres portales, igual que el prototipo: /app (Administradora),
 // /seguridad (Portal de Seguridad), /portal (Ecosistema Condómino).
 // El middleware solo verifica sesión + que el rol coincida con el
@@ -26,8 +41,7 @@ const conSesion = auth((req) => {
     return NextResponse.next({ request: { headers: h } });
   };
 
-  const isPublic = pathname === '/login' || pathname.startsWith('/api/auth');
-  if (isPublic) return NextResponse.next();
+  if (esPublica(pathname)) return NextResponse.next();
 
   if (!session?.user) {
     const url = new URL('/login', req.url);
@@ -85,9 +99,7 @@ export default async function middleware(req: NextRequest, ctx: any) {
       tieneAuthUrl: Boolean(process.env.AUTH_URL ?? process.env.NEXTAUTH_URL),
     });
 
-    if (pathname === '/login' || pathname.startsWith('/api/auth')) {
-      return NextResponse.next();
-    }
+    if (esPublica(pathname)) return NextResponse.next();
     const url = new URL('/login', req.url);
     url.searchParams.set('callbackUrl', pathname);
     return NextResponse.redirect(url);

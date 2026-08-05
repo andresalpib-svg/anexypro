@@ -55,7 +55,10 @@ export default async function MasterPage() {
         ))}
       </div>
 
-      <div className="card mt-5 overflow-hidden">
+      {/* overflow-x-auto y no overflow-hidden: en una tablet la tabla es
+          más ancha que la pantalla, y oculta recortaba las columnas sin
+          dejar forma de verlas. */}
+      <div className="card mt-5 overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="border-b border-line bg-canvas text-left text-xs uppercase tracking-wide text-muted">
             <tr>

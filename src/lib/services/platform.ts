@@ -329,7 +329,12 @@ export async function resetUserPassword(
     select: { id: true, email: true, fullName: true, companyId: true, role: true },
   });
   if (!user) throw new Error('El usuario no existe.');
-  if (user.role === 'master') throw new Error('La contraseña del usuario master no se restablece desde aquí.');
+  // El master sí puede fijar la SUYA desde aquí —es la única forma que
+  // tiene de cambiarla, porque el panel master no tiene Mi Perfil—,
+  // pero no la de otro master si alguna vez existiera más de uno.
+  if (user.role === 'master' && user.id !== master.userId) {
+    throw new Error('La contraseña de otro usuario master no se restablece desde aquí.');
+  }
 
   const password = nueva?.trim() || generarPassword();
   if (password.length < 8) throw new Error('La contraseña debe tener al menos 8 caracteres.');
