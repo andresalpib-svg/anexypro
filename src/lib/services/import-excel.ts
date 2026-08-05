@@ -246,7 +246,7 @@ export async function importResidentsExcel(
 }
 
 /** Genera la plantilla de importación con filas de ejemplo. */
-export function buildImportTemplate(): Buffer {
+export function buildImportTemplate(): Uint8Array {
   const rows = [
     {
       'Número de filial': 'CASA-01',
@@ -279,5 +279,5 @@ export function buildImportTemplate(): Buffer {
   ws['!cols'] = Object.keys(rows[0]!).map((k) => ({ wch: Math.max(k.length, 22) }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Residentes');
-  return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+  return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Uint8Array;
 }
