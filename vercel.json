@@ -1,0 +1,16 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "framework": "nextjs",
+  "env": {
+    "DATABASE_URL": "PostgreSQL connection string for application role (with Row-Level Security)",
+    "DIRECT_URL": "PostgreSQL connection string for migrations (owner role)",
+    "AUTH_SECRET": "NextAuth secret key",
+    "NEXTAUTH_URL": "NextAuth URL for production",
+    "ANTHROPIC_API_KEY": "Anthropic API key for Claude integration",
+    "RESEND_API_KEY": "Resend API key for email notifications",
+    "EMAIL_FROM": "Sender email address for notifications",
+    "APP_URL": "Application URL for production",
+    "CRON_SECRET": "Secret key for scheduled tasks"
+  }
+}

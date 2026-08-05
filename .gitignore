@@ -38,3 +38,5 @@ Thumbs.db
 next-env.d.ts
 /public/uploads
 storage/
+.vercel
+.env*
