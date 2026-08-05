@@ -1,5 +1,5 @@
 import NextAuth from 'next-auth';
-import { NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import { authConfig } from '@/lib/auth.config';
 
 // NO importar `@/lib/auth` aquí: arrastra Prisma, que no funciona en
@@ -13,7 +13,7 @@ const { auth } = NextAuth(authConfig);
 // El middleware solo verifica sesión + que el rol coincida con el
 // portal solicitado — el detalle de permisos por módulo (can(), RBAC)
 // se resuelve dentro de cada layout/página, no aquí.
-export default auth((req) => {
+const conSesion = auth((req) => {
   const { pathname } = req.nextUrl;
   const session = req.auth;
 
@@ -55,6 +55,47 @@ export default auth((req) => {
 
   return withPath();
 });
+
+/**
+ * El middleware no debe tumbar el sitio.
+ *
+ * Si la lectura de la sesión falla —por configuración del entorno, por
+ * un token con formato inesperado o por cualquier fallo de la librería—
+ * antes se propagaba la excepción y Vercel devolvía 500 en TODAS las
+ * rutas, incluida la de acceso: la aplicación quedaba inservible y sin
+ * forma de entrar a arreglarla.
+ *
+ * Ahora se registra el fallo con el contexto necesario para
+ * diagnosticarlo (nunca el valor de una variable, solo si está
+ * presente) y se cierra el paso mandando al acceso, que es el lado
+ * seguro: ante la duda, sin sesión.
+ */
+export default async function middleware(req: NextRequest, ctx: any) {
+  try {
+    return await (conSesion as any)(req, ctx);
+  } catch (e: any) {
+    const { pathname } = req.nextUrl;
+    console.error('[middleware] fallo al resolver la sesión', {
+      mensaje: e?.message,
+      ruta: pathname,
+      host: req.headers.get('host'),
+      xForwardedHost: req.headers.get('x-forwarded-host'),
+      xForwardedProto: req.headers.get('x-forwarded-proto'),
+      tieneAuthSecret: Boolean(process.env.AUTH_SECRET),
+      tieneAuthUrl: Boolean(process.env.AUTH_URL),
+      tieneNextauthUrl: Boolean(process.env.NEXTAUTH_URL),
+      authTrustHost: process.env.AUTH_TRUST_HOST,
+      vercelUrl: process.env.VERCEL_URL,
+    });
+
+    if (pathname === '/login' || pathname.startsWith('/api/auth')) {
+      return NextResponse.next();
+    }
+    const url = new URL('/login', req.url);
+    url.searchParams.set('callbackUrl', pathname);
+    return NextResponse.redirect(url);
+  }
+}
 
 export const config = {
   matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|webp)$).*)'],
