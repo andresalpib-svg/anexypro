@@ -3,6 +3,7 @@ import Credentials from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { prisma, withTenantContext } from '@/lib/db';
+import { authConfig } from '@/lib/auth.config';
 
 // Mismo esquema de roles que el prototipo: admin_owner, admin_staff,
 // seguridad, condomino. NO hay selector de "tipo de usuario" en el
@@ -54,15 +55,13 @@ async function demasiadosIntentos(companyId: string, userId: string): Promise<bo
   return fallidos >= MAX_INTENTOS;
 }
 
+/**
+ * Configuración completa: la base compartida (`auth.config.ts`) más lo
+ * que necesita la base de datos. Este archivo NO lo puede importar el
+ * middleware: arrastra Prisma, que no funciona en Edge Runtime.
+ */
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  // La sesión vence a los 20 minutos de inactividad. `updateAge: 0`
-  // hace que el token se reemita en cada petición autenticada, así que
-  // el reloj se reinicia mientras el usuario esté trabajando y solo
-  // corre cuando de verdad está inactivo. `IdleLogout` (cliente) hace
-  // el cierre visible; esto es el respaldo del servidor.
-  session: { strategy: 'jwt', maxAge: 20 * 60, updateAge: 0 },
-  jwt: { maxAge: 20 * 60 },
-  pages: { signIn: '/login' },
+  ...authConfig,
   providers: [
     Credentials({
       credentials: { email: {}, password: {} },
@@ -127,6 +126,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
+    ...authConfig.callbacks,
     async jwt({ token, user }) {
       if (user) {
         token.userId = user.id;

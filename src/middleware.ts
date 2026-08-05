@@ -1,5 +1,12 @@
-import { auth } from '@/lib/auth';
+import NextAuth from 'next-auth';
 import { NextResponse } from 'next/server';
+import { authConfig } from '@/lib/auth.config';
+
+// NO importar `@/lib/auth` aquí: arrastra Prisma, que no funciona en
+// Edge Runtime y hacía que TODA petición devolviera 500 en producción.
+// El middleware solo necesita leer el token, y para eso basta la
+// configuración compartida.
+const { auth } = NextAuth(authConfig);
 
 // Tres portales, igual que el prototipo: /app (Administradora),
 // /seguridad (Portal de Seguridad), /portal (Ecosistema Condómino).
