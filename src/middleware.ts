@@ -29,16 +29,20 @@ export default auth((req) => {
   }
 
   const role = session.user.role;
-  if (pathname.startsWith('/master') && role !== 'master') {
+  // Coincidencia por segmento, no por prefijo de texto: `startsWith`
+  // a secas también casaría con una futura ruta `/aplicaciones`.
+  const en = (base: string) => pathname === base || pathname.startsWith(`${base}/`);
+
+  if (en('/master') && role !== 'master') {
     return NextResponse.redirect(new URL('/', req.url));
   }
-  if (pathname.startsWith('/app') && !['admin_owner', 'admin_staff', 'contador'].includes(role)) {
+  if (en('/app') && !['admin_owner', 'admin_staff', 'contador'].includes(role)) {
     return NextResponse.redirect(new URL('/', req.url));
   }
-  if (pathname.startsWith('/seguridad') && role !== 'seguridad') {
+  if (en('/seguridad') && role !== 'seguridad') {
     return NextResponse.redirect(new URL('/', req.url));
   }
-  if (pathname.startsWith('/portal') && role !== 'condomino') {
+  if (en('/portal') && role !== 'condomino') {
     return NextResponse.redirect(new URL('/', req.url));
   }
 

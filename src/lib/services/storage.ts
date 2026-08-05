@@ -4,7 +4,7 @@ import { prisma, withTenantContext, forEachCompany } from '@/lib/db';
 import { activeProvider, getStorageSettings } from '@/lib/storage';
 import type { StorageKind } from '@/lib/storage/provider';
 import { CONDO_TREE, CONDOS_NAME, ROOT_NAME, flattenTree, residentSlug, RESIDENTS_SLUG } from '@/lib/storage/tree';
-import { canReadFolder, canWriteFolder, canDeleteObject, type Actor } from '@/lib/storage/permissions';
+import { canReadFolder, canReadObject, canWriteFolder, canDeleteObject, type Actor } from '@/lib/storage/permissions';
 import { logActivity } from '@/lib/services/audit';
 
 /**
@@ -152,6 +152,19 @@ export async function ensureCondoTree(companyId: string, condominiumId: string):
       })
     );
     result.created += 1;
+  } else if (condoFolder.provider !== kind) {
+    // La fila viene de OTRO proveedor (p. ej. se activó Drive después de
+    // trabajar en local): se crea la carpeta en el proveedor activo y la
+    // fila se actualiza. Los archivos viejos no se mueven — cada objeto
+    // recuerda su proveedor y se sigue leyendo de ahí.
+    const made = await provider.createFolder(condo.name, condosFolder.providerFolderId);
+    condoFolder = await enEmpresa(companyId, (tx) =>
+      tx.storageFolder.update({
+        where: { id: condoFolder!.id },
+        data: { provider: kind, providerFolderId: made.id, parentId: condosFolder.id },
+      })
+    );
+    result.created += 1;
   } else {
     result.existing += 1;
   }
@@ -167,12 +180,14 @@ export async function ensureCondoTree(companyId: string, condominiumId: string):
         where: { condominiumId_slug: { condominiumId, slug: spec.slug } },
       })
     );
-    if (existing) {
+    if (existing && existing.provider === kind) {
       byslug.set(spec.slug, existing.id);
       result.existing += 1;
       continue;
     }
 
+    // Los padres se procesan antes que los hijos (orden de flattenTree),
+    // así que a esta altura el padre ya está en el proveedor activo.
     const parentSlug = spec.slug.includes('/') ? spec.slug.slice(0, spec.slug.lastIndexOf('/')) : 'condominio';
     const parentRowId = byslug.get(parentSlug) ?? condoFolder.id;
     const parentRow = await enEmpresa(companyId, (tx) =>
@@ -180,21 +195,28 @@ export async function ensureCondoTree(companyId: string, condominiumId: string):
     );
 
     const made = await provider.createFolder(spec.name, parentRow.providerFolderId);
-    const row = await enEmpresa(companyId, (tx) =>
-      tx.storageFolder.create({
-        data: {
-          companyId,
-          condominiumId,
-          name: spec.name,
-          slug: spec.slug,
-          kind: spec.slug.includes('/') ? 'subseccion' : 'seccion',
-          provider: kind,
-          providerFolderId: made.id,
-          parentId: parentRow.id,
-          allowedRoles: spec.roles ?? parentRow.allowedRoles,
-        },
-      })
-    );
+    const row = existing
+      ? await enEmpresa(companyId, (tx) =>
+          tx.storageFolder.update({
+            where: { id: existing.id },
+            data: { provider: kind, providerFolderId: made.id, parentId: parentRow.id },
+          })
+        )
+      : await enEmpresa(companyId, (tx) =>
+          tx.storageFolder.create({
+            data: {
+              companyId,
+              condominiumId,
+              name: spec.name,
+              slug: spec.slug,
+              kind: spec.slug.includes('/') ? 'subseccion' : 'seccion',
+              provider: kind,
+              providerFolderId: made.id,
+              parentId: parentRow.id,
+              allowedRoles: spec.roles ?? parentRow.allowedRoles,
+            },
+          })
+        );
     byslug.set(spec.slug, row.id);
     result.created += 1;
   }
@@ -241,7 +263,9 @@ export async function ensureResidentFolder(companyId: string, condominiumId: str
 
   const settings = await getStorageSettings();
   const provider = await activeProvider();
-  const made = await provider.createFolder(person.fullName, parent.providerFolderId);
+  // El contenedor puede venir de un proveedor anterior.
+  const parentSync = await syncFolderWithActiveProvider(companyId, parent.id);
+  const made = await provider.createFolder(person.fullName, parentSync.providerFolderId);
 
   return enEmpresa(companyId, (tx) =>
     tx.storageFolder.create({
@@ -254,7 +278,7 @@ export async function ensureResidentFolder(companyId: string, condominiumId: str
         kind: 'residente',
         provider: settings.provider,
         providerFolderId: made.id,
-        parentId: parent.id,
+        parentId: parentSync.id,
         // Vacío a propósito: el acceso lo resuelve la regla de carpeta de
         // residente, que compara la persona, no el rol.
         allowedRoles: [],
@@ -337,7 +361,9 @@ export async function ensureCompanyFolder(companyId: string, slug: string, name:
     );
   }
 
-  const made = await provider.createFolder(name, empresa.providerFolderId);
+  // La cadena empresa/empresas puede venir de un proveedor anterior.
+  const empresaSync = await syncFolderWithActiveProvider(companyId, empresa.id);
+  const made = await provider.createFolder(name, empresaSync.providerFolderId);
   return enEmpresa(companyId, (tx) =>
     tx.storageFolder.create({
       data: {
@@ -347,7 +373,7 @@ export async function ensureCompanyFolder(companyId: string, slug: string, name:
         kind: 'seccion',
         provider: settings.provider,
         providerFolderId: made.id,
-        parentId: empresa.id,
+        parentId: empresaSync.id,
         // Estas carpetas guardan fotos de perfil y logos: los ve todo el
         // personal, y las fotos de perfil también el propio residente.
         allowedRoles: ['master', 'admin_owner', 'admin_staff', 'contador', 'seguridad', 'condomino'],
@@ -397,6 +423,58 @@ export async function actorFromSession(session: {
     assignedCondoIds,
     isBoardMember: session.user.isBoardMember ?? false,
   };
+}
+
+/**
+ * Garantiza que una carpeta exista en el PROVEEDOR ACTIVO.
+ *
+ * Cuando se cambia de proveedor (local → Drive, Drive → S3…), las filas
+ * de carpetas siguen apuntando al proveedor anterior. Esta función las
+ * migra de forma perezosa y recursiva: primero el padre, después la
+ * carpeta, creando en el proveedor activo (idempotente) y actualizando
+ * la fila. Los ARCHIVOS no se tocan: cada objeto recuerda su proveedor
+ * y se lee de ahí; solo las subidas nuevas usan el proveedor activo.
+ */
+async function syncFolderWithActiveProvider(
+  companyId: string,
+  folderId: string
+): Promise<{ id: string; providerFolderId: string }> {
+  const settings = await getStorageSettings();
+  const row = await enEmpresa(companyId, (tx) =>
+    tx.storageFolder.findUniqueOrThrow({ where: { id: folderId } })
+  );
+  if (row.provider === settings.provider) return { id: row.id, providerFolderId: row.providerFolderId };
+
+  // Las dos carpetas de plataforma se resuelven con ensureRoots, que ya
+  // es consciente del proveedor (crea filas nuevas por proveedor).
+  if (row.kind === 'raiz' || row.kind === 'condominios') {
+    const roots = await ensureRoots(companyId);
+    const id = row.kind === 'raiz' ? roots.rootId : roots.condosId;
+    const fresh = await enEmpresa(companyId, (tx) =>
+      tx.storageFolder.findUniqueOrThrow({ where: { id } })
+    );
+    return { id: fresh.id, providerFolderId: fresh.providerFolderId };
+  }
+
+  const provider = await activeProvider();
+  const parent = row.parentId
+    ? await syncFolderWithActiveProvider(companyId, row.parentId)
+    : await (async () => {
+        const roots = await ensureRoots(companyId);
+        const fresh = await enEmpresa(companyId, (tx) =>
+          tx.storageFolder.findUniqueOrThrow({ where: { id: roots.rootId } })
+        );
+        return { id: fresh.id, providerFolderId: fresh.providerFolderId };
+      })();
+
+  const made = await provider.createFolder(row.name, parent.providerFolderId);
+  const updated = await enEmpresa(companyId, (tx) =>
+    tx.storageFolder.update({
+      where: { id: row.id },
+      data: { provider: settings.provider, providerFolderId: made.id, parentId: parent.id },
+    })
+  );
+  return { id: updated.id, providerFolderId: updated.providerFolderId };
 }
 
 async function folderTarget(companyId: string, folderId: string) {
@@ -465,10 +543,14 @@ export async function uploadToFolder(
     };
   }
 
+  // La carpeta puede venir de un proveedor anterior: se migra al activo
+  // antes de subir (los archivos ya guardados no se mueven).
+  const destino = await syncFolderWithActiveProvider(actor.companyId, input.folderId);
+
   const uploaded = await provider.uploadFile({
     name: input.fileName,
     mimeType: input.mimeType,
-    parentId: row.providerFolderId,
+    parentId: destino.providerFolderId,
     data: input.data,
   });
 
@@ -524,14 +606,18 @@ export async function uploadToFolder(
     );
     if (object.status !== 'activo') throw new Error('El documento fue eliminado.');
 
-    const decision = canReadFolder(actor, {
-      companyId: object.folder.companyId,
-      condominiumId: object.folder.condominiumId,
-      personId: object.folder.personId,
-      kind: object.folder.kind,
-      slug: object.folder.slug,
-      allowedRoles: object.folder.allowedRoles,
-    });
+    const decision = canReadObject(
+      actor,
+      {
+        companyId: object.folder.companyId,
+        condominiumId: object.folder.condominiumId,
+        personId: object.folder.personId,
+        kind: object.folder.kind,
+        slug: object.folder.slug,
+        allowedRoles: object.folder.allowedRoles,
+      },
+      { ownerPersonId: object.ownerPersonId }
+    );
     if (!decision.allowed) throw new Error(decision.reason);
 
     // Se usa el proveedor con el que se guardó, no el activo: durante una
@@ -561,7 +647,10 @@ export async function uploadToFolder(
     if (!decision.allowed) throw new Error(decision.reason);
     if (newName.trim().length < 2) throw new Error('El nombre es muy corto.');
 
-    const provider = await activeProvider();
+    // Con el proveedor del objeto: ahí viven los bytes.
+    const { buildProvider: construir } = await import('@/lib/storage');
+    const settings = await getStorageSettings();
+    const provider = construir(object.provider as StorageKind, settings.config);
     await provider.renameFile(object.providerFileId, newName.trim()).catch(() => undefined);
     return enEmpresa(actor.companyId, (tx) =>
       tx.storageObject.update({ where: { id: objectId }, data: { name: newName.trim() } })
@@ -589,7 +678,18 @@ export async function uploadToFolder(
     const to = canWriteFolder(actor, target);
     if (!to.allowed) throw new Error(to.reason);
 
-    const provider = await activeProvider();
+    // Mover se hace con el proveedor DEL OBJETO (ahí viven los bytes),
+    // hacia la carpeta tal como existe en ese mismo proveedor. Si la
+    // carpeta destino ya migró a otro proveedor, no se puede mover
+    // físicamente sin re-subir: se bloquea con un mensaje claro.
+    if (object.provider !== row.provider) {
+      throw new Error(
+        'El archivo está guardado en un proveedor anterior y la carpeta destino ya vive en el nuevo. Descargalo y volvé a subirlo para moverlo.'
+      );
+    }
+    const { buildProvider: construir } = await import('@/lib/storage');
+    const settingsMove = await getStorageSettings();
+    const provider = construir(object.provider as StorageKind, settingsMove.config);
     await provider.moveFile(object.providerFileId, row.providerFolderId);
     return enEmpresa(actor.companyId, (tx) =>
       tx.storageObject.update({
@@ -616,7 +716,10 @@ export async function uploadToFolder(
     });
     if (!decision.allowed) throw new Error(decision.reason);
 
-    const provider = await activeProvider();
+    // Con el proveedor del objeto: ahí viven los bytes.
+    const { buildProvider: construir } = await import('@/lib/storage');
+    const settings = await getStorageSettings();
+    const provider = construir(object.provider as StorageKind, settings.config);
     await provider.deleteFile(object.providerFileId);
     // Baja lógica: el metadato queda para la auditoría.
     return enEmpresa(actor.companyId, (tx) =>
@@ -721,6 +824,22 @@ export async function uploadToFolder(
       folderName: o.folder.name,
       folderSlug: o.folder.slug,
     }));
+  }
+
+  /**
+   * Espacio utilizado por un condominio: suma de los archivos activos
+   * según los metadatos propios — no se le pregunta al proveedor, así
+   * que funciona igual con Drive, S3 o el disco local.
+   */
+  export async function condoStorageUsage(actor: Actor, condominiumId: string) {
+    const agg = await enEmpresa(actor.companyId, (tx) =>
+      tx.storageObject.aggregate({
+        where: { condominiumId, companyId: actor.companyId, status: 'activo' },
+        _sum: { sizeBytes: true },
+        _count: { _all: true },
+      })
+    );
+    return { files: agg._count._all, bytes: Number(agg._sum.sizeBytes ?? 0) };
   }
 
   /**

@@ -2,7 +2,7 @@ import { Lock } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { resolveCondoId } from '@/lib/active-condo';
 import { listCondominiumsForSession, getCondominium } from '@/lib/services/condominiums';
-import { actorFromSession, listVisibleFolders, listFolderObjects } from '@/lib/services/storage';
+import { actorFromSession, listVisibleFolders, listFolderObjects, condoStorageUsage } from '@/lib/services/storage';
 import { getStorageSettings, PROVIDER_LABEL } from '@/lib/storage';
 import { PageHeader } from '@/components/ui/page-header';
 import { ModuleActions } from '@/components/ui/module-actions';
@@ -37,14 +37,21 @@ export default async function RepositorioPage({
 
   const folders = await listVisibleFolders(actor, condoId);
   const selectedId = folders.find((f) => f.id === searchParams.carpeta)?.id ?? folders[0]?.id ?? null;
-  const objects = selectedId ? await listFolderObjects(actor, selectedId) : [];
+  const [objects, usage] = await Promise.all([
+    selectedId ? listFolderObjects(actor, selectedId) : Promise.resolve([]),
+    condoStorageUsage(actor, condoId),
+  ]);
+  const usageLabel =
+    usage.bytes >= 1024 * 1024 * 1024
+      ? `${(usage.bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
+      : `${(usage.bytes / (1024 * 1024)).toFixed(1)} MB`;
 
   return (
     <div>
       <PageHeader
         title="Repositorio de Documentos"
         menu={<ModuleActions module="/app/repositorio" />}
-        subtitle="Todo el archivo del condominio, con acceso según tu rol"
+        subtitle={`Todo el archivo del condominio, con acceso según tu rol · ${usage.files} archivo${usage.files === 1 ? '' : 's'}, ${usageLabel} en uso`}
       />
       <div className="mb-4">
         <CondoSelect condos={condos} selected={condoId} />

@@ -28,6 +28,8 @@ export function CommAttachments({
           <a key={a.id} href={a.fileUrl} target="_blank" rel="noreferrer" title={a.fileName}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
+              loading="lazy"
+              decoding="async"
               src={a.fileUrl}
               alt={a.fileName}
               className="w-full rounded-lg border border-line object-cover transition hover:opacity-90"
@@ -59,7 +61,7 @@ export function CommAttachments({
           {images.map((a) => (
             <a key={a.id} href={a.fileUrl} target="_blank" rel="noreferrer" title={a.fileName}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={a.fileUrl} alt={a.fileName} className="h-28 w-40 rounded-lg border border-line object-cover" />
+              <img loading="lazy" decoding="async" src={a.fileUrl} alt={a.fileName} className="h-28 w-40 rounded-lg border border-line object-cover" />
             </a>
           ))}
         </div>

@@ -85,7 +85,7 @@ function AssetRow({ asset }: { asset: AssetItem }) {
       <li className="flex items-center gap-3 py-2">
         {asset.photoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={asset.photoUrl} alt={asset.name} className="h-10 w-10 flex-none rounded-lg object-cover" />
+          <img loading="lazy" decoding="async" src={asset.photoUrl} alt={asset.name} className="h-10 w-10 flex-none rounded-lg object-cover" />
         ) : (
           <div className="flex h-10 w-10 flex-none items-center justify-center rounded-lg bg-canvas text-xs font-bold text-muted">
             {asset.name.charAt(0).toUpperCase()}

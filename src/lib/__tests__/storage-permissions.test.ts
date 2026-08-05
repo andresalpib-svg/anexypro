@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   canReadFolder,
+  canReadObject,
   canWriteFolder,
   canDeleteObject,
   type Actor,
@@ -161,5 +162,34 @@ describe('regla de fondo', () => {
     expect(canReadFolder(supervisor, cerrada).allowed).toBe(false);
     expect(canReadFolder(guarda, cerrada).allowed).toBe(false);
     expect(canReadFolder(master, cerrada).allowed).toBe(true);
+  });
+});
+
+describe('lectura de un archivo dirigido a una persona (canReadObject)', () => {
+  const incumplimientos = () =>
+    carpeta({ slug: 'incumplimientos', allowedRoles: ['master', 'admin_owner', 'admin_staff'] });
+
+  it('el destinatario abre SU aviso aunque la carpeta sea de la administración', () => {
+    const d = canReadObject(laura, incumplimientos(), { ownerPersonId: 'persona-laura' });
+    expect(d.allowed).toBe(true);
+  });
+
+  it('otro residente NO abre un aviso ajeno', () => {
+    expect(canReadObject(carlos, incumplimientos(), { ownerPersonId: 'persona-laura' }).allowed).toBe(false);
+  });
+
+  it('un archivo sin destinatario sigue las reglas de la carpeta', () => {
+    expect(canReadObject(laura, incumplimientos(), { ownerPersonId: null }).allowed).toBe(false);
+    expect(canReadObject(admin, incumplimientos(), { ownerPersonId: null }).allowed).toBe(true);
+  });
+
+  it('la regla del destinatario no cruza empresas', () => {
+    const ajena = carpeta({ slug: 'incumplimientos', companyId: 'empresa-9', allowedRoles: ['admin_owner'] });
+    expect(canReadObject(laura, ajena, { ownerPersonId: 'persona-laura' }).allowed).toBe(false);
+  });
+
+  it('no amplía permisos de escritura ni de borrado', () => {
+    expect(canWriteFolder(laura, incumplimientos()).allowed).toBe(false);
+    expect(canDeleteObject(laura, incumplimientos()).allowed).toBe(false);
   });
 });

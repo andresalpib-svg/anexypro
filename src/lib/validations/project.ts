@@ -1,18 +1,19 @@
 import { z } from 'zod';
+import { fechaISOOpcional } from './comunes';
 
 export const projectSchema = z.object({
   condominiumId: z.string().uuid(),
   name: z.string().min(3, 'El nombre es muy corto').max(150),
   description: z.string().max(2000).optional().or(z.literal('')),
   budget: z.coerce.number().min(0),
-  startDate: z.string().optional().or(z.literal('')),
-  endDate: z.string().optional().or(z.literal('')),
+  startDate: fechaISOOpcional,
+  endDate: fechaISOOpcional,
 });
 
 export const milestoneSchema = z.object({
   projectId: z.string().uuid(),
   title: z.string().min(2).max(150),
-  dueDate: z.string().optional().or(z.literal('')),
+  dueDate: fechaISOOpcional,
 });
 
 export const checklistSchema = z.object({

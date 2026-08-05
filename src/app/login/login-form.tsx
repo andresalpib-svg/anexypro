@@ -49,7 +49,15 @@ export function LoginForm() {
     }
     // "/" redirige según el rol (admin → /app, guarda → /seguridad,
     // condómino → /portal) — no se asume el panel Administradora.
-    router.push(params.get('callbackUrl') || '/');
+    //
+    // El destino solo se acepta si es una ruta INTERNA: un
+    // `?callbackUrl=https://sitio-falso` (o `//sitio-falso`, que el
+    // navegador trata como absoluta) llevaría al usuario fuera del
+    // dominio justo después de autenticarse, que es el escenario
+    // clásico de phishing con enlace legítimo.
+    const destino = params.get('callbackUrl');
+    const seguro = destino && destino.startsWith('/') && !destino.startsWith('//') ? destino : '/';
+    router.push(seguro);
     router.refresh();
   }
 

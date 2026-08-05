@@ -1,15 +1,17 @@
 import { redirect } from 'next/navigation';
-import { headers } from 'next/headers';
+import { headers, cookies } from 'next/headers';
 import { auth } from '@/lib/auth';
-import { getHiddenModules, isModuleHidden } from '@/lib/services/module-visibility';
+import { isModuleHidden } from '@/lib/services/module-visibility';
+import { navItemForPath, CONTADOR_MODULES } from '@/lib/nav-config';
+import { can, type PermissionArea } from '@/lib/rbac';
 import { getTaskNotifications } from '@/lib/services/tasks';
-import { getOverdueBriefing } from '@/lib/services/overdue-briefing';
+import { getOverdueBriefing, avisoYaVistoHoy, SIN_ATRASOS } from '@/lib/services/overdue-briefing';
 import { prisma } from '@/lib/db';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Topbar } from '@/components/layout/topbar';
 import { OverdueModal } from '@/components/layout/overdue-modal';
 import { brandStyle } from '@/lib/branding';
-import { getCompanySubscription } from '@/lib/services/subscriptions';
+import { getCompanyShell } from '@/lib/services/company-shell';
 import { BlockedScreen } from '@/components/layout/blocked-screen';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -18,34 +20,56 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     redirect('/login');
   }
 
-  const [notifications, briefing, me, hiddenModules] = await Promise.all([
+  // El aviso de atrasos se muestra una vez al día. Si la cookie dice
+  // que ya se vio, ni siquiera se calcula: son dos consultas que de
+  // otro modo corrían en cada navegación para descartarse enseguida.
+  const yaVioAtrasos = avisoYaVistoHoy(cookies().get('anexypro-atrasos-visto')?.value);
+
+  const [notifications, briefing, me, empresa] = await Promise.all([
     // Alarmas de Gestión de Tareas: vencidas (obligatorio) + programadas.
     getTaskNotifications(session.user.companyId),
     // Aviso de primera instancia: pendientes con 2+ días de atraso.
-    getOverdueBriefing(session.user.companyId),
+    yaVioAtrasos ? Promise.resolve(SIN_ATRASOS) : getOverdueBriefing(session.user.companyId),
     prisma.user.findUnique({ where: { id: session.user.id }, select: { photoUrl: true } }),
-    // Módulos que el master apagó para esta empresa.
-    getHiddenModules(session.user.companyId),
+    // Módulos ocultos + marca + suscripción: UNA sola lectura de la
+    // fila de la empresa, en vez de las tres encadenadas que había.
+    getCompanyShell(session.user.companyId),
   ]);
 
-  // Identidad visual de la empresa. `companies` no lleva RLS, así que
-  // se lee directo. Si no tiene marca propia, `brandStyle` devuelve un
+  const { hiddenModules, brand, subscription: suscripcion } = empresa;
+  // Si la empresa no tiene marca propia, `brandStyle` devuelve un
   // objeto vacío y el panel se queda con la paleta de `globals.css`.
-  const empresa = await prisma.company.findUnique({
-    where: { id: session.user.companyId },
-    select: { brandPrimary: true, brandDeep: true },
-  });
-  const marca = brandStyle(empresa ?? {});
+  const marca = brandStyle(brand);
 
   // Bloqueo por URL: ocultar el módulo del menú no basta si el usuario
   // escribe la dirección a mano.
   const pathname = headers().get('x-pathname') ?? '';
   if (pathname && isModuleHidden(hiddenModules, pathname)) redirect('/app/dashboard');
 
+  // Permisos por URL — las mismas reglas de nav-config que filtran el
+  // menú, aplicadas a la pantalla. Sin esto, un supervisor con el área
+  // apagada o el contador externo entraban a cualquier módulo
+  // escribiendo la dirección.
+  if (pathname) {
+    if (session.user.role === 'contador') {
+      // Lista blanca explícita del contador + su perfil y la pantalla
+      // de suscripción (esta última decide sola qué mostrar).
+      const permitido = [...CONTADOR_MODULES, '/app/perfil', '/app/suscripcion'].some(
+        (m) => pathname === m || pathname.startsWith(`${m}/`)
+      );
+      if (!permitido) redirect('/app/finanzas');
+    } else {
+      const item = navItemForPath(pathname);
+      if (item?.ownerOnly && session.user.role !== 'admin_owner') redirect('/app/dashboard');
+      // `area` es string en nav-config (igual que en guard.ts); el
+      // catálogo real de áreas vive en rbac.ts.
+      if (item?.area && !can(session, item.area as PermissionArea)) redirect('/app/dashboard');
+    }
+  }
+
   // Suscripción bloqueada. El administrador entra pero solo ve la
   // pantalla de pago; el supervisor y el contador quedan fuera. No se
   // borra ni se oculta información: solo se cierra el paso.
-  const suscripcion = await getCompanySubscription(session.user.companyId);
   if (suscripcion.blocked) {
     if (session.user.role === 'admin_owner') {
       if (pathname !== '/app/suscripcion') redirect('/app/suscripcion');
@@ -60,7 +84,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="flex h-screen overflow-hidden" style={marca}>
       <OverdueModal items={briefing.items} taskCount={briefing.taskCount} ticketCount={briefing.ticketCount} />
       <Sidebar session={session} photoUrl={me?.photoUrl} hiddenModules={hiddenModules} />
-      <div className="flex h-screen flex-1 flex-col">
+      {/* pt-14 en móvil: deja sitio a la barra superior con el menú. */}
+      <div className="flex h-screen flex-1 flex-col pt-14 lg:pt-0">
         <Topbar
           notifications={notifications.map((n) => ({
             taskId: n.taskId,
@@ -69,7 +94,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             when: n.when.toISOString(),
           }))}
         />
-        <main className="flex-1 overflow-y-auto bg-canvas p-6">{children}</main>
+        <main className="flex-1 overflow-y-auto bg-canvas p-4 sm:p-6">{children}</main>
       </div>
     </div>
   );

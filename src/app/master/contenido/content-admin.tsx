@@ -65,7 +65,7 @@ export function ContentAdmin({
             <div key={i.id} className="flex items-center gap-3 p-3 text-sm">
               {i.thumbnail ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={i.thumbnail} alt={i.title} className="h-12 w-20 flex-none rounded-lg object-cover" />
+                <img loading="lazy" decoding="async" src={i.thumbnail} alt={i.title} className="h-12 w-20 flex-none rounded-lg object-cover" />
               ) : (
                 <span className="flex h-12 w-20 flex-none items-center justify-center rounded-lg bg-canvas">
                   <PlayCircle className="text-muted" size={18} />

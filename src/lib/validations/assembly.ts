@@ -1,10 +1,11 @@
 import { z } from 'zod';
+import { fechaISO } from './comunes';
 
 export const assemblySchema = z.object({
   condominiumId: z.string().uuid(),
   type: z.enum(['ordinaria', 'extraordinaria']),
   title: z.string().min(3, 'El título es muy corto').max(150),
-  eventDate: z.string().min(1, 'Indica la fecha'),
+  eventDate: fechaISO,
   eventTime: z.string().min(1, 'Indica la hora'),
   location: z.string().max(150).optional().or(z.literal('')),
   convocatoriaBody: z.string().min(10, 'Redacta la convocatoria').max(5000),

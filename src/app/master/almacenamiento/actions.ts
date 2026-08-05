@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { auth } from '@/lib/auth';
 import { buildProvider, setStorageSettings, getStorageSettings, IMPLEMENTED } from '@/lib/storage';
 import type { StorageKind } from '@/lib/storage/provider';
+import { mensajeDeError } from '@/lib/errores';
 
 async function guardMaster() {
   const session = await auth();
@@ -22,7 +23,7 @@ export async function testProviderAction(
     const provider = buildProvider(kind, settings.config);
     return await provider.healthCheck();
   } catch (e: any) {
-    return { ok: false, detail: e?.message ?? 'No se pudo construir el proveedor.' };
+    return { ok: false, detail: mensajeDeError(e, 'No se pudo construir el proveedor.') };
   }
 }
 

@@ -147,6 +147,78 @@ export async function condoOfProvider(companyId: string, providerId: string): Pr
   return provider.condominiumId;
 }
 
+/** Condominio de un punto del checklist de una tarea (puede no tener). */
+export async function condoOfChecklistItem(companyId: string, itemId: string): Promise<string | null> {
+  const item = await withTenantContext(companyId, (tx) =>
+    tx.adminTaskChecklistItem.findFirstOrThrow({
+      where: { id: itemId, task: { companyId } },
+      select: { task: { select: { condominiumId: true } } },
+    })
+  );
+  return item.task.condominiumId;
+}
+
+/** Condominio de un adjunto de tarea (puede no tener). */
+export async function condoOfTaskAttachment(companyId: string, attachmentId: string): Promise<string | null> {
+  const att = await withTenantContext(companyId, (tx) =>
+    tx.adminTaskAttachment.findFirstOrThrow({
+      where: { id: attachmentId, task: { companyId } },
+      select: { task: { select: { condominiumId: true } } },
+    })
+  );
+  return att.task.condominiumId;
+}
+
+export async function condoOfAssembly(companyId: string, assemblyId: string): Promise<string> {
+  const assembly = await withTenantContext(companyId, (tx) =>
+    tx.assembly.findFirstOrThrow({
+      where: { id: assemblyId, condominium: { companyId } },
+      select: { condominiumId: true },
+    })
+  );
+  return assembly.condominiumId;
+}
+
+export async function condoOfAssemblyTopic(companyId: string, topicId: string): Promise<string> {
+  const topic = await withTenantContext(companyId, (tx) =>
+    tx.assemblyTopic.findFirstOrThrow({
+      where: { id: topicId, assembly: { condominium: { companyId } } },
+      select: { assembly: { select: { condominiumId: true } } },
+    })
+  );
+  return topic.assembly.condominiumId;
+}
+
+export async function condoOfProject(companyId: string, projectId: string): Promise<string> {
+  const project = await withTenantContext(companyId, (tx) =>
+    tx.project.findFirstOrThrow({
+      where: { id: projectId, condominium: { companyId } },
+      select: { condominiumId: true },
+    })
+  );
+  return project.condominiumId;
+}
+
+export async function condoOfDocument(companyId: string, documentId: string): Promise<string> {
+  const doc = await withTenantContext(companyId, (tx) =>
+    tx.document.findFirstOrThrow({
+      where: { id: documentId, condominium: { companyId } },
+      select: { condominiumId: true },
+    })
+  );
+  return doc.condominiumId;
+}
+
+export async function condoOfCommunication(companyId: string, communicationId: string): Promise<string> {
+  const comm = await withTenantContext(companyId, (tx) =>
+    tx.communication.findFirstOrThrow({
+      where: { id: communicationId, condominium: { companyId } },
+      select: { condominiumId: true },
+    })
+  );
+  return comm.condominiumId;
+}
+
 /**
  * Una persona pertenece a la empresa, no a un condominio: puede ser
  * miembro de unidades en varios. Devuelve los condominios donde tiene

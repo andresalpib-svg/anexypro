@@ -89,7 +89,7 @@ function ProviderGrid({ providers }: { providers: DirectoryProvider[] }) {
           <div className="flex items-start gap-4">
             {p.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={p.logoUrl} alt={p.name} className="h-14 w-14 flex-none rounded-xl border border-line object-contain p-1" />
+              <img loading="lazy" decoding="async" src={p.logoUrl} alt={p.name} className="h-14 w-14 flex-none rounded-xl border border-line object-contain p-1" />
             ) : (
               <span className="flex h-14 w-14 flex-none items-center justify-center rounded-xl bg-royal-soft text-lg font-bold text-royal">
                 {p.name.charAt(0).toUpperCase()}

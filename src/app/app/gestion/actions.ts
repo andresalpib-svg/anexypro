@@ -17,6 +17,7 @@ import {
 import { pickFile } from '@/lib/upload';
 import { saveToRepository } from '@/lib/services/file-refs';
 import { taskDestination, condoOfTask } from '@/lib/services/upload-destinations';
+import { condoOfChecklistItem, condoOfTaskAttachment } from '@/lib/services/entity-scope';
 import { canAccessCondo } from '@/lib/services/condominiums';
 
 export type ActionState = { errors?: Record<string, string[]>; formError?: string; success?: boolean };
@@ -31,6 +32,19 @@ function parseDates(data: { dueDate?: string; alarmAt?: string }) {
 async function guard() {
   const session = await auth();
   if (!session?.user || !['admin_owner', 'admin_staff'].includes(session.user.role)) return null;
+  return session;
+}
+
+/**
+ * Guarda para las acciones que solo reciben el id de una tarea o de uno
+ * de sus hijos: el condominio se resuelve DESDE la entidad y se
+ * comprueba contra los asignados. Sin esto, un supervisor cerraba,
+ * borraba o vaciaba tareas de condominios que no administra.
+ */
+async function guardByCondo(condoId: string | null) {
+  const session = await guard();
+  if (!session) return null;
+  if (!(await condoAllowed(session, condoId ?? undefined))) return null;
   return session;
 }
 
@@ -87,15 +101,19 @@ export async function updateTaskAction(_prev: ActionState, formData: FormData): 
 }
 
 export async function setTaskStatusAction(taskId: string, status: string) {
-  const session = await guard();
+  const pre = await guard();
+  if (!pre) return;
+  const session = await guardByCondo(await condoOfTask(pre.user.companyId, taskId));
   if (!session) return;
   await setTaskStatus(session.user.companyId, taskId, status);
   revalidatePath('/app/gestion');
 }
 
 export async function deleteTaskAction(taskId: string): Promise<{ ok: boolean; error?: string }> {
-  const session = await guard();
-  if (!session) return { ok: false, error: 'Sesión expirada.' };
+  const pre = await guard();
+  if (!pre) return { ok: false, error: 'Sesión expirada.' };
+  const session = await guardByCondo(await condoOfTask(pre.user.companyId, taskId));
+  if (!session) return { ok: false, error: 'No tienes ese condominio asignado.' };
   try {
     await deleteTask(session.user.companyId, taskId);
   } catch (e: any) {
@@ -107,10 +125,13 @@ export async function deleteTaskAction(taskId: string): Promise<{ ok: boolean; e
 
 // ---------- Checklist ----------
 export async function addChecklistItemAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const session = await guard();
-  if (!session) return { formError: 'Sesión expirada.' };
   const parsed = checklistItemSchema.safeParse(Object.fromEntries(formData.entries()));
   if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors as Record<string, string[]> };
+
+  const pre = await guard();
+  if (!pre) return { formError: 'Sesión expirada.' };
+  const session = await guardByCondo(await condoOfTask(pre.user.companyId, parsed.data.taskId));
+  if (!session) return { formError: 'No tienes ese condominio asignado.' };
 
   await addChecklistItem(session.user.companyId, parsed.data.taskId, parsed.data.title);
   revalidatePath('/app/gestion');
@@ -118,14 +139,18 @@ export async function addChecklistItemAction(_prev: ActionState, formData: FormD
 }
 
 export async function toggleChecklistItemAction(itemId: string, done: boolean) {
-  const session = await guard();
+  const pre = await guard();
+  if (!pre) return;
+  const session = await guardByCondo(await condoOfChecklistItem(pre.user.companyId, itemId));
   if (!session) return;
   await toggleChecklistItem(session.user.companyId, itemId, done);
   revalidatePath('/app/gestion');
 }
 
 export async function deleteChecklistItemAction(itemId: string) {
-  const session = await guard();
+  const pre = await guard();
+  if (!pre) return;
+  const session = await guardByCondo(await condoOfChecklistItem(pre.user.companyId, itemId));
   if (!session) return;
   await deleteChecklistItem(session.user.companyId, itemId);
   revalidatePath('/app/gestion');
@@ -133,14 +158,18 @@ export async function deleteChecklistItemAction(itemId: string) {
 
 // ---------- Adjuntos ----------
 export async function addAttachmentAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const session = await guard();
-  if (!session) return { formError: 'Sesión expirada.' };
+  const pre = await guard();
+  if (!pre) return { formError: 'Sesión expirada.' };
   const taskId = String(formData.get('taskId') ?? '');
   const file = pickFile(formData, 'file');
   if (!taskId || !file) return { formError: 'Adjunta un archivo.' };
 
+  const condoId = await condoOfTask(pre.user.companyId, taskId);
+  const session = await guardByCondo(condoId);
+  if (!session) return { formError: 'No tienes ese condominio asignado.' };
+
   try {
-    const url = await saveToRepository(file, taskDestination(await condoOfTask(session.user.companyId, taskId)));
+    const url = await saveToRepository(file, taskDestination(condoId));
     await addTaskAttachment(session.user.companyId, taskId, file.name, url);
   } catch (e: any) {
     return { formError: e?.message ?? 'No se pudo adjuntar el archivo.' };
@@ -150,7 +179,9 @@ export async function addAttachmentAction(_prev: ActionState, formData: FormData
 }
 
 export async function deleteAttachmentAction(attachmentId: string) {
-  const session = await guard();
+  const pre = await guard();
+  if (!pre) return;
+  const session = await guardByCondo(await condoOfTaskAttachment(pre.user.companyId, attachmentId));
   if (!session) return;
   await deleteTaskAttachment(session.user.companyId, attachmentId);
   revalidatePath('/app/gestion');

@@ -813,6 +813,11 @@ model Charge {
 
   @@index([propertyId, dueDate])
   @@index([condominiumId, period])
+  // El filtro más usado del producto: cargos pendientes o parciales ya
+  // vencidos de un condominio. Lo hacen morosidad, cobranza, intereses
+  // moratorios y los reportes. Sin este índice es un recorrido completo
+  // de la tabla, que solo crece.
+  @@index([condominiumId, status, dueDate])
   @@map("charges")
 }
 
@@ -861,6 +866,9 @@ model Payment {
   journalEntries JournalEntry[]
 
   @@index([propertyId, paymentDate])
+  // Listado de pagos del condominio por fecha, y la columna por la que
+  // filtra su propia política de RLS (`tenant_payments`).
+  @@index([condominiumId, paymentDate(sort: Desc)])
   @@map("payments")
 }
 
@@ -1039,6 +1047,7 @@ model CommunicationTarget {
   property       Property?       @relation(fields: [propertyId], references: [id])
   person         Person?         @relation(fields: [personId], references: [id])
 
+  @@index([communicationId])
   @@map("communication_targets")
 }
 
@@ -1820,6 +1829,7 @@ model AssemblyAttachment {
 
   assembly Assembly @relation(fields: [assemblyId], references: [id], onDelete: Cascade)
 
+  @@index([assemblyId])
   @@map("assembly_attachments")
 }
 
@@ -1834,6 +1844,7 @@ model AssemblyTopic {
   assembly Assembly      @relation(fields: [assemblyId], references: [id], onDelete: Cascade)
   vote     AssemblyVote?
 
+  @@index([assemblyId])
   @@map("assembly_topics")
 }
 
@@ -2077,6 +2088,10 @@ model CondominiumSupervisor {
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([condominiumId, userId])
+  // `listCondominiumsForSession` busca por userId y corre en casi todas
+  // las pantallas del panel. El índice único de arriba no sirve para
+  // eso: userId no es su primera columna.
+  @@index([userId])
   @@map("condominium_supervisors")
 }
 

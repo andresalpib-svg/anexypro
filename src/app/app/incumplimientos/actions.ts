@@ -11,6 +11,7 @@ import {
   getPropertyBriefing,
   previewNextAction,
   issueViolation,
+  propertyOwnerPersonId,
   createViolationType,
   updateViolationType,
   deleteViolationType,
@@ -99,12 +100,17 @@ export async function issueViolationAction(_prev: IssueState, formData: FormData
       return { formError: `Máximo ${MAX_EVIDENCIAS} archivos de evidencia por notificación.` };
     }
 
+    // La evidencia vive en la carpeta del módulo, marcada con la persona
+    // destinataria: así el propietario puede verla desde su portal sin
+    // tener acceso al resto de la carpeta.
+    const ownerPersonId = await propertyOwnerPersonId(session.user.companyId, propertyId);
+
     const evidences = [];
     for (const file of archivos) {
       const ref = await saveToRepository(
         file,
-        { kind: 'condo', condominiumId, slug: 'multimedia/fotografias' },
-        { maxBytes: 25 * 1024 * 1024 }
+        { kind: 'condo', condominiumId, slug: 'incumplimientos' },
+        { maxBytes: 25 * 1024 * 1024, ownerPersonId }
       );
       const tipo = fileKind(file.name);
       evidences.push({

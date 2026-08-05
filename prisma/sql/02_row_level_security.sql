@@ -75,66 +75,138 @@ ALTER TABLE documents                      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE document_versions              ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_log                      ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS tenant_condos ON condominiums;
 CREATE POLICY tenant_condos ON condominiums USING (company_id = current_setting('app.current_company_id'));
+DROP POLICY IF EXISTS tenant_structunits ON structural_units;
 CREATE POLICY tenant_structunits ON structural_units USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_properties ON properties;
 CREATE POLICY tenant_properties ON properties USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_amenities ON amenities;
 CREATE POLICY tenant_amenities ON amenities USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_amenity_sched ON amenity_schedules;
 CREATE POLICY tenant_amenity_sched ON amenity_schedules USING (amenity_id IN (SELECT id FROM amenities WHERE condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id'))));
+DROP POLICY IF EXISTS tenant_finsettings ON condominium_financial_settings;
 CREATE POLICY tenant_finsettings ON condominium_financial_settings USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_condodocs ON condominium_documents;
 CREATE POLICY tenant_condodocs ON condominium_documents USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_audit ON audit_logs;
 CREATE POLICY tenant_audit ON audit_logs USING (company_id = current_setting('app.current_company_id'));
+DROP POLICY IF EXISTS tenant_persons ON persons;
 CREATE POLICY tenant_persons ON persons USING (company_id = current_setting('app.current_company_id'));
+DROP POLICY IF EXISTS tenant_members ON property_members;
 CREATE POLICY tenant_members ON property_members USING (property_id IN (SELECT p.id FROM properties p JOIN condominiums c ON c.id = p.condominium_id WHERE c.company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_maccess ON member_access_schedules;
 CREATE POLICY tenant_maccess ON member_access_schedules USING (member_id IN (SELECT id FROM property_members WHERE property_id IN (SELECT p.id FROM properties p JOIN condominiums c ON c.id = p.condominium_id WHERE c.company_id = current_setting('app.current_company_id'))));
+DROP POLICY IF EXISTS tenant_vehicles ON vehicles;
 CREATE POLICY tenant_vehicles ON vehicles USING (property_id IN (SELECT p.id FROM properties p JOIN condominiums c ON c.id = p.condominium_id WHERE c.company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_pets ON pets;
 CREATE POLICY tenant_pets ON pets USING (property_id IN (SELECT p.id FROM properties p JOIN condominiums c ON c.id = p.condominium_id WHERE c.company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_emg ON emergency_contacts;
 CREATE POLICY tenant_emg ON emergency_contacts USING (property_id IN (SELECT p.id FROM properties p JOIN condominiums c ON c.id = p.condominium_id WHERE c.company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_pevents ON property_events;
 CREATE POLICY tenant_pevents ON property_events USING (property_id IN (SELECT p.id FROM properties p JOIN condominiums c ON c.id = p.condominium_id WHERE c.company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_persondocs ON person_documents;
 CREATE POLICY tenant_persondocs ON person_documents USING (person_id IN (SELECT id FROM persons WHERE company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_invitations ON person_invitations;
 CREATE POLICY tenant_invitations ON person_invitations USING (person_id IN (SELECT id FROM persons WHERE company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_batches ON fee_batches;
 CREATE POLICY tenant_batches ON fee_batches USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_charges ON charges;
 CREATE POLICY tenant_charges ON charges USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_payments ON payments;
 CREATE POLICY tenant_payments ON payments USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_allocs ON payment_allocations;
 CREATE POLICY tenant_allocs ON payment_allocations USING (payment_id IN (SELECT p.id FROM payments p JOIN condominiums c ON c.id = p.condominium_id WHERE c.company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_runlog ON billing_run_log;
 CREATE POLICY tenant_runlog ON billing_run_log USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_wtiers ON water_tariff_tiers;
 CREATE POLICY tenant_wtiers ON water_tariff_tiers USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_wreadings ON water_readings;
 CREATE POLICY tenant_wreadings ON water_readings USING (property_id IN (SELECT p.id FROM properties p JOIN condominiums c ON c.id = p.condominium_id WHERE c.company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_suspensions ON property_service_suspensions;
 CREATE POLICY tenant_suspensions ON property_service_suspensions USING (property_id IN (SELECT p.id FROM properties p JOIN condominiums c ON c.id = p.condominium_id WHERE c.company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_comms ON communications;
 CREATE POLICY tenant_comms ON communications USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_comm_targets ON communication_targets;
 CREATE POLICY tenant_comm_targets ON communication_targets USING (communication_id IN (SELECT id FROM communications WHERE condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id'))));
+DROP POLICY IF EXISTS tenant_comm_attach ON communication_attachments;
 CREATE POLICY tenant_comm_attach ON communication_attachments USING (communication_id IN (SELECT id FROM communications WHERE condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id'))));
+DROP POLICY IF EXISTS tenant_comm_recipients ON communication_recipients;
 CREATE POLICY tenant_comm_recipients ON communication_recipients USING (communication_id IN (SELECT id FROM communications WHERE condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id'))));
+DROP POLICY IF EXISTS tenant_reservations ON reservations;
 CREATE POLICY tenant_reservations ON reservations USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_calevents ON calendar_events;
 CREATE POLICY tenant_calevents ON calendar_events USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_visits ON visit_authorizations;
 CREATE POLICY tenant_visits ON visit_authorizations USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_vschedules ON visit_schedules;
 CREATE POLICY tenant_vschedules ON visit_schedules USING (authorization_id IN (SELECT id FROM visit_authorizations WHERE condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id'))));
+DROP POLICY IF EXISTS tenant_checkins ON visit_checkins;
 CREATE POLICY tenant_checkins ON visit_checkins USING (authorization_id IN (SELECT id FROM visit_authorizations WHERE condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id'))));
+DROP POLICY IF EXISTS tenant_incidents ON incidents;
 CREATE POLICY tenant_incidents ON incidents USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_packages ON packages;
 CREATE POLICY tenant_packages ON packages USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_content ON content_items;
 CREATE POLICY tenant_content ON content_items USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_assets ON assets;
 CREATE POLICY tenant_assets ON assets USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_providers ON providers;
 CREATE POLICY tenant_providers ON providers USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_maint ON maintenance_tickets;
 CREATE POLICY tenant_maint ON maintenance_tickets USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_maintphotos ON maintenance_photos;
 CREATE POLICY tenant_maintphotos ON maintenance_photos USING (ticket_id IN (SELECT id FROM maintenance_tickets WHERE condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id'))));
+DROP POLICY IF EXISTS tenant_authlog ON auth_log;
 CREATE POLICY tenant_authlog ON auth_log USING (user_id IN (SELECT id FROM users WHERE company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_projects ON projects;
 CREATE POLICY tenant_projects ON projects USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_milestones ON project_milestones;
 CREATE POLICY tenant_milestones ON project_milestones USING (project_id IN (SELECT id FROM projects WHERE condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id'))));
+DROP POLICY IF EXISTS tenant_checklist ON project_checklist_items;
 CREATE POLICY tenant_checklist ON project_checklist_items USING (project_id IN (SELECT id FROM projects WHERE condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id'))));
+DROP POLICY IF EXISTS tenant_expenses ON project_expenses;
 CREATE POLICY tenant_expenses ON project_expenses USING (project_id IN (SELECT id FROM projects WHERE condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id'))));
+DROP POLICY IF EXISTS tenant_updates ON project_updates;
 CREATE POLICY tenant_updates ON project_updates USING (project_id IN (SELECT id FROM projects WHERE condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id'))));
+DROP POLICY IF EXISTS tenant_accounts ON chart_of_accounts;
 CREATE POLICY tenant_accounts ON chart_of_accounts USING (company_id = current_setting('app.current_company_id'));
+DROP POLICY IF EXISTS tenant_journal ON journal_entries;
 CREATE POLICY tenant_journal ON journal_entries USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_journallines ON journal_lines;
 CREATE POLICY tenant_journallines ON journal_lines USING (entry_id IN (SELECT id FROM journal_entries WHERE condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id'))));
+DROP POLICY IF EXISTS tenant_budget ON budget_lines;
 CREATE POLICY tenant_budget ON budget_lines USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_assemblies ON assemblies;
 CREATE POLICY tenant_assemblies ON assemblies USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_assembly_attachments ON assembly_attachments;
 CREATE POLICY tenant_assembly_attachments ON assembly_attachments USING (assembly_id IN (SELECT id FROM assemblies WHERE condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id'))));
+DROP POLICY IF EXISTS tenant_assembly_topics ON assembly_topics;
 CREATE POLICY tenant_assembly_topics ON assembly_topics USING (assembly_id IN (SELECT id FROM assemblies WHERE condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id'))));
+DROP POLICY IF EXISTS tenant_assembly_votes ON assembly_votes;
 CREATE POLICY tenant_assembly_votes ON assembly_votes USING (topic_id IN (SELECT id FROM assembly_topics WHERE assembly_id IN (SELECT id FROM assemblies WHERE condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')))));
+DROP POLICY IF EXISTS tenant_assembly_ballots ON assembly_ballots;
 CREATE POLICY tenant_assembly_ballots ON assembly_ballots USING (vote_id IN (SELECT id FROM assembly_votes WHERE topic_id IN (SELECT id FROM assembly_topics WHERE assembly_id IN (SELECT id FROM assemblies WHERE condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id'))))));
+DROP POLICY IF EXISTS tenant_assembly_attendance ON assembly_attendance;
 CREATE POLICY tenant_assembly_attendance ON assembly_attendance USING (assembly_id IN (SELECT id FROM assemblies WHERE condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id'))));
+DROP POLICY IF EXISTS tenant_documents ON documents;
 CREATE POLICY tenant_documents ON documents USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_document_versions ON document_versions;
 CREATE POLICY tenant_document_versions ON document_versions USING (document_id IN (SELECT id FROM documents WHERE condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id'))));
-CREATE POLICY resident_read_documents ON documents FOR SELECT USING (visibility = 'residentes' AND status = 'vigente');
+-- FUGA ENTRE EMPRESAS CORREGIDA (auditoría del 5 de agosto de 2026).
+--
+-- Esta política se escribió sin filtro de empresa. Postgres combina las
+-- políticas PERMISIVAS con **OR**, así que anulaba por completo a
+-- `tenant_documents`: cualquier empresa leía los documentos marcados
+-- `residentes` + `vigente` de TODAS las demás. Se comprobó en vivo.
+--
+-- Se elimina en vez de corregirse: con el filtro de empresa quedaría
+-- como un subconjunto exacto de `tenant_documents`, que ya permite
+-- leer los documentos del propio inquilino. Qué documentos ve un
+-- residente concreto lo decide la aplicación (`getResidentContext`),
+-- no una política de aislamiento entre empresas.
+DROP POLICY IF EXISTS resident_read_documents ON documents;
+DROP POLICY IF EXISTS tenant_audit_log ON audit_log;
 CREATE POLICY tenant_audit_log ON audit_log USING (company_id = current_setting('app.current_company_id'));
 
 -- La aplicación se conecta con un rol de base de datos que tiene
@@ -148,7 +220,9 @@ CREATE POLICY tenant_audit_log ON audit_log USING (company_id = current_setting(
 -- subselect por condominio.
 ALTER TABLE petty_cash_allocations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE petty_cash_expenses    ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_pettycash_alloc ON petty_cash_allocations;
 CREATE POLICY tenant_pettycash_alloc ON petty_cash_allocations USING (company_id = current_setting('app.current_company_id'));
+DROP POLICY IF EXISTS tenant_pettycash_exp ON petty_cash_expenses;
 CREATE POLICY tenant_pettycash_exp   ON petty_cash_expenses    USING (company_id = current_setting('app.current_company_id'));
 
 -- Fase 0 y 1 de Finanzas: todas llevan company_id propio.
@@ -157,10 +231,15 @@ ALTER TABLE bank_accounts      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE suppliers          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE expenses           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE expense_payments   ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_periods ON accounting_periods;
 CREATE POLICY tenant_periods  ON accounting_periods USING (company_id = current_setting('app.current_company_id'));
+DROP POLICY IF EXISTS tenant_banks ON bank_accounts;
 CREATE POLICY tenant_banks    ON bank_accounts      USING (company_id = current_setting('app.current_company_id'));
+DROP POLICY IF EXISTS tenant_supp ON suppliers;
 CREATE POLICY tenant_supp     ON suppliers          USING (company_id = current_setting('app.current_company_id'));
+DROP POLICY IF EXISTS tenant_expenses ON expenses;
 CREATE POLICY tenant_expenses ON expenses           USING (company_id = current_setting('app.current_company_id'));
+DROP POLICY IF EXISTS tenant_exppay ON expense_payments;
 CREATE POLICY tenant_exppay   ON expense_payments   USING (company_id = current_setting('app.current_company_id'));
 
 -- Fases 2 y 3 de Finanzas.
@@ -168,9 +247,13 @@ ALTER TABLE recurring_expenses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE contracts          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bank_transactions  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bank_match_rules   ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_recurring ON recurring_expenses;
 CREATE POLICY tenant_recurring ON recurring_expenses USING (company_id = current_setting('app.current_company_id'));
+DROP POLICY IF EXISTS tenant_contracts ON contracts;
 CREATE POLICY tenant_contracts ON contracts          USING (company_id = current_setting('app.current_company_id'));
+DROP POLICY IF EXISTS tenant_banktx ON bank_transactions;
 CREATE POLICY tenant_banktx    ON bank_transactions  USING (company_id = current_setting('app.current_company_id'));
+DROP POLICY IF EXISTS tenant_bankrules ON bank_match_rules;
 CREATE POLICY tenant_bankrules ON bank_match_rules   USING (company_id = current_setting('app.current_company_id'));
 
 -- Fases 4 y 5 de Finanzas.
@@ -178,9 +261,13 @@ ALTER TABLE reserve_funds           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reserve_fund_movements  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payment_plans           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE collection_actions      ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_reserve ON reserve_funds;
 CREATE POLICY tenant_reserve    ON reserve_funds          USING (company_id = current_setting('app.current_company_id'));
+DROP POLICY IF EXISTS tenant_reservemov ON reserve_fund_movements;
 CREATE POLICY tenant_reservemov ON reserve_fund_movements USING (company_id = current_setting('app.current_company_id'));
+DROP POLICY IF EXISTS tenant_plans ON payment_plans;
 CREATE POLICY tenant_plans      ON payment_plans          USING (company_id = current_setting('app.current_company_id'));
+DROP POLICY IF EXISTS tenant_collection ON collection_actions;
 CREATE POLICY tenant_collection ON collection_actions     USING (company_id = current_setting('app.current_company_id'));
 
 -- Repositorio de documentos.
@@ -188,5 +275,7 @@ ALTER TABLE storage_folders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE storage_objects ENABLE ROW LEVEL SECURITY;
 -- Las carpetas de plataforma (raiz "ANEXYpro" y "Condominios") no tienen
 -- company_id: son comunes a todos los inquilinos.
+DROP POLICY IF EXISTS tenant_folders ON storage_folders;
 CREATE POLICY tenant_folders ON storage_folders USING (company_id IS NULL OR company_id = current_setting('app.current_company_id'));
+DROP POLICY IF EXISTS tenant_objects ON storage_objects;
 CREATE POLICY tenant_objects ON storage_objects USING (company_id = current_setting('app.current_company_id'));

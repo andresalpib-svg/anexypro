@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { ArrowLeft, User, Car, PawPrint, Phone } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { getProperty } from '@/lib/services/properties';
+import { canAccessCondo } from '@/lib/services/condominiums';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatusChip } from '@/components/ui/status-chip';
 import { InlineAddForm } from '../inline-add-form';
@@ -20,6 +21,10 @@ export default async function PropertyDetailPage({ params }: { params: { id: str
   const session = await auth();
   const property = await getProperty(session!.user.companyId, params.id);
   if (!property) notFound();
+  // El supervisor solo ve fichas de SUS condominios; escribir la URL a
+  // mano no debe saltarse esa asignación (la ficha lleva cédulas y
+  // contactos de residentes).
+  if (!(await canAccessCondo(session!, property.condominiumId))) notFound();
 
   return (
     <div className="mx-auto max-w-3xl">

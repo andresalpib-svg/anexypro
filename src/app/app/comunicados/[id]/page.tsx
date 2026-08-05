@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { ArrowLeft, Send } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { getCommunication } from '@/lib/services/communications';
+import { canAccessCondo } from '@/lib/services/condominiums';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatusChip } from '@/components/ui/status-chip';
 import { CommAttachments } from '@/components/ui/comm-attachments';
@@ -15,6 +16,8 @@ export default async function ComunicadoDetailPage({ params }: { params: { id: s
   const session = await auth();
   const comm = await getCommunication(session!.user.companyId, params.id);
   if (!comm) notFound();
+  // Solo condominios asignados: la URL directa no salta la asignación.
+  if (!(await canAccessCondo(session!, comm.condominiumId))) notFound();
 
   async function handlePublish() {
     'use server';

@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { ArrowLeft, Lock } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { getAssembly } from '@/lib/services/assemblies';
+import { canAccessCondo } from '@/lib/services/condominiums';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatusChip } from '@/components/ui/status-chip';
 import { VoteControls, MinutesForm } from './vote-controls';
@@ -11,6 +12,8 @@ export default async function AssemblyDetailPage({ params }: { params: { id: str
   const session = await auth();
   const assembly = await getAssembly(session!.user.companyId, params.id);
   if (!assembly) notFound();
+  // Solo condominios asignados: la URL directa no salta la asignación.
+  if (!(await canAccessCondo(session!, assembly.condominiumId))) notFound();
 
   return (
     <div className="mx-auto max-w-3xl">

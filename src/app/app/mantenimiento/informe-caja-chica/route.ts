@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import path from 'node:path';
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
 import { auth } from '@/lib/auth';
+import { can } from '@/lib/rbac';
 import { canAccessCondo, getCondominium } from '@/lib/services/condominiums';
 import { getPettyCash } from '@/lib/services/petty-cash';
 import { isSafePng, isSafeJpeg } from '@/lib/image-safety';
@@ -72,6 +73,12 @@ export async function GET(req: Request) {
   const session = await auth();
   if (!session?.user || !['admin_owner', 'admin_staff'].includes(session.user.role)) {
     return new NextResponse('No autorizado', { status: 401 });
+  }
+  // Los route handlers no pasan por el layout: el área se comprueba
+  // aquí o un supervisor con Mantenimientos apagado descarga el
+  // informe con sus facturas escribiendo la dirección.
+  if (!can(session, 'mantenimientos')) {
+    return new NextResponse('Sin acceso a Mantenimientos', { status: 403 });
   }
 
   const condoId = new URL(req.url).searchParams.get('condoId');

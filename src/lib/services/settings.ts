@@ -54,10 +54,14 @@ export async function toggleStaffPermission(
   allowed: boolean
 ) {
   return withTenantContext(companyId, async (tx) => {
-    const user = await tx.user.findUniqueOrThrow({ where: { id: userId } });
+    // `users` no lleva RLS: el aislamiento por empresa se garantiza aquí,
+    // y solo sobre roles de staff (nunca master ni otros admin_owner).
+    const user = await tx.user.findFirstOrThrow({
+      where: { id: userId, companyId, role: { in: ['admin_staff', 'contador'] } },
+    });
     const current = (user.staffPermissions as Record<string, boolean> | null) ?? {};
     const updated = { ...current, [area]: allowed };
-    await tx.user.update({ where: { id: userId }, data: { staffPermissions: updated } });
+    await tx.user.update({ where: { id: user.id }, data: { staffPermissions: updated } });
     await logActivity(tx, companyId, {
       userId: actorId,
       userName: actorName,

@@ -50,7 +50,7 @@ export default async function ContenidoAdminPage({ searchParams }: { searchParam
               {i.videoUrl &&
                 (videoThumbnail(i.videoUrl) ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={videoThumbnail(i.videoUrl)!} alt={i.title} className="h-12 w-20 flex-none rounded-lg object-cover" />
+                  <img loading="lazy" decoding="async" src={videoThumbnail(i.videoUrl)!} alt={i.title} className="h-12 w-20 flex-none rounded-lg object-cover" />
                 ) : (
                   <span className="flex h-12 w-20 flex-none items-center justify-center rounded-lg bg-canvas">
                     <PlayCircle className="text-muted" size={18} />

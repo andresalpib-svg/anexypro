@@ -7,11 +7,12 @@ import { signOut } from 'next-auth/react';
 import { LogOut } from 'lucide-react';
 import { clsx } from 'clsx';
 import { RESIDENT_NAV } from '@/lib/resident-nav-config';
+import { SidebarShell } from '@/components/layout/sidebar-shell';
 
 export function ResidentSidebar({ name, unitLabel }: { name: string; unitLabel: string }) {
   const pathname = usePathname();
   return (
-    <aside className="flex h-screen w-64 flex-none flex-col overflow-y-auto bg-deep px-3 py-5 text-white">
+    <SidebarShell width="w-64">
       <div className="mb-6 flex items-center gap-2 px-2">
         <Logo className="text-xl" />
       </div>
@@ -58,6 +59,6 @@ export function ResidentSidebar({ name, unitLabel }: { name: string; unitLabel: 
           <LogOut size={14} /> Cerrar sesión
         </button>
       </div>
-    </aside>
+    </SidebarShell>
   );
 }

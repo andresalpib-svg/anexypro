@@ -133,3 +133,24 @@ export const CONTADOR_MODULES = [
 
 /** Lista plana — la usan el Topbar (migas) y otros consumidores. */
 export const NAV_ITEMS: NavItem[] = NAV_CATEGORIES.flatMap((c) => c.items);
+
+/**
+ * Módulo de nav-config al que pertenece una ruta del panel, por
+ * prefijo (`/app/finanzas/gastos` → `/app/finanzas`). Gana el href
+ * más largo, por si algún día un módulo cuelga de otro.
+ *
+ * Lo usa el layout de /app para aplicar a la PANTALLA las mismas
+ * reglas (`area`, `ownerOnly`, lista blanca del contador) que
+ * `guard.ts` aplica a las acciones: ocultar el módulo del menú no
+ * basta si el usuario escribe la dirección a mano.
+ */
+export function navItemForPath(pathname: string): NavItem | undefined {
+  let best: NavItem | undefined;
+  for (const item of NAV_ITEMS) {
+    if (!item.href) continue;
+    if (pathname === item.href || pathname.startsWith(`${item.href}/`)) {
+      if (!best || item.href.length > (best.href?.length ?? 0)) best = item;
+    }
+  }
+  return best;
+}

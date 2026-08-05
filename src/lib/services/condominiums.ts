@@ -121,8 +121,10 @@ export async function createCondominium(
 }
 
 export async function activateCondominium(companyId: string, id: string) {
+  // `companyId` también en el filtro: RLS ya aísla por empresa, pero la
+  // capa de aplicación no depende solo de la red de seguridad.
   return withTenantContext(companyId, (tx) =>
-    tx.condominium.update({ where: { id }, data: { status: 'activo' } })
+    tx.condominium.updateMany({ where: { id, companyId }, data: { status: 'activo' } })
   );
 }
 

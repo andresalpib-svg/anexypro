@@ -40,7 +40,7 @@ export function PhotoUpload({
     <div className="flex items-center gap-4">
       {photoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={photoUrl} alt={name} className="h-20 w-20 flex-none rounded-full border border-line object-cover" />
+        <img loading="lazy" decoding="async" src={photoUrl} alt={name} className="h-20 w-20 flex-none rounded-full border border-line object-cover" />
       ) : (
         <span className="flex h-20 w-20 flex-none items-center justify-center rounded-full bg-royal-soft text-2xl font-bold text-royal">
           {name.charAt(0).toUpperCase()}

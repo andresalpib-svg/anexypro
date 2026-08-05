@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { safeContentHeaders } from '@/lib/storage/serve-headers';
 import { verifyLink } from '@/lib/services/storage-links';
 import { actorFromSession, readObject } from '@/lib/services/storage';
 
@@ -35,18 +36,17 @@ export async function GET(_req: Request, { params }: { params: { token: string }
     const actor = await actorFromSession(session);
     const file = await readObject(actor, check.payload.o);
 
-    const disposition = check.payload.m === 'd' ? 'attachment' : 'inline';
-    // El nombre se codifica: un nombre con acentos o comas rompe el
-    // encabezado si va sin escapar.
-    const safeName = encodeURIComponent(file.name);
+    // Tipo y disposición derivados de la extensión del nombre guardado,
+    // nunca del `mimeType` que declaró el cliente al subir (falsificable).
+    const safe = safeContentHeaders(file.name, { forceDownload: check.payload.m === 'd' });
 
     // Uint8Array en vez de Buffer: es lo que acepta el cuerpo de la
     // respuesta en el entorno de Next.
     return new NextResponse(new Uint8Array(file.data), {
       headers: {
-        'Content-Type': file.mimeType,
+        'Content-Type': safe.mime,
         'Content-Length': String(file.data.length),
-        'Content-Disposition': `${disposition}; filename*=UTF-8''${safeName}`,
+        'Content-Disposition': safe.disposition,
         // Nunca en caché compartida: es contenido privado.
         'Cache-Control': 'private, no-store',
         'X-Content-Type-Options': 'nosniff',

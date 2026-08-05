@@ -105,7 +105,8 @@ export async function saveToRepository(
   const stored = await uploadToFolder(actor, {
     folderId,
     fileName: file.name,
-    mimeType: file.type || guessMime(file.name),
+    // Nunca el `file.type` del cliente (falsificable): siempre por extensión.
+    mimeType: guessMime(file.name),
     data: Buffer.from(await file.arrayBuffer()),
     ownerPersonId: opts.ownerPersonId ?? null,
     userId: session.user.id,

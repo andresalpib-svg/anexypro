@@ -2,8 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth';
-import { can } from '@/lib/rbac';
+import { requirePanel } from '@/lib/guard';
+import { condoOfCommunication } from '@/lib/services/entity-scope';
 import { communicationSchema } from '@/lib/validations/communication';
 import { createCommunication, publishCommunication, addCommunicationAttachment } from '@/lib/services/communications';
 import { MEDIA_MAX_BYTES, MEDIA_EXT, fileKind } from '@/lib/upload';
@@ -12,12 +12,12 @@ import { saveToRepository } from '@/lib/services/file-refs';
 export type ActionState = { errors?: Record<string, string[]>; formError?: string };
 
 export async function createCommunicationAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const session = await auth();
-  if (!session?.user) return { formError: 'Sesión expirada.' };
-  if (!can(session, 'comunicados')) return { formError: 'No tienes permiso para esta acción.' };
-
   const parsed = communicationSchema.safeParse(Object.fromEntries(formData.entries()));
   if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors as Record<string, string[]> };
+
+  // El condominio del formulario se valida contra los asignados.
+  const session = await requirePanel({ module: '/app/comunicados', condominiumId: parsed.data.condominiumId });
+  if (!session) return { formError: 'No tienes permiso para esta acción.' };
 
   let comm;
   try {
@@ -42,8 +42,12 @@ export async function createCommunicationAction(_prev: ActionState, formData: Fo
 }
 
 export async function publishCommunicationAction(id: string) {
-  const session = await auth();
-  if (!session?.user || !can(session, 'comunicados')) return;
+  // El condominio se resuelve desde el comunicado, no del argumento.
+  const pre = await requirePanel({ module: '/app/comunicados' });
+  if (!pre) return;
+  const condoId = await condoOfCommunication(pre.user.companyId, id);
+  const session = await requirePanel({ module: '/app/comunicados', condominiumId: condoId });
+  if (!session) return;
   await publishCommunication(session.user.companyId, session.user.id, session.user.name ?? session.user.email ?? 'Usuario', id);
   revalidatePath(`/app/comunicados/${id}`);
   revalidatePath('/app/comunicados');

@@ -34,7 +34,7 @@ export default async function ResidentReservationsPage() {
             <div key={a.id} className="card overflow-hidden">
               {a.photoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={a.photoUrl} alt={a.name} className="h-28 w-full object-cover" />
+                <img loading="lazy" decoding="async" src={a.photoUrl} alt={a.name} className="h-28 w-full object-cover" />
               ) : (
                 <div className="flex h-28 w-full items-center justify-center bg-gradient-to-br from-royal/15 to-royal/5">
                   <Waves className="text-royal/50" size={26} />

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { Logo } from '@/components/ui/logo';
+import { SidebarShell } from '@/components/layout/sidebar-shell';
 import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import { LogOut } from 'lucide-react';
@@ -12,7 +13,7 @@ import { SECURITY_NAV } from '@/lib/security-nav-config';
 export function SecuritySidebar({ session }: { session: Session }) {
   const pathname = usePathname();
   return (
-    <aside className="flex h-screen w-60 flex-none flex-col overflow-y-auto bg-deep px-3 py-5 text-white">
+    <SidebarShell width="w-60">
       <div className="mb-6 flex items-center gap-2 px-2">
         <Logo className="text-xl" />
       </div>
@@ -54,6 +55,6 @@ export function SecuritySidebar({ session }: { session: Session }) {
           <LogOut size={14} /> Cerrar sesión
         </button>
       </div>
-    </aside>
+    </SidebarShell>
   );
 }

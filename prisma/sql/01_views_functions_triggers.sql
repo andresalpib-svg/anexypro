@@ -37,6 +37,7 @@ BEGIN
   FOREACH t IN ARRAY ARRAY['companies','users','condominiums','structural_units','properties',
     'amenities','condominium_financial_settings','persons','property_members','vehicles','pets',
     'charges','payments'] LOOP
+    EXECUTE format('DROP TRIGGER IF EXISTS trg_%s_updated ON %I;', t, t);
     EXECUTE format('CREATE TRIGGER trg_%s_updated BEFORE UPDATE ON %I
                      FOR EACH ROW EXECUTE FUNCTION set_updated_at();', t, t);
   END LOOP;
@@ -62,6 +63,7 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_vehicles_plate ON vehicles;
 CREATE TRIGGER trg_vehicles_plate BEFORE INSERT OR UPDATE ON vehicles
   FOR EACH ROW EXECUTE FUNCTION check_unique_plate();
 
@@ -102,6 +104,7 @@ BEGIN
   RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_alloc_sync ON payment_allocations;
 CREATE TRIGGER trg_alloc_sync AFTER INSERT OR UPDATE OR DELETE ON payment_allocations
   FOR EACH ROW EXECUTE FUNCTION sync_charge_status();
 
@@ -226,6 +229,9 @@ CREATE OR REPLACE FUNCTION hhmm_as_ts(t text) RETURNS timestamp AS $$
   SELECT DATE '2000-01-01' + t::time;
 $$ LANGUAGE sql IMMUTABLE;
 
+-- Se recrea en cada aplicación: el archivo corre en cada despliegue y
+-- `ADD CONSTRAINT` sin este DROP fallaría la segunda vez.
+ALTER TABLE reservations DROP CONSTRAINT IF EXISTS excl_reservation_overlap;
 ALTER TABLE reservations ADD CONSTRAINT excl_reservation_overlap
   EXCLUDE USING gist (
     amenity_id WITH =,
@@ -246,6 +252,7 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_reservation_receipt ON reservations;
 CREATE TRIGGER trg_reservation_receipt BEFORE INSERT OR UPDATE ON reservations
   FOR EACH ROW EXECUTE FUNCTION enforce_reservation_receipt();
 
@@ -315,11 +322,13 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_journal_balance ON journal_lines;
 CREATE CONSTRAINT TRIGGER trg_journal_balance
   AFTER INSERT OR UPDATE ON journal_lines
   DEFERRABLE INITIALLY DEFERRED
   FOR EACH ROW EXECUTE FUNCTION check_journal_balance();
 
+ALTER TABLE journal_lines DROP CONSTRAINT IF EXISTS chk_debit_credit_xor;
 ALTER TABLE journal_lines ADD CONSTRAINT chk_debit_credit_xor
   CHECK ((debit > 0 AND credit = 0) OR (credit > 0 AND debit = 0));
 

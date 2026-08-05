@@ -175,8 +175,25 @@ export async function createVisit(
  *  - rápidas/entregas/empleados de un día: vencen pasadas las 23:59.
  *  - recurrentes/empleados con endDate: vencen al superar la fecha.
  */
+/**
+ * Condominios ya barridos hoy en este proceso.
+ *
+ * El barrido son dos UPDATE que corren en CADA listado de visitas, y la
+ * caseta se refresca cada 10 segundos: después de la primera pasada del
+ * día no hay nada que marcar, así que eran miles de escrituras diarias
+ * que afectaban cero filas —con su bloqueo y su coste de mantenimiento
+ * de tabla— solo para confirmar que no había trabajo.
+ *
+ * Se recuerda por condominio y día. Si el proceso se recicla se vuelve
+ * a barrer, que es inofensivo: la operación es idempotente.
+ */
+const barridoHecho = new Map<string, string>();
+
 async function expireSweep(tx: any, condominiumId: string) {
-  const limit = new Date(`${todayStr()}T00:00:00Z`);
+  const hoy = todayStr();
+  if (barridoHecho.get(condominiumId) === hoy) return;
+
+  const limit = new Date(`${hoy}T00:00:00Z`);
   await tx.visitAuthorization.updateMany({
     where: { condominiumId, status: 'vigente', visitType: { in: ['rapida', 'entrega'] }, validDate: { not: null, lt: limit } },
     data: { status: 'vencida' },
@@ -185,6 +202,8 @@ async function expireSweep(tx: any, condominiumId: string) {
     where: { condominiumId, status: { in: ['vigente', 'suspendida'] }, endDate: { not: null, lt: limit } },
     data: { status: 'vencida' },
   });
+
+  barridoHecho.set(condominiumId, hoy);
 }
 
 const FULL_INCLUDE = {
@@ -193,6 +212,21 @@ const FULL_INCLUDE = {
   checkins: { orderBy: { checkinAt: 'asc' as const } },
 };
 
+/**
+ * Tope de autorizaciones que se traen para las pantallas de visitas.
+ *
+ * Estas listas no tenían límite. Un condominio de 400 unidades genera
+ * unas 15.000 autorizaciones al año, y cada una arrastra sus horarios y
+ * todos sus ingresos: la caseta —que se refresca cada 10 segundos—
+ * acababa moviendo el historial completo en cada vuelta. Las pantallas
+ * muestran lo reciente y buscan sobre ello; el histórico completo es
+ * trabajo de Reportes.
+ *
+ * El índice `[condominiumId, createdAt desc]` ya existe, así que con el
+ * tope esto es una lectura de las primeras N filas del índice.
+ */
+const MAX_VISITAS = 300;
+
 export async function listVisits(companyId: string, condominiumId: string) {
   return withTenantContext(companyId, async (tx) => {
     await expireSweep(tx, condominiumId);
@@ -200,6 +234,7 @@ export async function listVisits(companyId: string, condominiumId: string) {
       where: { condominiumId },
       orderBy: { createdAt: 'desc' },
       include: FULL_INCLUDE,
+      take: MAX_VISITAS,
     });
   });
 }
@@ -212,12 +247,14 @@ export async function listVisitsByProperty(companyId: string, propertyId: string
       where: { propertyId },
       orderBy: { createdAt: 'desc' },
       include: FULL_INCLUDE,
+      take: MAX_VISITAS,
     });
   });
 }
 
 // ---------- Estado derivado ----------
 export type DerivedVisit = Awaited<ReturnType<typeof listVisits>>[number];
+export type VisitaDeFilial = Awaited<ReturnType<typeof listVisitsByProperty>>[number];
 
 export type AccessDecision =
   | { allowed: true; automatic: boolean; label: string }
@@ -424,8 +461,16 @@ export type ResidentVisitAlert = {
   when: Date;
 };
 
-export async function getResidentVisitAlerts(companyId: string, propertyId: string): Promise<ResidentVisitAlert[]> {
-  const visits = await listVisitsByProperty(companyId, propertyId);
+/**
+ * Avisos de las últimas 48 h a partir de las visitas YA cargadas.
+ *
+ * Antes iba a buscarlas por su cuenta, y la pantalla del residente
+ * también las pedía: la misma consulta —sin límite, con horarios y
+ * todos los ingresos incluidos— corría dos veces por carga para
+ * mostrar avisos de dos días. Ahora es una función pura sobre la lista
+ * que la pantalla ya tiene.
+ */
+export function getResidentVisitAlerts(visits: VisitaDeFilial[]): ResidentVisitAlert[] {
   const alerts: ResidentVisitAlert[] = [];
   const since = Date.now() - 48 * 3600 * 1000; // últimas 48 h
 

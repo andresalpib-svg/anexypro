@@ -72,7 +72,7 @@ export function TemplateEditor({ condominiumId, template }: { condominiumId: str
               {template.logoUrl && (
                 <div className="mt-1.5 flex items-center gap-2">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={template.logoUrl} alt="Logo actual" className="h-8 w-8 object-contain" />
+                  <img loading="lazy" decoding="async" src={template.logoUrl} alt="Logo actual" className="h-8 w-8 object-contain" />
                   <span className="text-[.7rem] text-muted">Logo actual</span>
                 </div>
               )}
@@ -144,6 +144,8 @@ export function TemplateEditor({ condominiumId, template }: { condominiumId: str
             {template.signatureUrl && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
+                loading="lazy"
+                decoding="async"
                 src={template.signatureUrl}
                 alt="Firma actual"
                 className="mt-2 h-14 rounded border border-line bg-white object-contain p-1"

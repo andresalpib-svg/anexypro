@@ -13,7 +13,8 @@ import {
 } from '@/lib/services/storage';
 import { issueLink, linkPath } from '@/lib/services/storage-links';
 import { guessMime } from '@/lib/storage/local-provider';
-import { pickFile } from '@/lib/upload';
+import { pickFile, MEDIA_EXT, MEDIA_MAX_BYTES } from '@/lib/upload';
+import { mensajeDeError } from '@/lib/errores';
 
 export type ActionState = { errors?: Record<string, string[]>; formError?: string; success?: boolean };
 
@@ -38,18 +39,28 @@ export async function uploadDocumentAction(_prev: ActionState, formData: FormDat
   const file = pickFile(formData, 'file');
   if (!file) return { errors: { file: ['Elegí un archivo.'] } };
 
+  // Misma lista blanca que el resto de subidas del sistema: sin ella se
+  // podía subir .html/.svg, que servidos en el origen son XSS almacenado.
+  const ext = (file.name.split('.').pop() ?? '').toLowerCase();
+  if (!MEDIA_EXT.has(ext)) {
+    return { errors: { file: [`Tipo de archivo no permitido (.${ext}). Usá: ${[...MEDIA_EXT].join(', ')}.`] } };
+  }
+  if (file.size > MEDIA_MAX_BYTES) {
+    return { errors: { file: ['El archivo supera el máximo de 100 MB.'] } };
+  }
+
   try {
     const actor = await actorFromSession(session);
     await uploadToFolder(actor, {
       folderId,
       fileName: file.name,
-      mimeType: file.type || guessMime(file.name),
+      mimeType: guessMime(file.name),
       data: Buffer.from(await file.arrayBuffer()),
       userId: session.user.id,
       userName: session.user.name ?? 'Usuario',
     });
   } catch (e: any) {
-    return { formError: e?.message ?? 'No se pudo subir el documento.' };
+    return { formError: mensajeDeError(e, 'No se pudo subir el documento.') };
   }
   revalidatePath('/app/repositorio');
   return { success: true };
@@ -78,7 +89,7 @@ export async function deleteDocumentAction(
   try {
     await deleteObject(await actorFromSession(session), objectId);
   } catch (e: any) {
-    return { ok: false, error: e?.message ?? 'No se pudo eliminar.' };
+    return { ok: false, error: mensajeDeError(e, 'No se pudo eliminar.') };
   }
   revalidatePath('/app/repositorio');
   return { ok: true };
@@ -94,7 +105,7 @@ export async function renameDocumentAction(
   try {
     await renameObject(await actorFromSession(session), objectId, newName);
   } catch (e: any) {
-    return { ok: false, error: e?.message ?? 'No se pudo renombrar.' };
+    return { ok: false, error: mensajeDeError(e, 'No se pudo renombrar.') };
   }
   revalidatePath('/app/repositorio');
   return { ok: true };
@@ -111,7 +122,7 @@ export async function rebuildTreeAction(condominiumId: string): Promise<{ ok: bo
     revalidatePath('/app/repositorio');
     return { ok: true, detail: `${r.created} carpeta(s) creada(s), ${r.existing} ya existían.` };
   } catch (e: any) {
-    return { ok: false, error: e?.message ?? 'No se pudo reconstruir el repositorio.' };
+    return { ok: false, error: mensajeDeError(e, 'No se pudo reconstruir el repositorio.') };
   }
 }
 
@@ -129,6 +140,6 @@ export async function searchAction(
       results: rows.map((r) => ({ id: r.id, name: r.name, folderName: r.folderName, sizeBytes: r.sizeBytes })),
     };
   } catch (e: any) {
-    return { ok: false, error: e?.message ?? 'No se pudo buscar.' };
+    return { ok: false, error: mensajeDeError(e, 'No se pudo buscar.') };
   }
 }

@@ -1,16 +1,23 @@
 {
-  "buildCommand": "npm run build",
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run vercel-build",
   "outputDirectory": ".next",
   "framework": "nextjs",
+  "crons": [
+    {
+      "path": "/api/cron",
+      "schedule": "0 14 * * *"
+    }
+  ],
   "env": {
-    "DATABASE_URL": "PostgreSQL connection string for application role (with Row-Level Security)",
-    "DIRECT_URL": "PostgreSQL connection string for migrations (owner role)",
-    "AUTH_SECRET": "NextAuth secret key",
-    "NEXTAUTH_URL": "NextAuth URL for production",
-    "ANTHROPIC_API_KEY": "Anthropic API key for Claude integration",
-    "RESEND_API_KEY": "Resend API key for email notifications",
-    "EMAIL_FROM": "Sender email address for notifications",
-    "APP_URL": "Application URL for production",
-    "CRON_SECRET": "Secret key for scheduled tasks"
+    "DATABASE_URL": "PostgreSQL del rol de la aplicación (sin superusuario, con RLS). Ver scripts/crear-rol-app.sql",
+    "DIRECT_URL": "PostgreSQL del rol dueño. Lo usan las migraciones y el SQL de prisma/sql/",
+    "AUTH_SECRET": "Clave de NextAuth",
+    "NEXTAUTH_URL": "URL de producción para NextAuth",
+    "ANTHROPIC_API_KEY": "Clave de Anthropic para las funciones con IA",
+    "RESEND_API_KEY": "Clave de Resend para el envío de correo",
+    "EMAIL_FROM": "Remitente de los correos (dominio verificado)",
+    "APP_URL": "URL pública de la aplicación",
+    "CRON_SECRET": "Obligatoria. Sin ella el programador de tareas NO corre y el endpoint /api/cron queda cerrado al encabezado. Generar con: openssl rand -hex 32"
   }
 }

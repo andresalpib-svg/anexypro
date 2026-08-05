@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { auth } from '@/lib/auth';
-import { getCondominium, activateCondominium, listSupervisors, MAX_SUPERVISORS } from '@/lib/services/condominiums';
+import { requireOwner } from '@/lib/guard';
+import { getCondominium, activateCondominium, listSupervisors, MAX_SUPERVISORS, canAccessCondo } from '@/lib/services/condominiums';
 import { listAdminUsers } from '@/lib/services/tasks';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatusChip } from '@/components/ui/status-chip';
@@ -18,6 +19,8 @@ export default async function CondominioDetailPage({ params }: { params: { id: s
   const session = await auth();
   const condo = await getCondominium(session!.user.companyId, params.id);
   if (!condo) notFound();
+  // Solo condominios asignados: la URL directa no salta la asignación.
+  if (!(await canAccessCondo(session!, condo.id))) notFound();
   const [supervisors, staff] = await Promise.all([
     listSupervisors(session!.user.companyId, params.id),
     listAdminUsers(session!.user.companyId),
@@ -25,8 +28,11 @@ export default async function CondominioDetailPage({ params }: { params: { id: s
 
   async function handleActivate() {
     'use server';
-    const s = await auth();
-    await activateCondominium(s!.user.companyId, params.id);
+    // Solo el administrador titular activa condominios — igual que
+    // crearlos. Una action en línea es un endpoint HTTP como cualquiera.
+    const s = await requireOwner();
+    if (!s) return;
+    await activateCondominium(s.user.companyId, params.id);
   }
 
   return (

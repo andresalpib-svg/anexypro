@@ -230,7 +230,7 @@ function VisitCard({ visit, condoName }: { visit: PortalVisit; condoName: string
       <div className="flex items-start gap-3">
         {visit.photoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={visit.photoUrl} alt={visit.visitorName} className="h-11 w-11 flex-none rounded-full object-cover" />
+          <img loading="lazy" decoding="async" src={visit.photoUrl} alt={visit.visitorName} className="h-11 w-11 flex-none rounded-full object-cover" />
         ) : (
           <span className="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-royal-soft text-sm font-bold text-royal">
             {visit.visitorName.charAt(0).toUpperCase()}
@@ -309,7 +309,7 @@ function VisitCard({ visit, condoName }: { visit: PortalVisit; condoName: string
       {showQr && visit.qrDataUrl && (
         <div className="mt-3 flex items-center gap-4 pl-14">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={visit.qrDataUrl} alt={`QR ${visit.code}`} className="h-36 w-36 rounded-lg border border-line" />
+          <img loading="lazy" decoding="async" src={visit.qrDataUrl} alt={`QR ${visit.code}`} className="h-36 w-36 rounded-lg border border-line" />
           <p className="max-w-56 text-xs text-muted">
             Tu visita presenta este código (o el texto <b className="font-mono">{visit.code}</b>) en la caseta de seguridad.
           </p>

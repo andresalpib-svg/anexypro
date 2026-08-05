@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { fechaISOOpcional } from './comunes';
 
 export const TASK_CATEGORIES = ['Administrativo', 'Operativo', 'Financiero', 'Servicio al Cliente', 'Áreas Comunes'] as const;
 
@@ -9,7 +10,7 @@ const base = {
   // Condominio al que corresponde la tarea (lo elige la administración).
   condominiumId: z.string().uuid().optional().or(z.literal('')),
   priority: z.enum(['baja', 'media', 'alta']),
-  dueDate: z.string().optional().or(z.literal('')), // YYYY-MM-DD
+  dueDate: fechaISOOpcional,
   alarmAt: z.string().optional().or(z.literal('')), // YYYY-MM-DDTHH:mm
   notes: z.string().max(2000).optional().or(z.literal('')),
 };

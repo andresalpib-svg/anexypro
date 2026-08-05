@@ -127,6 +127,8 @@ export function CompanyEditor({
           {empresa.logoUrl && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
+              loading="lazy"
+              decoding="async"
               src={empresa.logoUrl}
               alt="Logotipo actual"
               className="mt-2 h-12 rounded border border-line bg-white object-contain p-1"

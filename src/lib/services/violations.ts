@@ -181,6 +181,23 @@ export type PropertyHit = {
  * "por cuál campo busco" es justo el tipo de fricción que este módulo
  * existe para quitar.
  */
+/**
+ * Persona propietaria de la filial (mismo criterio que usa la emisión:
+ * miembro vigente, propietario primero). Sirve para marcarla como
+ * destinataria de los archivos del expediente y que pueda abrirlos
+ * desde el portal.
+ */
+export async function propertyOwnerPersonId(companyId: string, propertyId: string): Promise<string | null> {
+  const member = await withTenantContext(companyId, (tx) =>
+    tx.propertyMember.findFirst({
+      where: { propertyId, endDate: null },
+      orderBy: { role: 'asc' },
+      select: { personId: true },
+    })
+  );
+  return member?.personId ?? null;
+}
+
 export async function searchProperties(
   companyId: string,
   condominiumId: string,
@@ -707,7 +724,10 @@ export async function issueViolation(
       images: imagenes,
     });
 
-    const carpeta = await folderBySlug(companyId, input.condominiumId, 'administracion/comunicados');
+    // Carpeta propia del módulo: el expediente no se mezcla con los
+    // comunicados, y la regla de lectura por destinatario permite que el
+    // residente abra SU aviso sin ver el resto de la carpeta.
+    const carpeta = await folderBySlug(companyId, input.condominiumId, 'incumplimientos');
     const nombre = `${caseNumber} - ${decision.kind === 'multa' ? 'Resolucion de multa' : `Notificacion ${decision.sequence}`} - ${property.code}.pdf`;
     const guardado = await uploadToFolder(actor, {
       folderId: carpeta.id,

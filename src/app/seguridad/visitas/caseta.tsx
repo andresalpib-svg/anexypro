@@ -131,7 +131,7 @@ function VisitRow({ visit }: { visit: CasetaVisit }) {
       <div className="flex items-center gap-3">
         {visit.photoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={visit.photoUrl} alt={visit.visitorName} className="h-12 w-12 flex-none rounded-full object-cover" />
+          <img loading="lazy" decoding="async" src={visit.photoUrl} alt={visit.visitorName} className="h-12 w-12 flex-none rounded-full object-cover" />
         ) : (
           <span className="flex h-12 w-12 flex-none items-center justify-center rounded-full bg-white text-base font-bold text-royal">
             {visit.visitorName.charAt(0).toUpperCase()}

@@ -137,6 +137,8 @@ export default async function ExpedientePage({ params }: { params: { id: string 
                           <a key={e.id} href={e.fileRef} target="_blank" rel="noreferrer">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
+                              loading="lazy"
+                              decoding="async"
                               src={e.fileRef}
                               alt={e.fileName}
                               className="h-24 w-24 rounded-lg border border-line object-cover"

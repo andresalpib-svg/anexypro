@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { getProject } from '@/lib/services/projects';
+import { canAccessCondo } from '@/lib/services/condominiums';
 import { PageHeader } from '@/components/ui/page-header';
 import { ChecklistBox, UpdatesSection, StatusSelect } from './sections';
 
@@ -10,6 +11,8 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
   const session = await auth();
   const project = await getProject(session!.user.companyId, params.id);
   if (!project) notFound();
+  // Solo condominios asignados: la URL directa no salta la asignación.
+  if (!(await canAccessCondo(session!, project.condominiumId))) notFound();
 
   const currency = project.condominium.currency;
 

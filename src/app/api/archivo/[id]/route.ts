@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { actorFromSession, readObject } from '@/lib/services/storage';
+import { safeContentHeaders } from '@/lib/storage/serve-headers';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,13 +26,15 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     const actor = await actorFromSession(session);
     const file = await readObject(actor, params.id);
 
+    // Tipo y disposición derivados de la extensión, nunca del valor
+    // guardado (que declaró el cliente al subir). Ver serve-headers.ts.
+    const safe = safeContentHeaders(file.name);
+
     return new NextResponse(new Uint8Array(file.data), {
       headers: {
-        'Content-Type': file.mimeType,
+        'Content-Type': safe.mime,
         'Content-Length': String(file.data.length),
-        // `inline`: la mayoría de estas referencias son imágenes y PDF
-        // que se muestran dentro de la aplicación.
-        'Content-Disposition': `inline; filename*=UTF-8''${encodeURIComponent(file.name)}`,
+        'Content-Disposition': safe.disposition,
         // Caché PRIVADA: la puede guardar el navegador del usuario, pero
         // nunca un intermediario compartido.
         'Cache-Control': 'private, max-age=300',

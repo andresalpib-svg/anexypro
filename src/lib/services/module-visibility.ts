@@ -39,7 +39,21 @@ export async function setHiddenModules(companyId: string, hidden: string[]) {
   return prisma.company.update({ where: { id: companyId }, data: { hiddenModules: clean } });
 }
 
+/**
+ * Rutas que no tienen entrada propia en el menú pero pertenecen a un
+ * módulo que sí la tiene. Sin esto, apagar "Finanzas y Contabilidad"
+ * dejaba `/app/contabilidad` accesible escribiendo la dirección: son
+ * la misma pantalla con pestañas compartidas.
+ */
+const ALIAS: Record<string, string> = {
+  '/app/contabilidad': '/app/finanzas',
+};
+
 /** ¿Esta ruta del panel está oculta para la empresa? */
 export function isModuleHidden(hidden: string[], pathname: string): boolean {
-  return hidden.some((h) => pathname === h || pathname.startsWith(`${h}/`));
+  const rutas = [pathname];
+  for (const [alias, modulo] of Object.entries(ALIAS)) {
+    if (pathname === alias || pathname.startsWith(`${alias}/`)) rutas.push(modulo);
+  }
+  return hidden.some((h) => rutas.some((p) => p === h || p.startsWith(`${h}/`)));
 }

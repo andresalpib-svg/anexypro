@@ -16,10 +16,10 @@ export default async function ResidentVisitsPage() {
   const ctx = await getResidentContext(session!.user.id);
   if (!ctx) return null;
 
-  const [visits, alerts] = await Promise.all([
-    listVisitsByProperty(session!.user.companyId, ctx.property.id),
-    getResidentVisitAlerts(session!.user.companyId, ctx.property.id),
-  ]);
+  // Los avisos se derivan de la MISMA lista: antes cada uno hacía su
+  // propia consulta y la pesada corría dos veces por carga.
+  const visits = await listVisitsByProperty(session!.user.companyId, ctx.property.id);
+  const alerts = getResidentVisitAlerts(visits);
 
   const today = localToday();
   const serialized: PortalVisit[] = await Promise.all(

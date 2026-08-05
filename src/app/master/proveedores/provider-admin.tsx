@@ -176,7 +176,7 @@ export function ProviderAdmin({ providers }: { providers: AdminProvider[] }) {
               <div key={p.id} className="flex items-center gap-3 p-4">
                 {p.logoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={p.logoUrl} alt={p.name} className="h-11 w-11 flex-none rounded-lg border border-line object-contain p-0.5" />
+                  <img loading="lazy" decoding="async" src={p.logoUrl} alt={p.name} className="h-11 w-11 flex-none rounded-lg border border-line object-contain p-0.5" />
                 ) : (
                   <span className="flex h-11 w-11 flex-none items-center justify-center rounded-lg bg-royal-soft text-sm font-bold text-royal">
                     {p.name.charAt(0).toUpperCase()}

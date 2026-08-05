@@ -66,7 +66,7 @@ export function VideoPlayer({ url, title }: { url: string; title: string }) {
           >
             {thumb && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={thumb} alt="" className="h-full w-full object-cover" />
+              <img loading="lazy" decoding="async" src={thumb} alt="" className="h-full w-full object-cover" />
             )}
             <span className="absolute inset-0 flex items-center justify-center bg-black/25 transition group-hover:bg-black/40">
               <PlayCircle className="text-white drop-shadow-lg" size={40} />

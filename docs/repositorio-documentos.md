@@ -88,13 +88,20 @@ ANEXYpro/
       Administración/ Actas · Asambleas · Estados de Cuenta · Comunicados · Reglamentos
       Contratos/ Proveedores · Mantenimiento
       Facturas/ Cobros · Reportes
+      Incumplimientos/
       Junta Directiva/
       Residentes/ <una carpeta por condómino>
       Seguridad/ Reservas · Visitas
       Multimedia/ Fotografías · Logos
       Documentos Temporales/
+      Otros/
       Respaldos/
 ```
+
+**Incumplimientos** (2026-08-05) guarda los PDF y la evidencia del módulo de
+incumplimientos — antes iban a Comunicados y Fotografías. No se expone a la
+junta ni al contador, igual que el módulo. **Otros** es el cajón para lo que
+no calza en ninguna sección.
 
 **Interpretación de la lista original.** La lista venía con nombres claramente subordinados a otros (Actas y Asambleas bajo Administración, Proveedores y Mantenimiento bajo Contratos, y así). Se implementó con esa jerarquía porque es la que hace navegable el repositorio. Si alguna debe ir al primer nivel, se cambia en `tree.ts` y el árbol se reconstruye **sin perder archivos**: las carpetas se identifican por su ruta lógica (`slug`), no por su posición.
 
@@ -203,3 +210,60 @@ Con navegador real (`.demo-tools/verify-privados.mjs` y `verify-privados2.mjs`),
 ### Lo que quedó sin migrar, y por qué
 
 Dos gastos de caja chica de prueba apuntan a facturas que **ya no estaban en el disco** antes de esta migración: `48e48e5f-…png` y `24acf0d2-…png`. El guion informa cada caso y deja la fila intacta en vez de inventar un archivo o borrar el dato en silencio. No hay riesgo de exposición —el archivo no existe— pero esos dos gastos quedan sin comprobante y así lo muestra el informe.
+
+## Google Drive en producción: OAuth de usuario, no cuenta de servicio (2026-08-05)
+
+La cuenta de servicio quedó configurada (proyecto `anexypro-drive`,
+`anexypro-storage@anexypro-drive.iam.gserviceaccount.com`) y la conexión
+funciona, pero **Google eliminó la cuota de almacenamiento de las cuentas de
+servicio**: pueden leer una carpeta compartida, pero al subir responden
+`403 — Service Accounts do not have storage quota`. Las dos vías que Google
+ofrece son unidades compartidas (Workspace, de pago) o delegación OAuth.
+
+Por eso el proveedor tiene ahora DOS modos de autenticación (los dos viven en
+`google-drive-provider.ts`, nada más cambió):
+
+- **OAuth de usuario** (el activo): el backend se autentica como
+  `api.anexypro@gmail.com` con un refresh token de larga vida; los archivos
+  viven en el Drive de esa cuenta (15 GB gratuitos) y son visibles y
+  navegables desde drive.google.com. Variables `GOOGLE_DRIVE_OAUTH_*`.
+- **Cuenta de servicio**: queda listo para el día en que haya Workspace con
+  unidad compartida (`GOOGLE_DRIVE_SHARED_DRIVE_ID`).
+
+OJO: la app OAuth está en modo «Prueba» con `api.anexypro@gmail.com` como
+usuario de prueba. En ese modo Google puede vencer los refresh tokens a los
+7 días **solo si el scope es "sensible"**; `drive` es *restringido*, no
+sensible, pero si el token venciera hay que reautorizar
+(`scripts/probar-drive.ts` lo detecta al fallar) o publicar la app.
+
+### Cambio de proveedor con archivos existentes: migración perezosa de carpetas
+
+Las filas de `StorageFolder` recuerdan con qué proveedor se crearon. Al
+activar otro proveedor, `syncFolderWithActiveProvider` (en
+`services/storage.ts`) migra la carpeta **en el momento de la primera
+subida**: crea la carpeta en el proveedor activo (padres primero, de forma
+recursiva e idempotente) y actualiza la fila. Los ARCHIVOS no se mueven:
+cada `StorageObject` recuerda su proveedor y descargar/renombrar/eliminar
+usan ESE proveedor, así los dos conviven indefinidamente. Mover un archivo
+entre carpetas exige que ambas vivan en el proveedor del archivo; si no, el
+sistema lo dice claro en vez de fallar raro.
+
+### Lectura por destinatario (`canReadObject`)
+
+Un residente puede abrir un archivo **dirigido a él** (`ownerPersonId`)
+aunque viva en una carpeta de la administración — el caso de los avisos de
+incumplimiento y su evidencia. Solo ese archivo, nunca la carpeta; no cruza
+empresas y no amplía escritura ni borrado. Antes de esta regla el portal
+mostraba el enlace y el residente recibía 403.
+`scripts/retro-destinatario-evidencias.ts` marcó el destinatario en las
+evidencias viejas (idempotente, `--dry` disponible).
+
+### Guiones de apoyo
+
+- `scripts/probar-drive.ts` — prueba la conexión real (healthCheck, subir,
+  descargar, renombrar, eliminar) sin tocar la base.
+- `scripts/activar-drive.ts` — activa Drive tras pasar el healthCheck, igual
+  que la pantalla del master.
+- `.demo-tools/verify-drive-repo.mjs` — verificación de punta a punta con
+  navegador real: emite una notificación con evidencia, comprueba las
+  carpetas nuevas y que el residente abra sus documentos con 200.

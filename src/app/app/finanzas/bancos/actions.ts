@@ -15,6 +15,7 @@ import {
 } from '@/lib/services/bank-reconciliation';
 import { pickFile } from '@/lib/upload';
 import { withTenantContext } from '@/lib/db';
+import { mensajeDeError } from '@/lib/errores';
 
 export type ActionState = { errors?: Record<string, string[]>; formError?: string; success?: boolean; message?: string };
 
@@ -53,7 +54,7 @@ export async function createAccountAction(_prev: ActionState, formData: FormData
       openingDate: new Date(`${parsed.data.openingDate}T12:00:00`),
     });
   } catch (e: any) {
-    return { formError: e?.message ?? 'No se pudo crear la cuenta.' };
+    return { formError: mensajeDeError(e, 'No se pudo crear la cuenta.') };
   }
   revalidatePath('/app/finanzas/bancos');
   return { success: true };
@@ -96,7 +97,7 @@ export async function importStatementAction(_prev: ActionState, formData: FormDa
 
     return { success: true, message: parts.join(' · ') };
   } catch (e: any) {
-    return { formError: e?.message ?? 'No se pudo leer el archivo.' };
+    return { formError: mensajeDeError(e, 'No se pudo leer el archivo.') };
   } finally {
     revalidatePath('/app/finanzas/bancos');
   }
@@ -112,7 +113,7 @@ export async function confirmMatchAction(
   try {
     await confirmMatch(session.user.companyId, transactionId, candidate, session.user.id);
   } catch (e: any) {
-    return { ok: false, error: e?.message ?? 'No se pudo conciliar.' };
+    return { ok: false, error: mensajeDeError(e, 'No se pudo conciliar.') };
   }
   revalidatePath('/app/finanzas/bancos');
   return { ok: true };
@@ -127,7 +128,7 @@ export async function unmatchAction(
   try {
     await unmatch(session.user.companyId, transactionId);
   } catch (e: any) {
-    return { ok: false, error: e?.message ?? 'No se pudo deshacer.' };
+    return { ok: false, error: mensajeDeError(e, 'No se pudo deshacer.') };
   }
   revalidatePath('/app/finanzas/bancos');
   return { ok: true };
@@ -142,7 +143,7 @@ export async function ignoreAction(
   try {
     await ignoreTransaction(session.user.companyId, transactionId);
   } catch (e: any) {
-    return { ok: false, error: e?.message ?? 'No se pudo ignorar.' };
+    return { ok: false, error: mensajeDeError(e, 'No se pudo ignorar.') };
   }
   revalidatePath('/app/finanzas/bancos');
   return { ok: true };

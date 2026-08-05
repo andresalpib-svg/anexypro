@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Logo } from '@/components/ui/logo';
+import { SidebarShell } from '@/components/layout/sidebar-shell';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
@@ -91,7 +92,7 @@ export function Sidebar({
   };
 
   return (
-    <aside className="flex h-screen w-72 flex-none flex-col overflow-y-auto bg-deep px-3 py-5 text-white">
+    <SidebarShell width="w-72">
       <div className="mb-5 flex items-center gap-2 px-2">
         <Logo className="text-xl" />
       </div>
@@ -133,7 +134,7 @@ export function Sidebar({
         <Link href="/app/perfil" className="flex items-center gap-2.5 rounded-lg p-1 transition hover:bg-white/5">
           {photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={photoUrl} alt="" className="h-9 w-9 flex-none rounded-full object-cover" />
+            <img loading="lazy" decoding="async" src={photoUrl} alt="" className="h-9 w-9 flex-none rounded-full object-cover" />
           ) : (
             <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-gradient-to-br from-royal to-royal-dark text-sm font-bold">
               {(session.user.name ?? 'U').charAt(0).toUpperCase()}
@@ -154,6 +155,6 @@ export function Sidebar({
           <LogOut size={14} /> Cerrar sesión
         </button>
       </div>
-    </aside>
+    </SidebarShell>
   );
 }

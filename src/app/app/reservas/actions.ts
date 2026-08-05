@@ -51,6 +51,13 @@ export async function addScheduleAction(_prev: ActionState, formData: FormData):
   if (!amenityId || days.length === 0 || !opensAt || !closesAt) {
     return { formError: 'Selecciona al menos un día y el rango de horas.' };
   }
+  const hora = /^([01]\d|2[0-3]):[0-5]\d$/;
+  if (!hora.test(opensAt) || !hora.test(closesAt)) {
+    return { formError: 'Las horas deben tener el formato HH:mm.' };
+  }
+  if (closesAt <= opensAt) {
+    return { formError: 'La hora de cierre debe ser posterior a la de apertura.' };
+  }
 
   const session = await requirePanel({ module: '/app/reservas' });
   if (!session) return { formError: SIN_PERMISO };

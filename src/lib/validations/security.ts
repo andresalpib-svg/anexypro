@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { fechaISOOpcional } from './comunes';
 
 export const visitSchema = z.object({
   condominiumId: z.string().uuid(),
@@ -10,10 +11,10 @@ export const visitSchema = z.object({
   courier: z.string().max(80).optional().or(z.literal('')), // empresa
   phone: z.string().max(30).optional().or(z.literal('')),
   relation: z.string().max(120).optional().or(z.literal('')),
-  validDate: z.string().optional().or(z.literal('')),
+  validDate: fechaISOOpcional,
   arrivalTime: z.string().optional().or(z.literal('')),
-  startDate: z.string().optional().or(z.literal('')),
-  endDate: z.string().optional().or(z.literal('')),
+  startDate: fechaISOOpcional,
+  endDate: fechaISOOpcional,
   allowedFrom: z.string().optional().or(z.literal('')),
   allowedUntil: z.string().optional().or(z.literal('')),
   notes: z.string().max(500).optional().or(z.literal('')),

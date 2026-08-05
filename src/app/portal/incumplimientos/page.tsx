@@ -88,6 +88,8 @@ export default async function PortalIncumplimientosPage() {
                           <a key={e.id} href={e.fileRef} target="_blank" rel="noreferrer">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
+                              loading="lazy"
+                              decoding="async"
                               src={e.fileRef}
                               alt={e.fileName}
                               className="h-28 w-28 rounded-lg border border-line object-cover"
