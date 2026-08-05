@@ -16,6 +16,9 @@
  * Es idempotente y no toca datos: solo la tabla de control de Prisma.
  * En una base nueva no hace nada.
  */
+import { execFileSync } from 'node:child_process';
+import { readdirSync } from 'node:fs';
+import path from 'node:path';
 import { PrismaClient } from '@prisma/client';
 
 const RENOMBRADAS: Array<{ viejo: string; nuevo: string }> = [
@@ -24,6 +27,50 @@ const RENOMBRADAS: Array<{ viejo: string; nuevo: string }> = [
     nuevo: '20260720030000_asset_amenity_attachments',
   },
 ];
+
+/**
+ * Migraciones que SÍ deben aplicarse aunque se establezca la línea base.
+ *
+ * Al dar por aplicada la historia de una base que se creó sin
+ * migraciones, hay que dejar fuera las que traen cambios que esa base
+ * todavía no tiene. Aquí solo los índices de rendimiento, que son
+ * posteriores a la creación del esquema de producción.
+ */
+const APLICAR_AUNQUE_HAYA_LINEA_BASE = new Set(['20260805_indices_rendimiento']);
+
+const RAIZ = path.resolve(__dirname, '..');
+
+/**
+ * La base tiene tablas pero ninguna bitácora de migraciones: se creó
+ * con `prisma db push` o aplicando SQL a mano. Es el caso de producción
+ * (comprobado en el despliegue del 5 de agosto de 2026, error P3005).
+ *
+ * Se marcan como aplicadas todas las migraciones que ese esquema ya
+ * refleja, para que `migrate deploy` no intente recrear tablas que
+ * existen. Las de `APLICAR_AUNQUE_HAYA_LINEA_BASE` se dejan pendientes
+ * a propósito.
+ */
+function establecerLineaBase() {
+  const dir = path.join(RAIZ, 'prisma', 'migrations');
+  const migraciones = readdirSync(dir, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name)
+    .sort();
+
+  let marcadas = 0;
+  for (const nombre of migraciones) {
+    if (APLICAR_AUNQUE_HAYA_LINEA_BASE.has(nombre)) {
+      console.log(`  ${nombre}: se deja PENDIENTE (trae cambios que la base no tiene).`);
+      continue;
+    }
+    execFileSync('npx', ['prisma', 'migrate', 'resolve', '--applied', nombre], {
+      stdio: 'pipe',
+      cwd: RAIZ,
+    });
+    marcadas++;
+  }
+  console.log(`  línea base establecida: ${marcadas} migración(es) dadas por aplicadas.`);
+}
 
 async function main() {
   const url = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
@@ -38,7 +85,17 @@ async function main() {
       `SELECT to_regclass('public._prisma_migrations') IS NOT NULL AS hay`
     );
     if (!existe[0]?.hay) {
-      console.log('  base nueva: no hay bitácora de migraciones que reconciliar.');
+      // ¿Está realmente vacía, o solo le falta la bitácora?
+      const tablas: any[] = await prisma.$queryRawUnsafe(
+        `SELECT count(*)::int AS n FROM information_schema.tables
+          WHERE table_schema = 'public' AND table_type = 'BASE TABLE'`
+      );
+      if ((tablas[0]?.n ?? 0) === 0) {
+        console.log('  base vacía: las migraciones se aplicarán desde cero.');
+        return;
+      }
+      console.log(`  la base tiene ${tablas[0].n} tablas pero ningún historial de migraciones.`);
+      establecerLineaBase();
       return;
     }
 
