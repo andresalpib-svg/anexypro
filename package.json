@@ -5,7 +5,7 @@
   "description": "ANEXYpro — Plataforma de administración de condominios. Multiempresa, multicondominio, con IA integrada.",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
