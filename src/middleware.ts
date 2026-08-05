@@ -79,13 +79,10 @@ export default async function middleware(req: NextRequest, ctx: any) {
       mensaje: e?.message,
       ruta: pathname,
       host: req.headers.get('host'),
-      xForwardedHost: req.headers.get('x-forwarded-host'),
-      xForwardedProto: req.headers.get('x-forwarded-proto'),
+      // Presencia, no valor: basta para distinguir un problema de
+      // configuración de uno de datos.
       tieneAuthSecret: Boolean(process.env.AUTH_SECRET),
-      tieneAuthUrl: Boolean(process.env.AUTH_URL),
-      tieneNextauthUrl: Boolean(process.env.NEXTAUTH_URL),
-      authTrustHost: process.env.AUTH_TRUST_HOST,
-      vercelUrl: process.env.VERCEL_URL,
+      tieneAuthUrl: Boolean(process.env.AUTH_URL ?? process.env.NEXTAUTH_URL),
     });
 
     if (pathname === '/login' || pathname.startsWith('/api/auth')) {

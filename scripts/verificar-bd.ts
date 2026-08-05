@@ -209,7 +209,35 @@ async function main() {
     }
   }
 
-  // ---------- 10. Vistas que la aplicación consulta ----------
+  // ---------- 10. La conexión de la APLICACIÓN funciona ----------
+  //
+  // Todo lo anterior se comprueba con DIRECT_URL (el dueño). Pero la
+  // aplicación no usa esa conexión: usa DATABASE_URL. Si esa falla, el
+  // despliegue termina bien y la aplicación arranca, pero nadie puede
+  // ni iniciar sesión. Pasó de verdad: el usuario de DATABASE_URL no
+  // llevaba el sufijo del proyecto que exige el pooler de Supabase y
+  // toda consulta moría con `ENOIDENTIFIER`, ya en producción.
+  if (urlApp) {
+    const app = new PrismaClient({ datasources: { db: { url: urlApp } } });
+    try {
+      await app.$queryRawUnsafe('SELECT 1');
+      anotar(true, 'Conexión de la aplicación (DATABASE_URL)', 'responde');
+    } catch (e: any) {
+      const msg = String(e?.message ?? '');
+      const pista = msg.includes('ENOIDENTIFIER')
+        ? ' — el pooler de Supabase exige que el usuario sea "<rol>.<referencia-del-proyecto>", no solo "<rol>".'
+        : '';
+      anotar(
+        false,
+        'Conexión de la aplicación (DATABASE_URL)',
+        `NO CONECTA${pista} La aplicación arrancaría sin poder consultar nada.`
+      );
+    } finally {
+      await app.$disconnect();
+    }
+  }
+
+  // ---------- 11. Vistas que la aplicación consulta ----------
   const vistas: any[] = await prisma.$queryRawUnsafe(`
     SELECT count(*)::int AS n FROM pg_views WHERE schemaname = 'public' AND viewname LIKE 'v\\_%'
   `);
