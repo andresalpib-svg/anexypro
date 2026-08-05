@@ -1,0 +1,31 @@
+import {
+  Gavel,
+  LayoutDashboard,
+  Receipt,
+  Mail,
+  Calendar,
+  Waves,
+  DoorOpen,
+  Wrench,
+  ClipboardCheck,
+  User,
+  PlayCircle,
+  Scale,
+  Store,
+} from 'lucide-react';
+
+export const RESIDENT_NAV = [
+  { label: 'Dashboard', href: '/portal/dashboard', icon: LayoutDashboard },
+  { label: 'Estado de Cuenta', href: '/portal/estado-cuenta', icon: Receipt },
+  { label: 'Comunicados', href: '/portal/comunicados', icon: Mail },
+  { label: 'Calendario', href: '/portal/calendario', icon: Calendar },
+  { label: 'Contenido de Valor', href: '/portal/contenido', icon: PlayCircle },
+  { label: 'Árbitro Legal IA', href: '/portal/legal', icon: Scale, ia: true },
+  { label: 'Reservas', href: '/portal/reservas', icon: Waves },
+  { label: 'Autorizar Visitas', href: '/portal/visitas', icon: DoorOpen },
+  { label: 'Mantenimientos', href: '/portal/mantenimientos', icon: Wrench },
+  { label: 'Incumplimientos', href: '/portal/incumplimientos', icon: Gavel },
+  { label: 'Proveedores varios', href: '/portal/proveedores', icon: Store },
+  { label: 'Asambleas', href: '/portal/asambleas', icon: ClipboardCheck },
+  { label: 'Mi Perfil', href: '/portal/perfil', icon: User },
+];

@@ -1,0 +1,141 @@
+'use server';
+
+import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
+import { auth } from '@/lib/auth';
+import { canAccessCondo } from '@/lib/services/condominiums';
+import {
+  allocatePettyCash,
+  addPettyCashExpense,
+  deletePettyCashExpense,
+  deletePettyCashAllocation,
+} from '@/lib/services/petty-cash';
+import { pickFile } from '@/lib/upload';
+import { saveToRepository } from '@/lib/services/file-refs';
+import { isSafePng, isSafeJpeg, MAX_IMAGE_BYTES } from '@/lib/image-safety';
+
+export type ActionState = { errors?: Record<string, string[]>; formError?: string; success?: boolean };
+
+const money = z.coerce.number().positive('El monto debe ser mayor que cero').max(99_999_999);
+
+const allocationSchema = z.object({
+  condominiumId: z.string().uuid(),
+  amount: money,
+  allocatedOn: z.string().min(10, 'Indica la fecha'),
+  note: z.string().max(300).optional().or(z.literal('')),
+});
+
+const expenseSchema = z.object({
+  condominiumId: z.string().uuid(),
+  amount: money,
+  spentOn: z.string().min(10, 'Indica la fecha de la compra'),
+  detail: z.string().min(3, 'Describe el gasto').max(300),
+});
+
+/** Las fechas son @db.Date: se fijan a mediodía para no correrse de día. */
+const asDate = (s: string) => new Date(`${s}T12:00:00`);
+
+async function guard(condominiumId: string, opts: { ownerOnly?: boolean } = {}) {
+  const session = await auth();
+  if (!session?.user || !['admin_owner', 'admin_staff'].includes(session.user.role)) return null;
+  if (opts.ownerOnly && session.user.role !== 'admin_owner') return null;
+  if (!(await canAccessCondo(session, condominiumId))) return null;
+  return session;
+}
+
+/** Solo la administración define cuánto dinero tiene disponible el supervisor. */
+export async function allocateAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const parsed = allocationSchema.safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors as Record<string, string[]> };
+
+  const session = await guard(parsed.data.condominiumId, { ownerOnly: true });
+  if (!session) return { formError: 'Solo la administración asigna el monto de la caja chica.' };
+
+  try {
+    await allocatePettyCash(session.user.companyId, session.user.id, session.user.name ?? 'Usuario', {
+      condominiumId: parsed.data.condominiumId,
+      amount: parsed.data.amount,
+      allocatedOn: asDate(parsed.data.allocatedOn),
+      note: parsed.data.note,
+    });
+  } catch (e: any) {
+    return { formError: e?.message ?? 'No se pudo asignar el monto.' };
+  }
+  revalidatePath('/app/mantenimiento');
+  return { success: true };
+}
+
+/** El supervisor registra el gasto con su factura de respaldo. */
+export async function addExpenseAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const parsed = expenseSchema.safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors as Record<string, string[]> };
+
+  const session = await guard(parsed.data.condominiumId);
+  if (!session) return { formError: 'No tienes acceso a la caja chica de ese condominio.' };
+
+  try {
+    const file = pickFile(formData, 'invoice');
+    if (!file) return { errors: { invoice: ['Adjunta el documento de la factura.'] } };
+    if (file.size > MAX_IMAGE_BYTES) {
+      return { errors: { invoice: ['La factura pesa demasiado. Súbela por debajo de 12 MB.'] } };
+    }
+
+    // Una imagen ilegible se rechaza aquí y no al generar el informe:
+    // así el problema se ve en el momento de subirla, no meses después.
+    const ext = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
+    if (['.png', '.jpg', '.jpeg'].includes(ext)) {
+      const buf = Buffer.from(await file.arrayBuffer());
+      const ok = ext === '.png' ? isSafePng(buf) : isSafeJpeg(buf);
+      if (!ok) {
+        return {
+          errors: { invoice: ['No se pudo leer esa imagen — está dañada o en un formato no admitido. Vuelve a exportarla o súbela en PDF.'] },
+        };
+      }
+    }
+
+    const invoiceUrl = await saveToRepository(file, { kind: 'condo', condominiumId: parsed.data.condominiumId, slug: 'facturas' });
+
+    await addPettyCashExpense(session.user.companyId, session.user.id, session.user.name ?? 'Usuario', {
+      condominiumId: parsed.data.condominiumId,
+      spentOn: asDate(parsed.data.spentOn),
+      detail: parsed.data.detail,
+      amount: parsed.data.amount,
+      invoiceUrl,
+      invoiceName: file.name,
+    });
+  } catch (e: any) {
+    return { formError: e?.message ?? 'No se pudo registrar el gasto.' };
+  }
+  revalidatePath('/app/mantenimiento');
+  return { success: true };
+}
+
+export async function deleteExpenseAction(
+  id: string,
+  condominiumId: string
+): Promise<{ ok: boolean; error?: string }> {
+  const session = await guard(condominiumId);
+  if (!session) return { ok: false, error: 'Sin permiso.' };
+  try {
+    await deletePettyCashExpense(session.user.companyId, id);
+  } catch (e: any) {
+    return { ok: false, error: e?.message ?? 'No se pudo eliminar el gasto.' };
+  }
+  revalidatePath('/app/mantenimiento');
+  return { ok: true };
+}
+
+export async function deleteAllocationAction(
+  id: string,
+  condominiumId: string
+): Promise<{ ok: boolean; error?: string }> {
+  const session = await guard(condominiumId, { ownerOnly: true });
+  if (!session) return { ok: false, error: 'Solo la administración puede eliminar una asignación.' };
+  try {
+    await deletePettyCashAllocation(session.user.companyId, id);
+  } catch (e: any) {
+    return { ok: false, error: e?.message ?? 'No se pudo eliminar la asignación.' };
+  }
+  revalidatePath('/app/mantenimiento');
+  return { ok: true };
+}

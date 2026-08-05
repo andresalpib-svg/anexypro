@@ -1,0 +1,110 @@
+import { withTenantContext } from '@/lib/db';
+import { logActivity } from '@/lib/services/audit';
+import bcrypt from 'bcryptjs';
+
+export const PERMISSION_AREAS = [
+  { key: 'finanzas', label: 'Finanzas' },
+  { key: 'comunicados', label: 'Comunicados' },
+  { key: 'seguridad', label: 'Seguridad' },
+  { key: 'incumplimientos', label: 'Gestión de Incumplimientos' },
+  { key: 'mantenimientos', label: 'Mantenimientos de Áreas Comunes' },
+  { key: 'proyectos', label: 'Proyectos' },
+  { key: 'asambleas', label: 'Asambleas' },
+  { key: 'documentos', label: 'Documentos' },
+  { key: 'reportes', label: 'Reportes' },
+  { key: 'auditoria', label: 'Auditoría' },
+];
+
+// Áreas que sí puede tener la Junta Directiva — Auditoría queda
+// deliberadamente fuera (ver src/lib/services/audit.ts).
+export const BOARD_AREAS = ['reportes', 'finanzas', 'mantenimientos', 'proyectos', 'asambleas', 'documentos', 'comunicados'];
+
+export async function listStaffUsers(companyId: string) {
+  return withTenantContext(companyId, (tx) =>
+    tx.user.findMany({
+      where: { companyId, role: { in: ['admin_owner', 'admin_staff'] } },
+      orderBy: { createdAt: 'asc' },
+    })
+  );
+}
+
+export async function inviteStaffUser(
+  companyId: string,
+  actorId: string,
+  actorName: string,
+  input: { fullName: string; email: string; tempPassword: string }
+) {
+  return withTenantContext(companyId, async (tx) => {
+    const passwordHash = await bcrypt.hash(input.tempPassword, 12);
+    const user = await tx.user.create({
+      data: { companyId, fullName: input.fullName, email: input.email, passwordHash, role: 'admin_staff', staffPermissions: {} },
+    });
+    await logActivity(tx, companyId, { userId: actorId, userName: actorName, module: 'Configuración', action: 'Usuario de staff creado', target: user.fullName });
+    return user;
+  });
+}
+
+/** Alterna un permiso específico para un usuario de staff — solo admin_owner puede hacerlo (verificado en la Server Action). */
+export async function toggleStaffPermission(
+  companyId: string,
+  actorId: string,
+  actorName: string,
+  userId: string,
+  area: string,
+  allowed: boolean
+) {
+  return withTenantContext(companyId, async (tx) => {
+    const user = await tx.user.findUniqueOrThrow({ where: { id: userId } });
+    const current = (user.staffPermissions as Record<string, boolean> | null) ?? {};
+    const updated = { ...current, [area]: allowed };
+    await tx.user.update({ where: { id: userId }, data: { staffPermissions: updated } });
+    await logActivity(tx, companyId, {
+      userId: actorId,
+      userName: actorName,
+      module: 'Configuración',
+      action: `Permiso "${area}" ${allowed ? 'otorgado' : 'revocado'}`,
+      target: user.fullName,
+    });
+  });
+}
+
+export async function listBoardCandidates(companyId: string, condominiumId: string) {
+  return withTenantContext(companyId, (tx) =>
+    tx.person.findMany({
+      where: { memberships: { some: { endDate: null, role: 'propietario', property: { condominiumId } } } },
+      distinct: ['id'],
+      orderBy: { fullName: 'asc' },
+    })
+  );
+}
+
+export async function toggleBoardMember(companyId: string, actorId: string, actorName: string, personId: string, isBoardMember: boolean) {
+  return withTenantContext(companyId, async (tx) => {
+    const person = await tx.person.update({ where: { id: personId }, data: { isBoardMember, boardAreas: isBoardMember ? undefined : [] } });
+    await logActivity(tx, companyId, {
+      userId: actorId,
+      userName: actorName,
+      module: 'Configuración',
+      action: isBoardMember ? 'Miembro de Junta Directiva agregado' : 'Miembro de Junta Directiva removido',
+      target: person.fullName,
+    });
+    return person;
+  });
+}
+
+export async function toggleBoardArea(companyId: string, actorId: string, actorName: string, personId: string, area: string, allowed: boolean) {
+  return withTenantContext(companyId, async (tx) => {
+    const person = await tx.person.findUniqueOrThrow({ where: { id: personId } });
+    const areas = new Set(person.boardAreas);
+    if (allowed) areas.add(area);
+    else areas.delete(area);
+    await tx.person.update({ where: { id: personId }, data: { boardAreas: Array.from(areas) } });
+    await logActivity(tx, companyId, {
+      userId: actorId,
+      userName: actorName,
+      module: 'Configuración',
+      action: `Área de Junta "${area}" ${allowed ? 'otorgada' : 'revocada'}`,
+      target: person.fullName,
+    });
+  });
+}

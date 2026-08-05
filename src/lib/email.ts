@@ -1,0 +1,76 @@
+/**
+ * Envío de correos transaccionales vía Resend (https://resend.com).
+ *
+ * Configuración (.env):
+ *   RESEND_API_KEY  — API key de la cuenta de Resend de la administración.
+ *   EMAIL_FROM      — remitente, p. ej. "AnexyPRO <notificaciones@anexypro.com>".
+ *   APP_URL         — enlace de acceso que va en los correos (default app.anexypro.com).
+ *
+ * Anti-spam: el dominio del remitente DEBE estar verificado en Resend
+ * (Domains → Add Domain → agregar los registros SPF y DKIM que Resend
+ * indica en el DNS de anexypro.com, y un registro DMARC). Sin esa
+ * verificación los correos salen de un dominio compartido y los
+ * filtros de spam los castigan. Con SPF+DKIM+DMARC alineados, la
+ * entregabilidad es la normal de un proveedor transaccional.
+ */
+
+const RESEND_ENDPOINT = 'https://api.resend.com/emails';
+
+export function isEmailConfigured(): boolean {
+  return Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
+}
+
+export function appUrl(): string {
+  return process.env.APP_URL || 'https://app.anexypro.com';
+}
+
+export async function sendEmail(input: { to: string; subject: string; html: string }): Promise<void> {
+  if (!isEmailConfigured()) {
+    throw new Error(
+      'El envío de correos no está configurado: falta RESEND_API_KEY y/o EMAIL_FROM en el archivo .env.'
+    );
+  }
+  const res = await fetch(RESEND_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ from: process.env.EMAIL_FROM, to: [input.to], subject: input.subject, html: input.html }),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`El proveedor de correo rechazó el envío (${res.status}): ${body.slice(0, 300)}`);
+  }
+}
+
+export function welcomeEmailHtml(input: {
+  fullName: string;
+  email: string;
+  password: string;
+  condominiumName: string;
+}): string {
+  const url = appUrl();
+  return `
+  <div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#1e2a3a">
+    <div style="margin-bottom:20px"><b style="font-size:18px">Anexy<span style="color:#3b6ef5">PRO</span></b></div>
+    <h2 style="margin:0 0 8px;font-size:20px">Bienvenido(a), ${input.fullName}</h2>
+    <p style="margin:0 0 16px;line-height:1.5">
+      La administración de <b>${input.condominiumName}</b> te creó una cuenta en el
+      Ecosistema Condómino de ANEXYpro: tu estado de cuenta, reservas de áreas
+      comunes, comunicados y más, en un solo lugar.
+    </p>
+    <div style="background:#f4f6fb;border-radius:10px;padding:16px;margin:0 0 16px">
+      <p style="margin:0 0 6px"><b>Usuario:</b> ${input.email}</p>
+      <p style="margin:0"><b>Contraseña temporal:</b> <code style="font-size:15px">${input.password}</code></p>
+    </div>
+    <p style="margin:0 0 20px;line-height:1.5">
+      Ingresa en <a href="${url}" style="color:#3b6ef5;font-weight:600">${url.replace(/^https?:\/\//, '')}</a>
+      y cambia tu contraseña después del primer acceso.
+    </p>
+    <a href="${url}" style="display:inline-block;background:#3b6ef5;color:#fff;text-decoration:none;font-weight:600;border-radius:10px;padding:12px 22px">Ir a mi portal</a>
+    <p style="margin:24px 0 0;font-size:12px;color:#8a94a6">
+      Si no esperabas este correo, ignóralo o contacta a la administración de tu condominio.
+    </p>
+  </div>`;
+}

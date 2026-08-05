@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "anexypro",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "/Users/andres/Downloads/ANEXYpro/anexypro-app 10",
+      "port": 3000
+    }
+  ]
+}

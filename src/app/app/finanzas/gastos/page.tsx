@@ -1,0 +1,85 @@
+import { Lock } from 'lucide-react';
+import { auth } from '@/lib/auth';
+import { can } from '@/lib/rbac';
+import { resolveCondoId } from '@/lib/active-condo';
+import { listCondominiumsForSession, getCondominium } from '@/lib/services/condominiums';
+import { listExpenses, listSuppliers, CATEGORY_LABEL } from '@/lib/services/expenses';
+import { listBankAccounts } from '@/lib/services/bank-accounts';
+import { PageHeader } from '@/components/ui/page-header';
+import { CondoSelect } from '../../propiedades/condo-select';
+import { FinanceTabs } from '../finance-tabs';
+import { ExpenseBoard, type ExpenseRow, type SupplierOpt, type BankOpt } from './expense-board';
+
+export default async function GastosPage({ searchParams }: { searchParams: { condoId?: string } }) {
+  const session = await auth();
+  if (!can(session, 'finanzas')) {
+    return (
+      <div className="card mx-auto mt-10 max-w-md p-10 text-center">
+        <Lock className="mx-auto mb-3 text-muted" size={28} />
+        <p className="text-sm font-semibold text-ink">Sin acceso a Finanzas</p>
+      </div>
+    );
+  }
+
+  const condos = await listCondominiumsForSession(session!);
+  const condoId = resolveCondoId(searchParams.condoId, condos);
+  if (!condoId) return <div className="card p-10 text-center text-sm text-muted">Primero creá un condominio.</div>;
+
+  const [expenses, suppliers, banks, condo] = await Promise.all([
+    listExpenses(session!.user.companyId, condoId),
+    listSuppliers(session!.user.companyId),
+    listBankAccounts(session!.user.companyId, condoId),
+    getCondominium(session!.user.companyId, condoId),
+  ]);
+
+  const role = session!.user.role;
+
+  return (
+    <div>
+      <PageHeader
+        title="Finanzas y Contabilidad"
+        subtitle="Gastos, proveedores y cuentas por pagar del condominio"
+      />
+      <FinanceTabs />
+      <div className="mb-4 mt-4">
+        <CondoSelect condos={condos} selected={condoId} />
+      </div>
+
+      <ExpenseBoard
+        condominiumId={condoId}
+        currency={condo?.currency ?? 'CRC'}
+        canApprove={role === 'admin_owner'}
+        canRegister={role !== 'contador'}
+        categories={Object.entries(CATEGORY_LABEL).map(([value, label]) => ({ value, label }))}
+        suppliers={suppliers.map(
+          (s): SupplierOpt => ({
+            id: s.id,
+            name: s.tradeName ?? s.legalName,
+            defaultCategory: s.defaultCategory,
+          })
+        )}
+        banks={banks.map((b): BankOpt => ({ id: b.id, name: `${b.bankName} — ${b.name}` }))}
+        expenses={expenses.map((e): ExpenseRow => {
+          const paid = e.payments.reduce((s, p) => s + Number(p.amount), 0);
+          return {
+            id: e.id,
+            number: e.expenseNumber,
+            category: e.category,
+            description: e.description,
+            invoiceNumber: e.invoiceNumber,
+            supplierName: e.supplier ? (e.supplier.tradeName ?? e.supplier.legalName) : null,
+            issueDate: e.issueDate.toISOString(),
+            dueDate: e.dueDate?.toISOString() ?? null,
+            total: Number(e.total),
+            paid,
+            status: e.status,
+            documentUrl: e.documentUrl,
+            documentName: e.documentName,
+            createdByName: e.createdBy?.fullName ?? null,
+            approvedByName: e.approvedBy?.fullName ?? null,
+          };
+        })}
+      />
+    </div>
+  );
+}
