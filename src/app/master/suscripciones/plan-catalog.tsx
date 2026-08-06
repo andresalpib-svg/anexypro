@@ -7,6 +7,7 @@ import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { Modal } from '@/components/ui/modal';
 import { StatusChip } from '@/components/ui/status-chip';
 import { savePlanAction, deletePlanAction, type ActionState } from './actions';
+import { enTransicion } from '@/lib/accion-segura';
 
 const VACIO: ActionState = {};
 
@@ -108,7 +109,7 @@ export function PlanCatalog({ planes }: { planes: Plan[] }) {
                       <button
                         type="button"
                         onClick={() =>
-                          start(async () => {
+                          enTransicion(start, async () => {
                             const r = await deletePlanAction(p.id);
                             if (!r.ok) setError(r.error ?? 'No se pudo eliminar.');
                             router.refresh();

@@ -1,7 +1,7 @@
 import { DoorOpen, Package as PackageIcon, AlertTriangle, Waves, Users, HardHat, Clock, ShieldAlert } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { resolveCondoId } from '@/lib/active-condo';
-import { listCondominiums } from '@/lib/services/condominiums';
+import { listCondominiumsForSession } from '@/lib/services/condominiums';
 import { listVisits, getSecurityDashboard } from '@/lib/services/visits';
 import { listIncidents, listPackages } from '@/lib/services/security';
 import { listReservations } from '@/lib/services/reservations';
@@ -11,7 +11,7 @@ import { SecurityCondoSelect } from '../condo-select';
 
 export default async function SecurityDashboardPage({ searchParams }: { searchParams: { condoId?: string } }) {
   const session = await auth();
-  const condos = await listCondominiums(session!.user.companyId);
+  const condos = await listCondominiumsForSession(session!);
   const condoId = resolveCondoId(searchParams.condoId, condos);
   if (!condoId) return <div className="card p-10 text-center text-sm text-muted">No hay condominios administrados todavía.</div>;
 

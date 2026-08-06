@@ -11,6 +11,7 @@ import {
   blockCompanyAction,
   unblockCompanyAction,
 } from './actions';
+import { enTransicion } from '@/lib/accion-segura';
 
 export type Fila = {
   companyId: string;
@@ -62,7 +63,7 @@ export function SubscriptionTable({ suscripciones, planes }: { suscripciones: Fi
   const router = useRouter();
 
   function desbloquear(f: Fila) {
-    start(async () => {
+    enTransicion(start, async () => {
       const r = await unblockCompanyAction(f.companyId);
       if (!r.ok) setError(r.error ?? 'No se pudo desbloquear.');
       router.refresh();
@@ -231,7 +232,7 @@ function PagoModal({ fila, onClose }: { fila: Fila; onClose: () => void }) {
               type="button"
               disabled={enviando}
               onClick={() =>
-                start(async () => {
+                enTransicion(start, async () => {
                   const r = await registerPaymentAction(fila.companyId, {
                     amount: Number(monto) || undefined,
                     method: metodo,
@@ -295,7 +296,7 @@ function BloqueoModal({ fila, onClose }: { fila: Fila; onClose: () => void }) {
             type="button"
             disabled={enviando}
             onClick={() =>
-              start(async () => {
+              enTransicion(start, async () => {
                 const r = await blockCompanyAction(fila.companyId, motivo);
                 if (!r.ok) setError(r.error ?? 'No se pudo bloquear.');
                 else onClose();
@@ -367,7 +368,7 @@ function PlanModal({
             type="button"
             disabled={enviando}
             onClick={() =>
-              start(async () => {
+              enTransicion(start, async () => {
                 const r = await assignPlanAction(fila.companyId, planId, fecha);
                 if (!r.ok) setError(r.error ?? 'No se pudo asignar.');
                 else onClose();

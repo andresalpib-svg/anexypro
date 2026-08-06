@@ -7,7 +7,8 @@ import { canAccessCondo } from '@/lib/services/condominiums';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatusChip } from '@/components/ui/status-chip';
 import { InlineAddForm } from '../inline-add-form';
-import { addPersonAction, addVehicleAction, addPetAction, addEmergencyContactAction, removeMemberAction } from '../resident-actions';
+import { addPersonAction, addVehicleAction, addPetAction, addEmergencyContactAction } from '../resident-actions';
+import { RemoveMemberButton } from '../remove-member-button';
 
 const ROLE_LABEL: Record<string, string> = {
   propietario: 'Propietario',
@@ -73,11 +74,12 @@ export default async function PropertyDetailPage({ params }: { params: { id: str
                 <span className="font-medium text-ink">{m.person.fullName}</span>
                 <StatusChip variant="royal">{ROLE_LABEL[m.role]}</StatusChip>
                 {m.person.phone && <span className="text-muted">{m.person.phone}</span>}
-                <form action={removeMemberAction.bind(null, m.id, property.id)} className="ml-auto">
-                  <button type="submit" className="text-xs text-muted hover:text-danger">
-                    Dar de baja
-                  </button>
-                </form>
+                <RemoveMemberButton
+                  memberId={m.id}
+                  propertyId={property.id}
+                  personName={m.person.fullName}
+                  propertyCode={property.code}
+                />
               </li>
             ))}
           </ul>
@@ -129,7 +131,7 @@ export default async function PropertyDetailPage({ params }: { params: { id: str
         )}
       </section>
 
-      <div className="mt-4 grid grid-cols-2 gap-4">
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <section className="card p-5">
           <div className="mb-3 flex items-center justify-between">
             <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-muted">

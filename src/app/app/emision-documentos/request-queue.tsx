@@ -7,6 +7,7 @@ import { FileCheck2, FileText, Clock, ExternalLink, CheckCircle2, XCircle, Alert
 import { toast } from 'sonner';
 import { StatusChip } from '@/components/ui/status-chip';
 import { approveRequestAction, rejectRequestAction, type ActionState } from './actions';
+import { enTransicion } from '@/lib/accion-segura';
 
 export type QueueRow = {
   id: string;
@@ -129,7 +130,7 @@ function RequestCard({ row, currency }: { row: QueueRow; currency: string }) {
                 onClick={() => {
                   const reason = window.prompt('Motivo del rechazo (lo verá el residente):');
                   if (reason === null) return;
-                  startTransition(async () => {
+                  enTransicion(startTransition, async () => {
                     const r = await rejectRequestAction(row.id, reason);
                     if (r.ok) toast.success('Solicitud rechazada.');
                     else toast.error(r.error);

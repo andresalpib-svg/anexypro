@@ -40,6 +40,10 @@ export default async function AdminProfilePage() {
           />
         </dl>
       </div>
+
+      <div className="mt-4">
+        <ChangePasswordCard />
+      </div>
     </div>
   );
 }
@@ -48,10 +52,7 @@ function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-4">
       <dt className="text-muted">{label}</dt>
-      <dd className="font-medium text-ink">{value}</dd>
-      <div className="mt-4 max-w-2xl">
-        <ChangePasswordCard />
-      </div>
+      <dd className="break-words text-right font-medium text-ink">{value}</dd>
     </div>
   );
 }

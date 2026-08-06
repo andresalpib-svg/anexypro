@@ -31,7 +31,7 @@ export default async function ResidentProfilePage() {
         <PhotoUpload action={updateResidentPhotoAction} photoUrl={ctx.person.photoUrl} name={ctx.person.fullName} />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="card p-5">
           <p className="mb-3 text-xs font-bold uppercase tracking-wide text-muted">Datos personales</p>
           <dl className="space-y-2 text-sm">
@@ -90,6 +90,10 @@ export default async function ResidentProfilePage() {
         </div>
       </div>
 
+      <div className="mt-4">
+        <ChangePasswordCard />
+      </div>
+
       <p className="mt-4 text-xs text-muted">
         Para actualizar tus datos, vehículos o mascotas, contacta a la administración de tu condominio
         — la edición directa desde este perfil queda para una próxima pasada.
@@ -102,10 +106,7 @@ function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-4">
       <dt className="text-muted">{label}</dt>
-      <dd className="font-medium text-ink">{value}</dd>
-      <div className="mt-4 max-w-2xl">
-        <ChangePasswordCard />
-      </div>
+      <dd className="break-words text-right font-medium text-ink">{value}</dd>
     </div>
   );
 }

@@ -83,14 +83,22 @@ en vez de destruirlos.
 
 ## Pendientes que no son de código
 
-1. **DNS**: `app.anexypro.com` no resuelve. En Hostinger hay un registro
-   A "app" → 2.57.91.91 que impide crear el CNAME a Vercel. Hoy
-   responden `anexypro.vercel.app` y `api.anexypro.com`.
-2. **Google Drive**: faltan en Vercel `GOOGLE_DRIVE_OAUTH_CLIENT_ID`,
-   `..._SECRET` y `..._REFRESH_TOKEN`, y dejar
-   `StorageSettings.provider='google_drive'` en la base de producción.
-   Mientras tanto el repositorio usa almacenamiento local, que en
-   serverless **no persiste entre despliegues**.
+1. **El dominio bueno es `api.anexypro.com`** (CNAME a
+   `anexypro.vercel.app`, comprobado el 6/8: responde 200 y lo sirve
+   Vercel). `app.anexypro.com` es un resto: apunta a 2.57.91.91 de
+   Hostinger y no responde. **Falta corregir en Vercel `APP_URL` y
+   `NEXTAUTH_URL`, que siguen apuntando a `app.`** — y `APP_URL` es la
+   dirección que viaja dentro de los correos de bienvenida y de
+   recuperación, así que hoy le mandaría a cada residente un enlace
+   muerto. En el código ya quedó `api.` (`.env`, `.env.example` y el
+   valor por omisión de `email.ts`), y el Estado del Sistema lo
+   comprueba en cada revisión.
+2. **Google Drive**: las tres variables OAuth ya están cargadas en
+   Vercel (comprobado el 6/8). Queda confirmar que en la base de
+   producción `StorageSettings.provider` sea `google_drive`; si sigue en
+   `local`, el repositorio usa almacenamiento de disco, que en
+   serverless **no persiste entre despliegues**. Se ve de un vistazo en
+   Estado del Sistema.
 3. **Contraseña del administrador inicial** y limpieza de cuentas de
    prueba.
 4. **Decidir qué datos se conservan** en producción.

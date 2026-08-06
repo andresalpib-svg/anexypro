@@ -3,12 +3,13 @@
 import { useTransition } from 'react';
 import { toast } from 'sonner';
 import { decideReservationAction } from './actions';
+import { enTransicion } from '@/lib/accion-segura';
 
 export function DecideButtons({ reservationId }: { reservationId: string }) {
   const [pending, startTransition] = useTransition();
 
   const decide = (decision: 'confirmada' | 'rechazada') =>
-    startTransition(async () => {
+    enTransicion(startTransition, async () => {
       const result = await decideReservationAction(reservationId, decision);
       if (result.ok) {
         toast.success(decision === 'confirmada' ? 'Reserva aprobada.' : 'Reserva rechazada.');

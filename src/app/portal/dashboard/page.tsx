@@ -80,7 +80,7 @@ export default async function ResidentDashboardPage({ searchParams }: { searchPa
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Link href="/portal/estado-cuenta" className="card p-5">
           <span className={`inline-flex h-11 w-11 items-center justify-center rounded-xl text-white ${balance > 0 ? 'bg-danger' : 'bg-ok'}`}>
             <Receipt size={20} />

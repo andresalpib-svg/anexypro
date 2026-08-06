@@ -9,7 +9,7 @@ import { searchAccess } from '@/lib/services/properties';
  * basta con tener una sesión abierta.
  */
 export async function searchAccessAction(condominiumId: string, query: string) {
-  const session = await requireSecurity();
+  const session = await requireSecurity(condominiumId);
   if (!session) return { members: [], vehicles: [] };
   return searchAccess(session.user.companyId, condominiumId, query);
 }

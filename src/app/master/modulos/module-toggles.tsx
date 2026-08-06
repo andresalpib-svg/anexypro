@@ -6,6 +6,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { saveHiddenModulesAction } from './actions';
 import type { ToggleableModule } from '@/lib/services/module-visibility';
+import { enTransicion } from '@/lib/accion-segura';
 
 export type CompanyOption = { id: string; name: string };
 
@@ -58,7 +59,7 @@ export function ModuleToggles({
           type="button"
           disabled={!dirty || pending}
           onClick={() =>
-            startTransition(async () => {
+            enTransicion(startTransition, async () => {
               const r = await saveHiddenModulesAction(selectedId, draft);
               if (r.ok) {
                 toast.success('Configuración de módulos guardada.');

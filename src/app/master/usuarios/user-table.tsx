@@ -8,6 +8,7 @@ import { StatusChip } from '@/components/ui/status-chip';
 import { setUserStatusAction } from '../actions';
 import { ResetForm } from './reset-form';
 import { UserDetail } from './user-detail';
+import { enTransicion } from '@/lib/accion-segura';
 
 const ROL: Record<string, string> = {
   admin_owner: 'Administrador',
@@ -36,7 +37,7 @@ export function UserTable({ usuarios }: { usuarios: UsuarioFila[] }) {
   const router = useRouter();
 
   function alternar(u: UsuarioFila) {
-    start(async () => {
+    enTransicion(start, async () => {
       const r = await setUserStatusAction(u.id, u.status === 'activo' ? 'bloqueado' : 'activo');
       if (!r.ok) setError(r.error ?? 'No se pudo actualizar.');
       router.refresh();

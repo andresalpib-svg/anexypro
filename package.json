@@ -8,6 +8,8 @@
     "build": "prisma generate && next build",
     "vercel-build": "prisma generate && tsx scripts/desplegar-bd.ts && next build",
     "start": "next start",
+    "build:local": "NEXT_DIST_DIR=.next-prod prisma generate && NEXT_DIST_DIR=.next-prod next build",
+    "start:local": "node scripts/servidor-local.mjs",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

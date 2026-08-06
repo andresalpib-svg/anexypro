@@ -33,7 +33,7 @@ export default async function EmpresaPage({ params }: { params: { id: string } }
         }
       />
 
-      <div className="mb-4 grid grid-cols-3 gap-3">
+      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Dato icon={Building2} label="Condominios" valor={empresa.condominios} />
         <Dato icon={Home} label="Unidades" valor={empresa.unidades} />
         <Dato icon={Users} label="Usuarios" valor={empresa.usuarios.length} />

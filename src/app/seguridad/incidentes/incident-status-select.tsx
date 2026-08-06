@@ -3,6 +3,7 @@
 import { useTransition } from 'react';
 import { toast } from 'sonner';
 import { setIncidentStatusAction } from './actions';
+import { enTransicion } from '@/lib/accion-segura';
 
 export function IncidentStatusSelect({ incidentId, status }: { incidentId: string; status: string }) {
   const [pending, startTransition] = useTransition();
@@ -14,7 +15,7 @@ export function IncidentStatusSelect({ incidentId, status }: { incidentId: strin
       onChange={(e) => {
         const value = e.target.value;
         if (!value) return;
-        startTransition(async () => {
+        enTransicion(startTransition, async () => {
           await setIncidentStatusAction(incidentId, value);
           toast.success('Estado del incidente actualizado.');
         });

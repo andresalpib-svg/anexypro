@@ -15,6 +15,7 @@ import {
   readInvoiceXmlAction,
   type ActionState,
 } from './actions';
+import { enTransicion } from '@/lib/accion-segura';
 
 export type ExpenseRow = {
   id: string;
@@ -568,7 +569,7 @@ export function ExpenseBoard({
         )}
       </div>
 
-      <div className="card mt-4 overflow-hidden">
+      <div className="card mt-4 overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="border-b border-line bg-canvas text-left text-xs uppercase tracking-wide text-muted">
             <tr>
@@ -636,7 +637,7 @@ export function ExpenseBoard({
                             disabled={pending}
                             title="Aprobar"
                             onClick={() =>
-                              startTransition(async () => {
+                              enTransicion(startTransition, async () => {
                                 const r = await approveExpenseAction(e.id, condominiumId);
                                 if (r.ok) toast.success('Gasto aprobado.');
                                 else toast.error(r.error);
@@ -665,7 +666,7 @@ export function ExpenseBoard({
                             onClick={() => {
                               const reason = window.prompt(`¿Por qué se anula el gasto #${e.number}?`);
                               if (!reason) return;
-                              startTransition(async () => {
+                              enTransicion(startTransition, async () => {
                                 const r = await voidExpenseAction(e.id, condominiumId, reason);
                                 if (r.ok) toast.success('Gasto anulado.');
                                 else toast.error(r.error);

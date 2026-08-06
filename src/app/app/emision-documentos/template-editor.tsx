@@ -65,7 +65,7 @@ export function TemplateEditor({ condominiumId, template }: { condominiumId: str
             <b>número de filial</b> se completan automáticamente con los datos del solicitante — no se configuran aquí.
           </p>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className="field-label">Logo del condominio</label>
               <input name="logo" type="file" accept=".jpg,.jpeg,.png,.webp" className="field-input text-xs" />
@@ -97,7 +97,7 @@ export function TemplateEditor({ condominiumId, template }: { condominiumId: str
             <input name="headerText" defaultValue={template.headerText ?? ''} className="field-input" />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className="field-label">Administradora asignada</label>
               <input name="adminName" defaultValue={template.adminName ?? ''} className="field-input" />
@@ -121,7 +121,7 @@ export function TemplateEditor({ condominiumId, template }: { condominiumId: str
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className="field-label">Firma — nombre</label>
               <input name="signerName" defaultValue={template.signerName ?? ''} className="field-input" />

@@ -55,14 +55,14 @@ export function OverdueModal({ items, taskCount, ticketCount }: { items: Overdue
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-deep/60 p-6 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-deep/60 p-4 backdrop-blur-sm sm:p-6"
       onMouseDown={(e) => {
         // Clic FUERA del recuadro → cerrar.
         if (boxRef.current && !boxRef.current.contains(e.target as Node)) dismiss();
       }}
     >
       <div ref={boxRef} className="max-h-[80vh] w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl">
-        <header className="flex items-start gap-3 border-b border-line bg-danger-bg/40 px-6 py-4">
+        <header className="flex items-start gap-3 border-b border-line bg-danger-bg/40 px-4 py-4 sm:px-6">
           <AlertTriangle className="mt-0.5 flex-none text-danger" size={22} />
           <div className="min-w-0 flex-1">
             <h2 className="font-sans text-lg font-extrabold text-ink">Pendientes con atraso</h2>
@@ -82,7 +82,7 @@ export function OverdueModal({ items, taskCount, ticketCount }: { items: Overdue
           </button>
         </header>
 
-        <div className="max-h-[52vh] overflow-y-auto px-6 py-4">
+        <div className="max-h-[52vh] overflow-y-auto px-4 py-4 sm:px-6">
           {tareas.length > 0 && (
             <>
               <p className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted">
@@ -109,7 +109,7 @@ export function OverdueModal({ items, taskCount, ticketCount }: { items: Overdue
           )}
         </div>
 
-        <footer className="flex flex-wrap items-center gap-3 border-t border-line px-6 py-3">
+        <footer className="flex flex-wrap items-center gap-3 border-t border-line px-4 py-3 sm:px-6">
           <Link href="/app/gestion" onClick={dismiss} className="btn-primary py-2 text-xs">
             Ir a Gestión de Tareas
           </Link>

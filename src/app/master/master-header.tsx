@@ -17,6 +17,7 @@ import {
   CreditCard,
   Menu,
   X,
+  Activity,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -29,6 +30,7 @@ const MASTER_NAV = [
   { label: 'Contenido de Valor', href: '/master/contenido', icon: PlayCircle },
   { label: 'Módulos del panel', href: '/master/modulos', icon: LayoutGrid },
   { label: 'Almacenamiento', href: '/master/almacenamiento', icon: HardDrive },
+  { label: 'Estado del Sistema', href: '/master/estado', icon: Activity },
 ];
 
 /**

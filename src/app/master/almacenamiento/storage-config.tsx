@@ -6,6 +6,7 @@ import { HardDrive, CheckCircle2, XCircle, Loader2, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { testProviderAction, activateProviderAction } from './actions';
 import type { StorageKind } from '@/lib/storage/provider';
+import { enTransicion } from '@/lib/accion-segura';
 
 export type ProviderOption = {
   kind: StorageKind;
@@ -84,7 +85,7 @@ export function StorageConfig({
                   type="button"
                   disabled={pending}
                   onClick={() =>
-                    startTransition(async () => {
+                    enTransicion(startTransition, async () => {
                       const r = await testProviderAction(p.kind);
                       setHealth((prev) => ({ ...prev, [p.kind]: r }));
                     })
@@ -99,7 +100,7 @@ export function StorageConfig({
                   type="button"
                   disabled={pending}
                   onClick={() =>
-                    startTransition(async () => {
+                    enTransicion(startTransition, async () => {
                       const r = await activateProviderAction(p.kind);
                       if (r.ok) {
                         toast.success(`${p.label} quedó activo. ${r.detail ?? ''}`);

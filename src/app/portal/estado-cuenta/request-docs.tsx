@@ -6,6 +6,7 @@ import { FileCheck2, FileText, Clock, Info, ChevronDown, ChevronUp, ExternalLink
 import { toast } from 'sonner';
 import { StatusChip } from '@/components/ui/status-chip';
 import { requestDocumentAction } from './actions';
+import { enTransicion } from '@/lib/accion-segura';
 
 export type DocRequestRow = {
   id: string;
@@ -39,7 +40,7 @@ export function RequestDocs({
   const [pending, startTransition] = useTransition();
 
   const submit = (docType: 'certificacion_cuotas_al_dia' | 'estado_cuenta') =>
-    startTransition(async () => {
+    enTransicion(startTransition, async () => {
       const r = await requestDocumentAction(docType);
       if (r.ok) {
         toast.success('Solicitud enviada. Recibirás el documento en un plazo de 2 días hábiles.');

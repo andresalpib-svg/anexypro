@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { Search } from 'lucide-react';
 import { searchAccessAction } from './actions';
+import { enTransicion } from '@/lib/accion-segura';
 
 type Result = Awaited<ReturnType<typeof searchAccessAction>>;
 
@@ -13,7 +14,7 @@ export function AccessSearch({ condominiumId }: { condominiumId: string }) {
 
   function onChange(value: string) {
     setQuery(value);
-    startTransition(async () => {
+    enTransicion(startTransition, async () => {
       const r = await searchAccessAction(condominiumId, value);
       setResult(r);
     });

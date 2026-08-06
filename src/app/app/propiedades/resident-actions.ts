@@ -67,16 +67,44 @@ export async function addPersonAction(_prev: ActionState, formData: FormData): P
   return ok;
 }
 
-export async function removeMemberAction(memberId: string, propertyId: string) {
+/**
+ * Da de baja a una persona de una unidad.
+ *
+ * DEVUELVE el resultado en vez de dejar escapar la excepción. Antes no
+ * lo hacía, y como se llama desde el navegador —dentro de una
+ * transición o de un `<form action>`— cualquier fallo aquí no llegaba
+ * como mensaje: React lo entregaba a la frontera de error y la pantalla
+ * entera se sustituía por "Algo salió mal" con un código. Dos casos
+ * reales lo provocan: que el vínculo ya no exista (dos pestañas, o dos
+ * personas dando de baja al mismo residente) y que la base falle. Ni
+ * uno ni otro justifica tumbar la pantalla.
+ */
+export async function removeMemberAction(
+  memberId: string,
+  propertyId: string
+): Promise<{ ok: boolean; error?: string }> {
   const session = await requirePanel({ module: MODULO });
-  if (!session) return;
-  // El condominio sale del vínculo mismo, no del propertyId del cliente.
-  const condoId = await condoOfMember(session.user.companyId, memberId);
-  if (!(await allowsCondo(session, condoId))) return;
+  if (!session) return { ok: false, error: SIN_PERMISO };
 
-  await removePropertyMember(session.user.companyId, memberId);
+  try {
+    // El condominio sale del vínculo mismo, no del propertyId del cliente.
+    const condoId = await condoOfMember(session.user.companyId, memberId);
+    if (!(await allowsCondo(session, condoId))) return { ok: false, error: SIN_PERMISO };
+
+    await removePropertyMember(session.user.companyId, memberId);
+  } catch (e: any) {
+    // P2025 / NotFoundError = el vínculo ya no está. Para quien mira la
+    // pantalla el resultado es el mismo que buscaba, así que se dice
+    // eso y no un error técnico.
+    if (e?.code === 'P2025' || e?.name === 'NotFoundError') {
+      return { ok: false, error: 'Ese residente ya no está vinculado a la unidad. Actualizá la pantalla.' };
+    }
+    return { ok: false, error: e?.message ?? 'No se pudo dar de baja al residente.' };
+  }
+
   revalidatePath(`/app/propiedades/${propertyId}`);
   revalidatePath('/app/propiedades');
+  return { ok: true };
 }
 
 export async function updatePersonAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -126,7 +154,7 @@ export async function provisionUsersAction(_prev: ProvisionState, formData: Form
     revalidatePath('/app/propiedades');
     return {
       success: true,
-      summary: `Cuentas creadas: ${r.created} · Correos enviados: ${r.emailed} · Con error: ${r.errors.length}`,
+      summary: `Cuentas creadas: ${r.created} · Correos enviados: ${r.emailed} · Ya tenían cuenta (vinculadas): ${r.linked} · Con error: ${r.errors.length}`,
       errors: r.errors.map((e) => `${e.name}: ${e.reason}`),
     };
   } catch (err: any) {

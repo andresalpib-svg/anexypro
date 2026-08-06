@@ -85,7 +85,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <OverdueModal items={briefing.items} taskCount={briefing.taskCount} ticketCount={briefing.ticketCount} />
       <Sidebar session={session} photoUrl={me?.photoUrl} hiddenModules={hiddenModules} />
       {/* pt-14 en móvil: deja sitio a la barra superior con el menú. */}
-      <div className="flex h-screen flex-1 flex-col pt-14 lg:pt-0">
+      <div className="flex h-screen min-w-0 flex-1 flex-col pt-14 lg:pt-0">
         <Topbar
           notifications={notifications.map((n) => ({
             taskId: n.taskId,
@@ -94,7 +94,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             when: n.when.toISOString(),
           }))}
         />
-        <main className="flex-1 overflow-y-auto bg-canvas p-4 sm:p-6">{children}</main>
+        <main className="min-w-0 flex-1 overflow-y-auto bg-canvas p-4 sm:p-6">{children}</main>
       </div>
     </div>
   );

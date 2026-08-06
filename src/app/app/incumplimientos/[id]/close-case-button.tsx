@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { CheckCircle2 } from 'lucide-react';
 import { Modal } from '@/components/ui/modal';
 import { closeCaseAction } from '../actions';
+import { enTransicion } from '@/lib/accion-segura';
 
 /** Cerrar un expediente exige motivo: queda como constancia en la bitácora. */
 export function CloseCaseButton({ caseId }: { caseId: string }) {
@@ -16,7 +17,7 @@ export function CloseCaseButton({ caseId }: { caseId: string }) {
 
   function cerrar() {
     setError(null);
-    start(async () => {
+    enTransicion(start, async () => {
       const r = await closeCaseAction(caseId, motivo);
       if (!r.ok) {
         setError(r.error ?? 'No se pudo cerrar.');

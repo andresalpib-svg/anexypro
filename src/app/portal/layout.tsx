@@ -39,9 +39,14 @@ export default async function PortalLayout({ children }: { children: React.React
 
   return (
     <div className="flex h-screen overflow-hidden" style={marca}>
-      <ResidentSidebar name={session.user.name ?? 'Residente'} unitLabel={`${ctx.property.code} · ${ctx.condominium.name}`} />
+      <ResidentSidebar
+        name={session.user.name ?? 'Residente'}
+        unitLabel={`${ctx.property.code} · ${ctx.condominium.name}`}
+        units={ctx.units.map((u) => ({ propertyId: u.propertyId, code: u.code, condominiumName: u.condominiumName }))}
+        selectedUnitId={ctx.property.id}
+      />
       {/* pt-14 en móvil: deja sitio a la barra superior con el menú. */}
-      <main className="h-screen flex-1 overflow-y-auto bg-canvas p-4 pt-14 sm:p-6 lg:pt-6">{children}</main>
+      <main className="h-screen min-w-0 flex-1 overflow-y-auto bg-canvas p-4 pt-14 sm:p-6 lg:pt-6">{children}</main>
     </div>
   );
 }

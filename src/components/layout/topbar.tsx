@@ -37,8 +37,8 @@ export function Topbar({ notifications = [] }: { notifications?: TopbarNotificat
   }, []);
 
   return (
-    <header className="flex h-16 flex-none items-center gap-4 border-b border-line bg-white px-6">
-      <b className="text-sm text-ink">{crumb}</b>
+    <header className="flex h-16 flex-none items-center gap-2 border-b border-line bg-white px-4 sm:gap-4 sm:px-6">
+      <b className="hidden shrink-0 truncate text-sm text-ink sm:block">{crumb}</b>
       <GlobalSearch />
       <div ref={boxRef} className="relative">
         <button
@@ -55,7 +55,7 @@ export function Topbar({ notifications = [] }: { notifications?: TopbarNotificat
           )}
         </button>
         {open && (
-          <div className="absolute right-0 top-11 z-50 w-96 rounded-xl border border-line bg-white p-2 shadow-xl">
+          <div className="absolute right-0 top-11 z-50 w-[min(24rem,calc(100vw-2rem))] rounded-xl border border-line bg-white p-2 shadow-xl">
             <p className="px-2 py-1.5 text-xs font-bold uppercase tracking-wide text-muted">
               Alarmas de tareas ({notifications.length})
             </p>

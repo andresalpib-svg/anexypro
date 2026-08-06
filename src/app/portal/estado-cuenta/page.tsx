@@ -110,7 +110,7 @@ export default async function StatementPage() {
 
       {/* ---------- Histórico ---------- */}
       <p className="mb-2 mt-5 text-xs font-bold uppercase tracking-wide text-muted">Histórico de cobros y pagos</p>
-      <div className="card overflow-hidden">
+      <div className="card overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="border-b border-line bg-canvas text-left text-xs uppercase tracking-wide text-muted">
             <tr>

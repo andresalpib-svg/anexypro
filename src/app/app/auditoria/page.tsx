@@ -29,7 +29,7 @@ export default async function AuditoriaPage({ searchParams }: { searchParams: { 
       <PageHeader title="Auditoría" subtitle="Historial de actividad — quién hizo qué, cuándo" />
       <ModuleFilter modules={AUDIT_MODULES} selected={searchParams.module} />
 
-      <div className="card mt-4 overflow-hidden">
+      <div className="card mt-4 overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="border-b border-line bg-canvas text-left text-xs uppercase tracking-wide text-muted">
             <tr>

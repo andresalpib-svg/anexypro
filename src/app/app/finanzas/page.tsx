@@ -59,7 +59,7 @@ export default async function FinanzasPage({ searchParams }: { searchParams: { c
         </div>
       )}
 
-      <div className="mt-4 grid grid-cols-3 gap-4">
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Kpi icon={Building2} color="bg-royal" label="Unidades" value={Number(summary.total_units)} />
         <Kpi icon={CheckCircle2} color="bg-ok" label="Al día" value={Number(summary.units_current)} />
         <Kpi icon={AlertTriangle} color="bg-danger" label="En morosidad" value={Number(summary.units_delinquent)} />
@@ -77,7 +77,7 @@ export default async function FinanzasPage({ searchParams }: { searchParams: { c
         <GenerateBillingForm condominiumId={condoId!} />
       </div>
 
-      <div className="card mt-4 overflow-hidden">
+      <div className="card mt-4 overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="border-b border-line bg-canvas text-left text-xs uppercase tracking-wide text-muted">
             <tr>

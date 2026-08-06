@@ -13,6 +13,7 @@ import {
   deleteViolationTypeAction,
   type ActionState,
 } from '../actions';
+import { enTransicion } from '@/lib/accion-segura';
 
 export type Tipo = {
   id: string;
@@ -40,7 +41,7 @@ export function TypeCatalog({ condominiumId, tipos }: { condominiumId: string; t
   const router = useRouter();
 
   function alternar(t: Tipo) {
-    start(async () => {
+    enTransicion(start, async () => {
       const r = await toggleViolationTypeAction(t.id, !t.isActive);
       if (!r.ok) setError(r.error ?? 'No se pudo actualizar.');
       router.refresh();
@@ -48,7 +49,7 @@ export function TypeCatalog({ condominiumId, tipos }: { condominiumId: string; t
   }
 
   function eliminar(t: Tipo) {
-    start(async () => {
+    enTransicion(start, async () => {
       const r = await deleteViolationTypeAction(t.id);
       if (!r.ok) setError(r.error ?? 'No se pudo eliminar.');
       router.refresh();

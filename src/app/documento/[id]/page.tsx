@@ -85,7 +85,7 @@ export default async function DocumentoPage({ params }: { params: { id: string }
         </header>
 
         {/* ---------- Datos de la filial ---------- */}
-        <section className="mt-6 grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+        <section className="mt-6 grid grid-cols-1 gap-x-8 gap-y-2 sm:grid-cols-2 text-sm">
           <Field label="Condominio" value={request.condominium.name} />
           <Field label="Número de filial" value={request.property.code} />
           <Field label="Propietario / solicitante" value={owner} />
@@ -116,7 +116,7 @@ export default async function DocumentoPage({ params }: { params: { id: string }
         {/* ---------- Resumen y movimientos (estado de cuenta) ---------- */}
         {request.docType === 'estado_cuenta' && (
           <section className="mt-6">
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <Total label="Monto cobrado" value={fmt(request.issuedCharged ?? 0)} />
               <Total label="Monto pagado" value={fmt(request.issuedPaid ?? 0)} />
               <Total
@@ -129,7 +129,8 @@ export default async function DocumentoPage({ params }: { params: { id: string }
             <p className="mb-2 mt-6 text-xs font-bold uppercase tracking-wide" style={{ color }}>
               Histórico de cobros y pagos
             </p>
-            <table className="w-full text-xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
               <thead>
                 <tr className="border-b-2" style={{ borderColor: color }}>
                   <th className="py-2 text-left font-bold text-ink">Fecha</th>
@@ -162,6 +163,7 @@ export default async function DocumentoPage({ params }: { params: { id: string }
                 )}
               </tbody>
             </table>
+            </div>
           </section>
         )}
 

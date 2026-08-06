@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { Search } from 'lucide-react';
 import { globalSearchAction } from '../search-actions';
 import type { SearchResult } from '@/lib/services/search';
+import { enTransicion } from '@/lib/accion-segura';
 
 export default function SmartSearchPage() {
   const [query, setQuery] = useState('');
@@ -12,7 +13,7 @@ export default function SmartSearchPage() {
 
   function onChange(value: string) {
     setQuery(value);
-    startTransition(async () => {
+    enTransicion(startTransition, async () => {
       setResults(await globalSearchAction(value));
     });
   }

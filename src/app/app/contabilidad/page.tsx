@@ -70,7 +70,7 @@ export default async function ContabilidadPage({
       <ReportTabs condoId={condoId} tab={tab} />
 
       {tab === 'diario' && (
-        <div className="card mt-4 overflow-hidden">
+        <div className="card mt-4 overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="border-b border-line bg-canvas text-left text-xs uppercase tracking-wide text-muted">
               <tr>
@@ -108,7 +108,7 @@ export default async function ContabilidadPage({
       )}
 
       {tab === 'balance' && (
-        <div className="mt-4 grid grid-cols-2 gap-4">
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
           {(['activo', 'pasivo', 'patrimonio'] as const).map((type) => {
             const rows = balance.filter((r) => r.type === type);
             if (type === 'patrimonio' && rows.length === 0) return null;

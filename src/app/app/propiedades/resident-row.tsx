@@ -5,6 +5,7 @@ import { useFormState, useFormStatus } from 'react-dom';
 import { Pencil, UserMinus } from 'lucide-react';
 import { toast } from 'sonner';
 import { StatusChip } from '@/components/ui/status-chip';
+import { ejecutar, enTransicion } from '@/lib/accion-segura';
 import { updatePersonAction, removeMemberAction, type ActionState } from './resident-actions';
 
 const ROLE_LABEL: Record<string, string> = {
@@ -101,9 +102,13 @@ export function ResidentRow({ resident }: { resident: ResidentRowData }) {
                 )
               )
                 return;
-              startTransition(async () => {
-                await removeMemberAction(resident.memberId, resident.property.id);
-                toast.success('Residente dado de baja de la unidad.');
+              enTransicion(startTransition, async () => {
+                const r = await ejecutar(() =>
+                  removeMemberAction(resident.memberId, resident.property.id)
+                );
+                if (!r) return; // el aviso ya lo dio `ejecutar`
+                if (r.ok) toast.success('Residente dado de baja de la unidad.');
+                else toast.error(r.error ?? 'No se pudo dar de baja al residente.');
               });
             }}
             className="text-muted transition hover:text-danger disabled:opacity-50"

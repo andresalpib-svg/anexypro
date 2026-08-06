@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { StatusChip } from '@/components/ui/status-chip';
 import { NewContentForm } from './new-content-form';
 import { togglePublishAction, deleteContentAction } from './actions';
+import { enTransicion } from '@/lib/accion-segura';
 
 export type MasterCondo = { id: string; name: string; companyName: string };
 export type MasterContentItem = {
@@ -80,7 +81,7 @@ export function ContentAdmin({
                 type="button"
                 disabled={pending}
                 onClick={() =>
-                  startTransition(async () => {
+                  enTransicion(startTransition, async () => {
                     const r = await togglePublishAction(i.id, !i.published);
                     if (r.ok) toast.success(i.published ? 'Contenido despublicado.' : 'Contenido publicado.');
                     else toast.error(r.error);
@@ -96,7 +97,7 @@ export function ContentAdmin({
                 title="Eliminar"
                 onClick={() => {
                   if (!window.confirm(`¿Eliminar "${i.title}"? Esta acción no se puede deshacer.`)) return;
-                  startTransition(async () => {
+                  enTransicion(startTransition, async () => {
                     const r = await deleteContentAction(i.id);
                     if (r.ok) toast.success('Contenido eliminado.');
                     else toast.error(r.error);

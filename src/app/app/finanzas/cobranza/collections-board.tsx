@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { StatusChip } from '@/components/ui/status-chip';
 import { Modal } from '@/components/ui/modal';
 import { logActionAction, createPlanAction, setPlanStatusAction, type ActionState } from './actions';
+import { enTransicion } from '@/lib/accion-segura';
 
 export type DebtorView = {
   propertyId: string;
@@ -272,7 +273,8 @@ export function CollectionsBoard({
             </button>
           )}
         </div>
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
           <thead className="border-b border-line bg-canvas text-left text-xs uppercase tracking-wide text-muted">
             <tr>
               <th className="px-4 py-3">Filial</th>
@@ -326,7 +328,7 @@ export function CollectionsBoard({
                           disabled={pending}
                           title="Registrar esta gestión"
                           onClick={() =>
-                            startTransition(async () => {
+                            enTransicion(startTransition, async () => {
                               const r = await logActionAction({
                                 condominiumId,
                                 propertyId: d.propertyId,
@@ -365,6 +367,7 @@ export function CollectionsBoard({
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Convenios */}
@@ -396,7 +399,7 @@ export function CollectionsBoard({
                       disabled={pending}
                       title="Marcar como cumplido"
                       onClick={() =>
-                        startTransition(async () => {
+                        enTransicion(startTransition, async () => {
                           const r = await setPlanStatusAction(pl.id, condominiumId, 'cumplido');
                           if (r.ok) toast.success('Convenio cumplido.');
                           else toast.error(r.error);
@@ -412,7 +415,7 @@ export function CollectionsBoard({
                       title="Marcar como incumplido (se reanuda el cobro)"
                       onClick={() => {
                         if (!window.confirm('¿Marcar el convenio como incumplido? La filial vuelve a devengar intereses y a recibir avisos.')) return;
-                        startTransition(async () => {
+                        enTransicion(startTransition, async () => {
                           const r = await setPlanStatusAction(pl.id, condominiumId, 'incumplido');
                           if (r.ok) toast.success('Convenio incumplido. Se reanuda el cobro.');
                           else toast.error(r.error);

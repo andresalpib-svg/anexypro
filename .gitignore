@@ -5,6 +5,9 @@
 
 # next.js
 /.next/
+# compilación de producción para probar en local (ver `build:local`
+# en package.json): va aparte para no pisar la carpeta de `next dev`.
+/.next-prod/
 /out/
 
 # producción

@@ -72,6 +72,79 @@ export async function toggleStaffPermission(
   });
 }
 
+// ---------- Contraseñas fijadas por la administración ----------
+
+/**
+ * Roles a los que el administrador principal SÍ puede fijarle la
+ * contraseña. Deliberadamente fuera: `master` (no es de la empresa) y
+ * otros `admin_owner` — entre pares, restablecer la contraseña del otro
+ * es apoderarse de su cuenta. El propio titular cambia la suya en Mi
+ * Perfil, y para lo demás está el panel del master.
+ */
+const ROLES_GESTIONABLES = ['admin_staff', 'contador', 'seguridad', 'condomino'] as const;
+
+/** Usuarios de la empresa a los que se les puede fijar la contraseña. */
+export async function listManageableUsers(companyId: string, query?: string) {
+  const q = (query ?? '').trim();
+  return withTenantContext(companyId, (tx) =>
+    tx.user.findMany({
+      where: {
+        companyId,
+        role: { in: [...ROLES_GESTIONABLES] },
+        ...(q
+          ? {
+              OR: [
+                { fullName: { contains: q, mode: 'insensitive' as const } },
+                { email: { contains: q, mode: 'insensitive' as const } },
+              ],
+            }
+          : {}),
+      },
+      select: { id: true, fullName: true, email: true, role: true, status: true, lastLoginAt: true },
+      orderBy: [{ role: 'asc' }, { fullName: 'asc' }],
+      take: 25,
+    })
+  );
+}
+
+/**
+ * Fija a mano la contraseña de un usuario de la empresa.
+ *
+ * Es la vía para el caso corriente: alguien perdió el acceso y llama a
+ * la administración. La contraseña se le entrega de viva voz y quien la
+ * recibe puede cambiarla después desde su propio perfil.
+ *
+ * En la bitácora queda QUIÉN se la cambió a QUIÉN — nunca la
+ * contraseña.
+ */
+export async function setUserPassword(
+  companyId: string,
+  actorId: string,
+  actorName: string,
+  userId: string,
+  nueva: string
+) {
+  return withTenantContext(companyId, async (tx) => {
+    // `users` no lleva RLS: el aislamiento por empresa y el filtro de
+    // roles se garantizan aquí, no en la base.
+    const user = await tx.user.findFirst({
+      where: { id: userId, companyId, role: { in: [...ROLES_GESTIONABLES] } },
+      select: { id: true, fullName: true },
+    });
+    if (!user) throw new Error('Ese usuario no existe en tu empresa o su contraseña no se gestiona desde aquí.');
+
+    await tx.user.update({ where: { id: user.id }, data: { passwordHash: await bcrypt.hash(nueva, 12) } });
+    await logActivity(tx, companyId, {
+      userId: actorId,
+      userName: actorName,
+      module: 'Configuración',
+      action: 'Contraseña fijada por la administración',
+      target: user.fullName,
+    });
+    return user;
+  });
+}
+
 export async function listBoardCandidates(companyId: string, condominiumId: string) {
   return withTenantContext(companyId, (tx) =>
     tx.person.findMany({

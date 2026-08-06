@@ -6,6 +6,7 @@ import { Plus, Pencil, Trash2, Eye, EyeOff, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { SERVICE_CATEGORIES, categoryLabel } from '@/lib/services/service-providers';
 import { saveProviderAction, toggleVisibilityAction, deleteProviderAction, type ActionState } from './actions';
+import { enTransicion } from '@/lib/accion-segura';
 
 export type AdminProvider = {
   id: string;
@@ -199,7 +200,7 @@ export function ProviderAdmin({ providers }: { providers: AdminProvider[] }) {
                   disabled={pending}
                   title={p.visible ? 'Ocultar a los residentes' : 'Mostrar a los residentes'}
                   onClick={() =>
-                    startTransition(async () => {
+                    enTransicion(startTransition, async () => {
                       const r = await toggleVisibilityAction(p.id, !p.visible);
                       if (r.ok) toast.success(p.visible ? 'Proveedor oculto.' : 'Proveedor visible.');
                       else toast.error(r.error);
@@ -223,7 +224,7 @@ export function ProviderAdmin({ providers }: { providers: AdminProvider[] }) {
                   title="Eliminar"
                   onClick={() => {
                     if (!window.confirm(`¿Eliminar a "${p.name}" del directorio? Esta acción no se puede deshacer.`)) return;
-                    startTransition(async () => {
+                    enTransicion(startTransition, async () => {
                       const r = await deleteProviderAction(p.id);
                       if (r.ok) toast.success('Proveedor eliminado.');
                       else toast.error(r.error);

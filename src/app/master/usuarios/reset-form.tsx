@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { Check, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { resetPasswordAction } from '../actions';
+import { enTransicion } from '@/lib/accion-segura';
 
 /**
  * Fija la contraseña de un usuario desde el panel del master.
@@ -39,7 +40,7 @@ export function ResetForm({
       setError('Las dos contraseñas no coinciden.');
       return;
     }
-    start(async () => {
+    enTransicion(start, async () => {
       const r = await resetPasswordAction(userId, password);
       if (r.error) setError(r.error);
       else setOk(true);

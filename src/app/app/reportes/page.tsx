@@ -66,7 +66,7 @@ export default async function ReportesPage({
 async function FinancieroTab({ companyId }: { companyId: string }) {
   const rows = await getFinancialReport(companyId);
   return (
-    <div className="card mt-4 overflow-hidden">
+    <div className="card mt-4 overflow-x-auto">
       <table className="w-full text-sm">
         <thead className="border-b border-line bg-canvas text-left text-xs uppercase tracking-wide text-muted">
           <tr>
@@ -100,7 +100,7 @@ async function FinancieroTab({ companyId }: { companyId: string }) {
 async function MorosidadTab({ companyId }: { companyId: string }) {
   const rows = await getDelinquencyReport(companyId);
   return (
-    <div className="card mt-4 overflow-hidden">
+    <div className="card mt-4 overflow-x-auto">
       <table className="w-full text-sm">
         <thead className="border-b border-line bg-canvas text-left text-xs uppercase tracking-wide text-muted">
           <tr>
@@ -134,7 +134,7 @@ async function MorosidadTab({ companyId }: { companyId: string }) {
 async function MantenimientoTab({ companyId }: { companyId: string }) {
   const r = await getMaintenanceReport(companyId);
   return (
-    <div className="mt-4 grid grid-cols-4 gap-4">
+    <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
       <Kpi label="Tickets totales" value={r.total} />
       <Kpi label="Preventivos" value={r.preventivos} />
       <Kpi label="Completados" value={r.byStatus.completado ?? 0} />
@@ -146,7 +146,7 @@ async function MantenimientoTab({ companyId }: { companyId: string }) {
 async function ProyectosTab({ companyId }: { companyId: string }) {
   const rows = await getProjectsReport(companyId);
   return (
-    <div className="card mt-4 overflow-hidden">
+    <div className="card mt-4 overflow-x-auto">
       <table className="w-full text-sm">
         <thead className="border-b border-line bg-canvas text-left text-xs uppercase tracking-wide text-muted">
           <tr>

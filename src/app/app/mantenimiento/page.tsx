@@ -46,7 +46,7 @@ export default async function MantenimientoPage({ searchParams }: { searchParams
       />
       <CondoSelect condos={condos} selected={condoId} />
 
-      <div className="mt-5 grid grid-cols-2 gap-4">
+      <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div id="activos" className="card scroll-mt-24 p-4 transition-all">
           <div className="flex items-center justify-between">
             <p className="text-xs font-bold uppercase tracking-wide text-muted">Activos ({assets.length})</p>

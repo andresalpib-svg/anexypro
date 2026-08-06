@@ -73,7 +73,7 @@ export default async function PropiedadesPage({
           <p className="mb-2 mt-6 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-muted">
             <Home size={14} /> Unidades ({properties.length}) y residentes ({residents.length})
           </p>
-          <div className="card overflow-hidden">
+          <div className="card overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="border-b border-line bg-canvas text-left text-xs uppercase tracking-wide text-muted">
                 <tr>

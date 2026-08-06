@@ -58,7 +58,10 @@ export function IdleLogout() {
   if (secondsLeft === null) return null;
 
   return (
-    <div className="fixed bottom-5 left-1/2 z-[200] flex -translate-x-1/2 items-center gap-3 rounded-xl border border-warn/40 bg-white px-4 py-3 shadow-2xl">
+    // En un teléfono el aviso ocupa el ancho disponible dejando margen a
+    // ambos lados; centrarlo con `-translate-x-1/2` lo sacaba de la
+    // pantalla porque el texto y el botón no caben en 375 px.
+    <div className="fixed inset-x-3 bottom-5 z-[200] flex flex-wrap items-center gap-3 rounded-xl border border-warn/40 bg-white px-4 py-3 shadow-2xl sm:inset-x-auto sm:left-1/2 sm:flex-nowrap sm:-translate-x-1/2">
       <AlertTriangle className="flex-none text-warn" size={18} />
       <p className="text-sm text-ink">
         Tu sesión se cerrará en <b>{secondsLeft} s</b> por inactividad.

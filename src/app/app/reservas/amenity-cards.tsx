@@ -11,6 +11,7 @@ import {
   deleteAmenityAction,
   type ActionState,
 } from './actions';
+import { enTransicion } from '@/lib/accion-segura';
 
 export type AmenityCard = {
   id: string;
@@ -60,7 +61,7 @@ function ScheduleEditor({ amenity }: { amenity: AmenityCard }) {
                 type="button"
                 title="Eliminar bloque"
                 className="ml-auto text-muted hover:text-danger"
-                onClick={() => startTransition(async () => deleteScheduleAction(b.id))}
+                onClick={() => enTransicion(startTransition, async () => deleteScheduleAction(b.id))}
               >
                 <Trash2 size={12} />
               </button>
@@ -180,7 +181,7 @@ function AmenityEditor({ amenity, onDone }: { amenity: AmenityCard; onDone: () =
           className="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-danger hover:underline"
           onClick={() => {
             if (!window.confirm(`¿Eliminar el área "${amenity.name}"?`)) return;
-            startTransition(async () => {
+            enTransicion(startTransition, async () => {
               const r = await deleteAmenityAction(amenity.id);
               if (r.ok) toast.success('Área eliminada.');
               else toast.error(r.error);

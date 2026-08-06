@@ -6,6 +6,7 @@ import { useState, useTransition } from 'react';
 import { ArrowLeft, Sparkles } from 'lucide-react';
 import { createCommunicationAction, type ActionState } from '../actions';
 import { generateDraftAction } from '../generate-actions';
+import { enTransicion } from '@/lib/accion-segura';
 
 export default function NuevoComunicadoPage({ searchParams }: { searchParams: { condoId?: string } }) {
   const [state, formAction] = useFormState<ActionState, FormData>(createCommunicationAction, {});
@@ -20,7 +21,7 @@ export default function NuevoComunicadoPage({ searchParams }: { searchParams: { 
 
   function handleGenerate() {
     setGenError(null);
-    startTransition(async () => {
+    enTransicion(startTransition, async () => {
       const result = await generateDraftAction(instruction);
       if ('error' in result) {
         setGenError(result.error);

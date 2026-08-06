@@ -8,14 +8,27 @@ import { LogOut } from 'lucide-react';
 import { clsx } from 'clsx';
 import { RESIDENT_NAV } from '@/lib/resident-nav-config';
 import { SidebarShell } from '@/components/layout/sidebar-shell';
+import { UnitSwitcher, type UnitOption } from '@/components/layout/unit-switcher';
 
-export function ResidentSidebar({ name, unitLabel }: { name: string; unitLabel: string }) {
+export function ResidentSidebar({
+  name,
+  unitLabel,
+  units = [],
+  selectedUnitId,
+}: {
+  name: string;
+  unitLabel: string;
+  /** Unidades vigentes del residente; el selector solo sale si hay 2 o más. */
+  units?: UnitOption[];
+  selectedUnitId?: string;
+}) {
   const pathname = usePathname();
   return (
     <SidebarShell width="w-64">
       <div className="mb-6 flex items-center gap-2 px-2">
         <Logo className="text-xl" />
       </div>
+      <UnitSwitcher units={units} selected={selectedUnitId ?? ''} />
       <p className="mb-2 px-3 text-[.68rem] font-semibold uppercase tracking-widest text-white/40">Ecosistema Condómino</p>
       <nav className="flex flex-1 flex-col gap-0.5">
         {RESIDENT_NAV.map((item) => {

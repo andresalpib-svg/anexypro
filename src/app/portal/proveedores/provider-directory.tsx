@@ -34,13 +34,13 @@ function DisclaimerModal({ onAccept }: { onAccept: () => void }) {
   const boxRef = useRef<HTMLDivElement>(null);
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-deep/60 p-6 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-deep/60 p-4 backdrop-blur-sm sm:p-6"
       onMouseDown={(e) => {
         if (boxRef.current && !boxRef.current.contains(e.target as Node)) onAccept();
       }}
     >
       <div ref={boxRef} className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl">
-        <header className="flex items-start gap-3 border-b border-line bg-royal-soft px-6 py-4">
+        <header className="flex items-start gap-3 border-b border-line bg-royal-soft px-4 py-4 sm:px-6">
           <Handshake className="mt-0.5 flex-none text-royal" size={22} />
           <div className="min-w-0 flex-1">
             <h2 className="font-sans text-lg font-extrabold text-ink">Un directorio para facilitarte el camino</h2>
@@ -55,7 +55,7 @@ function DisclaimerModal({ onAccept }: { onAccept: () => void }) {
           </button>
         </header>
 
-        <div className="space-y-3 px-6 py-5 text-sm leading-relaxed text-ink">
+        <div className="space-y-3 px-4 py-5 text-sm leading-relaxed text-ink sm:px-6">
           <p>
             Reunimos aquí proveedores de materiales, accesorios y mantenimiento para que encuentres rápido lo que
             necesitas y puedas iniciar tu proyecto sin perder tiempo buscando.

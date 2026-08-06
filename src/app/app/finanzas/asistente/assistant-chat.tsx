@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Send, Sparkles, Table2, Lightbulb, ArrowRight, Bot, User, Loader2 } from 'lucide-react';
 import { askAction } from './actions';
 import type { AssistantAnswer } from '@/lib/services/financial-assistant';
+import { enTransicion } from '@/lib/accion-segura';
 
 type Turn =
   | { role: 'user'; text: string }
@@ -36,7 +37,7 @@ export function AssistantChat({
     if (!q || pending) return;
     setTurns((prev) => [...prev, { role: 'user', text: q }]);
     setQuestion('');
-    startTransition(async () => {
+    enTransicion(startTransition, async () => {
       const r = await askAction(condominiumId, q);
       setTurns((prev) => [
         ...prev,

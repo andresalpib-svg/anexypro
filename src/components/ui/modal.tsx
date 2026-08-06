@@ -37,15 +37,17 @@ export function Modal({
     };
   }, [onClose]);
 
+  // El relleno del fondo es el margen de la ventana con la orilla de la
+  // pantalla: sin él, en un teléfono el recuadro toca los bordes.
   return (
     <div
-      className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto bg-deep/50 p-6 backdrop-blur-sm"
+      className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto bg-deep/50 p-4 backdrop-blur-sm sm:p-6"
       onMouseDown={(e) => {
         if (boxRef.current && !boxRef.current.contains(e.target as Node)) onClose();
       }}
     >
       <div ref={boxRef} className={`my-auto w-full ${width} overflow-hidden rounded-2xl bg-white shadow-2xl`}>
-        <header className="flex items-start gap-3 border-b border-line bg-white px-5 py-3">
+        <header className="flex items-start gap-3 border-b border-line bg-white px-4 py-3 sm:px-5">
           <div className="min-w-0 flex-1">
             <h2 className="font-sans text-base font-bold text-ink">{title}</h2>
             {subtitle && <p className="truncate text-xs text-muted">{subtitle}</p>}
@@ -59,7 +61,7 @@ export function Modal({
             <X size={17} />
           </button>
         </header>
-        <div className="max-h-[calc(100vh-10rem)] overflow-y-auto">{children}</div>
+        <div className="max-h-[calc(100vh-8rem)] overflow-y-auto sm:max-h-[calc(100vh-10rem)]">{children}</div>
       </div>
     </div>
   );

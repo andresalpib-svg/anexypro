@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import * as XLSX from 'xlsx';
 import { withTenantContext } from '@/lib/db';
+import { buscarPersonaExistente, camposQueFaltan } from '@/lib/services/person-identity';
 
 export type ImportResult = {
   unitsCreated: number;
@@ -161,10 +162,21 @@ export async function importResidentsExcel(
         const rawRole = normalize(get('role'));
         const role = VALID_ROLES.has(rawRole) ? rawRole : 'propietario';
 
-        let person =
-          email !== null
-            ? await tx.person.findFirst({ where: { companyId, email: { equals: email, mode: 'insensitive' } } })
-            : null;
+        // Reconoce a quien ya está registrado —por cédula o por
+        // correo— en vez de crear una ficha por condominio. Es lo que
+        // permite importar el padrón de un segundo condominio sin
+        // duplicar a quien tiene propiedad en los dos.
+        let person = await buscarPersonaExistente(tx, companyId, { idNumber: get('idNumber'), email });
+        if (person) {
+          const faltantes = camposQueFaltan(person, {
+            idNumber: get('idNumber') || null,
+            email,
+            phone: get('phone') || null,
+          });
+          if (Object.keys(faltantes).length > 0) {
+            person = await tx.person.update({ where: { id: person.id }, data: faltantes });
+          }
+        }
         if (!person) {
           try {
             person = await tx.person.create({

@@ -16,6 +16,7 @@ import {
   createAccountAction,
   type ActionState,
 } from './actions';
+import { enTransicion } from '@/lib/accion-segura';
 
 export type AccountRow = {
   id: string;
@@ -207,7 +208,7 @@ function MatchModal({
                     type="button"
                     disabled={pending}
                     onClick={() =>
-                      startTransition(async () => {
+                      enTransicion(startTransition, async () => {
                         const r = await confirmMatchAction(tx.id, condominiumId, { type: c.type, id: c.id });
                         if (r.ok) { toast.success('Conciliado. El sistema recordará este patrón.'); onDone(); }
                         else toast.error(r.error);
@@ -373,7 +374,7 @@ export function ReconciliationBoard({
                     type="button"
                     disabled={pending}
                     onClick={() =>
-                      startTransition(async () => {
+                      enTransicion(startTransition, async () => {
                         if (!c) return;
                         const r = await confirmMatchAction(t.id, condominiumId, { type: c.type, id: c.id });
                         if (r.ok) toast.success('Conciliado.');
@@ -408,7 +409,7 @@ export function ReconciliationBoard({
                 type="button"
                 disabled={pending}
                 onClick={() =>
-                  startTransition(async () => {
+                  enTransicion(startTransition, async () => {
                     const r = await ignoreAction(t.id, condominiumId);
                     if (r.ok) toast.success('Movimiento ignorado.');
                     else toast.error(r.error);
@@ -438,7 +439,7 @@ export function ReconciliationBoard({
                   disabled={pending}
                   title="Deshacer"
                   onClick={() =>
-                    startTransition(async () => {
+                    enTransicion(startTransition, async () => {
                       const r = await unmatchAction(t.id, condominiumId);
                       if (r.ok) toast.success('Conciliación deshecha.');
                       else toast.error(r.error);

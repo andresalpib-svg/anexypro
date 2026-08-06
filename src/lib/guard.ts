@@ -74,15 +74,21 @@ export async function requirePanel(opts: GuardOptions = {}): Promise<Session | n
 }
 
 /**
- * Acciones del portal de la caseta. El oficial de seguridad atiende
- * todos los condominios de la empresa —no se le asignan como al
- * supervisor—, así que aquí basta con confirmar el rol; pero hay que
- * confirmarlo: sin esto, cualquier sesión válida podía consultar
- * residentes, vehículos y paquetes por estas acciones.
+ * Acciones del portal de la caseta.
+ *
+ * Confirma el rol —sin esto, cualquier sesión válida podía consultar
+ * residentes, vehículos y paquetes por estas acciones— y, cuando la
+ * acción dice sobre qué condominio actúa, que ese condominio sea de
+ * los suyos. Ocultarle un condominio del selector no basta: el id
+ * viaja en el formulario y se cambia desde el navegador.
+ *
+ * Un oficial sin asignaciones atiende toda la empresa, igual que
+ * antes (ver `listCondominiumsForSession`).
  */
-export async function requireSecurity(): Promise<Session | null> {
+export async function requireSecurity(condominiumId?: string | null): Promise<Session | null> {
   const session = await auth();
   if (!session?.user || session.user.role !== 'seguridad') return null;
+  if (condominiumId && !(await canAccessCondo(session, condominiumId))) return null;
   return session;
 }
 

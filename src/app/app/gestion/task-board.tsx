@@ -19,6 +19,7 @@ import {
   deleteAttachmentAction,
   type ActionState,
 } from './actions';
+import { enTransicion } from '@/lib/accion-segura';
 
 export type TaskRow = {
   id: string;
@@ -307,7 +308,7 @@ function TaskDetail({
         </div>
       </form>
 
-      <div className="grid grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         {/* ---------- Checklist ---------- */}
         <div className="card p-4">
           <p className="text-xs font-bold uppercase tracking-wide text-muted">
@@ -324,7 +325,7 @@ function TaskDetail({
                   onChange={(e) => {
                     const next = e.target.checked;
                     setOptimisticDone((prev) => ({ ...prev, [item.id]: next }));
-                    startTransition(async () => {
+                    enTransicion(startTransition, async () => {
                       await toggleChecklistItemAction(item.id, next);
                     });
                   }}
@@ -334,7 +335,7 @@ function TaskDetail({
                   type="button"
                   className="ml-auto text-muted hover:text-danger"
                   title="Eliminar punto"
-                  onClick={() => startTransition(async () => deleteChecklistItemAction(item.id))}
+                  onClick={() => enTransicion(startTransition, async () => deleteChecklistItemAction(item.id))}
                 >
                   <Trash2 size={13} />
                 </button>
@@ -369,7 +370,7 @@ function TaskDetail({
                   type="button"
                   className="ml-auto text-muted hover:text-danger"
                   title="Eliminar adjunto"
-                  onClick={() => startTransition(async () => deleteAttachmentAction(a.id))}
+                  onClick={() => enTransicion(startTransition, async () => deleteAttachmentAction(a.id))}
                 >
                   <Trash2 size={13} />
                 </button>
@@ -393,7 +394,7 @@ function TaskDetail({
         <label className="text-xs font-semibold text-muted">Estado:</label>
         <select
           value={task.status}
-          onChange={(e) => startTransition(async () => setTaskStatusAction(task.id, e.target.value))}
+          onChange={(e) => enTransicion(startTransition, async () => setTaskStatusAction(task.id, e.target.value))}
           className="field-input w-auto py-1.5 text-xs"
         >
           <option value="pendiente">Pendiente</option>
@@ -405,7 +406,7 @@ function TaskDetail({
           className="ml-auto flex items-center gap-1.5 text-xs font-semibold text-danger hover:underline"
           onClick={() => {
             if (!window.confirm(`¿Eliminar la tarea "${task.title}"? Se pierden su checklist y adjuntos.`)) return;
-            startTransition(async () => {
+            enTransicion(startTransition, async () => {
               const r = await deleteTaskAction(task.id);
               if (r.ok) toast.success('Tarea eliminada.');
               else toast.error(r.error);
@@ -507,7 +508,7 @@ export function TaskBoard({
         />
       </div>
 
-      <div className="card mt-4 overflow-hidden border-t-4 border-t-royal">
+      <div className="card mt-4 overflow-x-auto border-t-4 border-t-royal">
         <table className="w-full text-sm">
           <thead className="border-b border-line bg-canvas text-left text-xs uppercase tracking-wide text-muted">
             <tr>

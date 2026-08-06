@@ -6,6 +6,7 @@ import { PiggyBank, Plus, Minus, Trash2, Settings2, ShieldCheck } from 'lucide-r
 import { toast } from 'sonner';
 import { Modal } from '@/components/ui/modal';
 import { saveFundAction, addMovementAction, deleteMovementAction, type ActionState } from './reserve-actions';
+import { enTransicion } from '@/lib/accion-segura';
 
 export type FundView = {
   id: string;
@@ -333,7 +334,7 @@ export function ReservePanel({
                     title="Eliminar movimiento"
                     onClick={() => {
                       if (!window.confirm(`¿Eliminar "${m.description}"? El saldo del fondo se recalcula.`)) return;
-                      startTransition(async () => {
+                      enTransicion(startTransition, async () => {
                         const r = await deleteMovementAction(m.id, condominiumId);
                         if (r.ok) toast.success('Movimiento eliminado.');
                         else toast.error(r.error);

@@ -11,6 +11,7 @@ import {
   deleteAllocationAction,
   type ActionState,
 } from './petty-cash-actions';
+import { enTransicion } from '@/lib/accion-segura';
 
 export type CashMovement = {
   id: string;
@@ -253,7 +254,7 @@ export function PettyCash({
                     title="Eliminar gasto"
                     onClick={() => {
                       if (!window.confirm(`¿Eliminar el gasto "${e.detail}"?`)) return;
-                      startTransition(async () => {
+                      enTransicion(startTransition, async () => {
                         const r = await deleteExpenseAction(e.id, condominiumId);
                         if (r.ok) toast.success('Gasto eliminado.');
                         else toast.error(r.error);
@@ -296,7 +297,7 @@ export function PettyCash({
                       title="Eliminar asignación"
                       onClick={() => {
                         if (!window.confirm('¿Eliminar esta asignación? El saldo disponible se reducirá.')) return;
-                        startTransition(async () => {
+                        enTransicion(startTransition, async () => {
                           const r = await deleteAllocationAction(a.id, condominiumId);
                           if (r.ok) toast.success('Asignación eliminada.');
                           else toast.error(r.error);

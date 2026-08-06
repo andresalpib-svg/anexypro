@@ -11,6 +11,7 @@ import {
   securityCheckOutAction,
   type ActionState,
 } from './actions';
+import { enTransicion } from '@/lib/accion-segura';
 
 export type CasetaVisit = {
   id: string;
@@ -100,7 +101,7 @@ function VisitRow({ visit }: { visit: CasetaVisit }) {
   const [showEvidence, setShowEvidence] = useState(false);
 
   const doCheckIn = (override = false) =>
-    startTransition(async () => {
+    enTransicion(startTransition, async () => {
       const r = await securityCheckInAction(visit.id, override);
       if (r.ok) {
         toast.success(`Ingreso registrado: ${visit.visitorName}`);
@@ -120,7 +121,7 @@ function VisitRow({ visit }: { visit: CasetaVisit }) {
     });
 
   const doCheckOut = () =>
-    startTransition(async () => {
+    enTransicion(startTransition, async () => {
       const r = await securityCheckOutAction(visit.openCheckinId!);
       if (r.ok) toast.success(`Salida registrada: ${visit.visitorName}`);
       else toast.error(r.error);

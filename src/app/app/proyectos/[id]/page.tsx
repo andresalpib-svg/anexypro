@@ -43,7 +43,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
         proveedor y el asiento contable — y es trabajo del contador, no
         de quien lleva el avance del proyecto.
       */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <ChecklistBox projectId={project.id} items={project.checklist} />
         <UpdatesSection projectId={project.id} updates={project.updates} />
       </div>

@@ -1,4 +1,5 @@
 import { withTenantContext } from '@/lib/db';
+import { buscarPersonaExistente, camposQueFaltan } from '@/lib/services/person-identity';
 import type { PropertyInput } from '@/lib/validations/property';
 
 export async function listPropertiesByCondo(companyId: string, condominiumId: string) {
@@ -73,6 +74,15 @@ export async function createProperty(companyId: string, input: PropertyInput) {
 // historial completo de la unidad (inquilinos pasados, traspasos) —
 // misma regla que ya validamos en el prototipo.
 
+/**
+ * Agrega a una persona a una unidad.
+ *
+ * Si esa persona YA está registrada en la empresa —misma cédula o mismo
+ * correo—, no se crea una ficha nueva: se le vincula la unidad. Es el
+ * caso de quien tiene propiedad en dos condominios distintos; con una
+ * ficha por condominio quedarían dos estados de cuenta y dos intentos
+ * de cuenta con el mismo correo. Ver `person-identity.ts`.
+ */
 export async function addPersonToProperty(
   companyId: string,
   propertyId: string,
@@ -84,31 +94,53 @@ export async function addPersonToProperty(
       where: { id: propertyId },
       select: { condominiumId: true },
     });
-    const person = await tx.person.create({
-      data: {
-        companyId,
-        fullName: input.fullName,
-        idNumber: input.idNumber || null,
-        email: input.email || null,
-        phone: input.phone || null,
-      },
+
+    const existente = await buscarPersonaExistente(tx, companyId, input);
+    let person = existente;
+    let reutilizada = false;
+
+    if (person) {
+      reutilizada = true;
+      const faltantes = camposQueFaltan(person, input);
+      if (Object.keys(faltantes).length > 0) {
+        person = await tx.person.update({ where: { id: person.id }, data: faltantes });
+      }
+    } else {
+      person = await tx.person.create({
+        data: {
+          companyId,
+          fullName: input.fullName,
+          idNumber: input.idNumber || null,
+          email: input.email || null,
+          phone: input.phone || null,
+        },
+      });
+    }
+
+    // Re-agregar a la MISMA unidad no crea un segundo vínculo vigente.
+    const vinculoVigente = await tx.propertyMember.findFirst({
+      where: { propertyId, personId: person!.id, endDate: null },
     });
-    await tx.propertyMember.create({
-      data: {
-        propertyId,
-        personId: person.id,
-        role: input.role as any,
-        isPrimary: input.isPrimary ?? false,
-      },
-    });
-    await tx.propertyEvent.create({
-      data: {
-        propertyId,
-        eventType: 'nuevo_miembro',
-        description: `${input.fullName} se registró como ${input.role}.`,
-      },
-    });
-    return { person, condominiumId: property.condominiumId };
+    if (!vinculoVigente) {
+      await tx.propertyMember.create({
+        data: {
+          propertyId,
+          personId: person!.id,
+          role: input.role as any,
+          isPrimary: input.isPrimary ?? false,
+        },
+      });
+      await tx.propertyEvent.create({
+        data: {
+          propertyId,
+          eventType: 'nuevo_miembro',
+          description: reutilizada
+            ? `${person!.fullName} —ya registrado en la empresa— se vinculó como ${input.role}.`
+            : `${input.fullName} se registró como ${input.role}.`,
+        },
+      });
+    }
+    return { person: person!, condominiumId: property.condominiumId, reutilizada };
   });
 
   // Repositorio: carpeta individual del residente.
@@ -124,7 +156,10 @@ export async function addPersonToProperty(
     console.error(`[storage] No se pudo crear la carpeta de "${input.fullName}".`, e);
   }
 
-  return result.person;
+  // `reutilizada` viaja con la persona para que la pantalla pueda
+  // decirlo: "ya existía y se le asignó esta unidad" no es lo mismo que
+  // "se creó".
+  return Object.assign(result.person, { reutilizada: result.reutilizada });
 }
 
 export async function removePropertyMember(companyId: string, memberId: string) {

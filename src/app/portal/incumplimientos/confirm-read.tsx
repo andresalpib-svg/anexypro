@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check } from 'lucide-react';
 import { confirmReadAction } from './actions';
+import { enTransicion } from '@/lib/accion-segura';
 
 /** Confirmación explícita: el residente declara que la leyó. */
 export function ConfirmRead({ actionId }: { actionId: string }) {
@@ -17,7 +18,7 @@ export function ConfirmRead({ actionId }: { actionId: string }) {
         type="button"
         disabled={enviando}
         onClick={() =>
-          start(async () => {
+          enTransicion(start, async () => {
             const r = await confirmReadAction(actionId);
             if (!r.ok) setError(r.error ?? 'No se pudo confirmar.');
             else router.refresh();

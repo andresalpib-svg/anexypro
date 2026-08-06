@@ -82,7 +82,7 @@ export default async function ReservasPage({ searchParams }: { searchParams: { c
         />
       </div>
 
-      <div className="card mt-5 overflow-hidden">
+      <div className="card mt-5 overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="border-b border-line bg-canvas text-left text-xs uppercase tracking-wide text-muted">
             <tr>

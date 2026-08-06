@@ -50,7 +50,7 @@ export function UserDetail({ userId }: { userId: string }) {
 
   return (
     <div className="space-y-4 text-sm">
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
+      <dl className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
         <Fila k="Empresa" v={datos.companyName} />
         <Fila k="Rol" v={ROL[datos.role] ?? datos.role} />
         <Fila k="Estado" v={datos.status} />

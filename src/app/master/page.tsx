@@ -2,6 +2,7 @@ import { Building2, Home, Users } from 'lucide-react';
 import { prisma, forEachCompany } from '@/lib/db';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatusChip } from '@/components/ui/status-chip';
+import { HealthBanner } from '@/components/layout/health-banner';
 
 const STATUS_LABEL: Record<string, string> = { activa: 'Activa', suspendida: 'Suspendida', inactiva: 'Inactiva' };
 const STATUS_VARIANT: Record<string, 'ok' | 'warn' | 'neutral'> = { activa: 'ok', suspendida: 'warn', inactiva: 'neutral' };
@@ -39,7 +40,10 @@ export default async function MasterPage() {
         subtitle="Todas las empresas administradoras registradas en el sistema"
       />
 
-      <div className="grid grid-cols-3 gap-4">
+      {/* Lo que encontró la revisión automática de hoy, si encontró algo. */}
+      <HealthBanner />
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {[
           { icon: Building2, label: 'Condominios en la plataforma', value: totals[0] },
           { icon: Home, label: 'Unidades totales', value: totals[1] },

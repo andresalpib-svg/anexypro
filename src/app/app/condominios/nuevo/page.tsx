@@ -30,7 +30,7 @@ export default function NuevoCondominioPage() {
           </p>
         )}
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Nombre" name="name" placeholder="Vistas del Robledal" errors={state.errors?.name} full />
           <Field label="Código" name="code" placeholder="VDR" errors={state.errors?.code} />
           <div>
@@ -48,13 +48,13 @@ export default function NuevoCondominioPage() {
 
         <Field label="Dirección" name="addressLine" placeholder="Guácimo, Alajuela" errors={state.errors?.addressLine} full />
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Field label="Provincia" name="province" errors={state.errors?.province} />
           <Field label="Cantón" name="canton" errors={state.errors?.canton} />
           <Field label="Distrito" name="district" errors={state.errors?.district} />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className="field-label" htmlFor="currency">
               Moneda
@@ -67,7 +67,7 @@ export default function NuevoCondominioPage() {
           <Field label="Cuota ordinaria mensual" name="baseFee" type="number" step="0.01" defaultValue="0" errors={state.errors?.baseFee} />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Día de vencimiento" name="dueDay" type="number" defaultValue="15" errors={state.errors?.dueDay} />
           <Field
             label="Meses de atraso para suspender servicios"
@@ -80,7 +80,7 @@ export default function NuevoCondominioPage() {
 
         <div className="rounded-lg bg-canvas p-4">
           <p className="mb-3 text-xs font-bold uppercase tracking-wide text-muted">Unidades del condominio</p>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field
               label="Cantidad de casas/unidades a crear de inmediato"
               name="unitsCount"

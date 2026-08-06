@@ -6,6 +6,7 @@ import { Plus, QrCode, MessageCircle, PauseCircle, PlayCircle, XCircle, Bell } f
 import { toast } from 'sonner';
 import { StatusChip } from '@/components/ui/status-chip';
 import { authorizeVisitAction, setMyVisitStatusAction, type ActionState } from './actions';
+import { enTransicion } from '@/lib/accion-segura';
 
 export type PortalVisit = {
   id: string;
@@ -218,7 +219,7 @@ function VisitCard({ visit, condoName }: { visit: PortalVisit; condoName: string
 
   const setStatus = (status: 'cancelada' | 'suspendida' | 'vigente', confirmMsg: string) => {
     if (!window.confirm(confirmMsg)) return;
-    startTransition(async () => {
+    enTransicion(startTransition, async () => {
       const r = await setMyVisitStatusAction(visit.id, status);
       if (r.ok) toast.success('Autorización actualizada.');
       else toast.error(r.error);

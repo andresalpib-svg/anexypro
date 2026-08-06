@@ -75,7 +75,7 @@ export default async function IncumplimientosPage({
             Todavía no hay expedientes en este condominio.
           </div>
         ) : (
-          <div className="card overflow-hidden">
+          <div className="card overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="border-b border-line bg-canvas text-left text-xs uppercase tracking-wide text-muted">
                 <tr>

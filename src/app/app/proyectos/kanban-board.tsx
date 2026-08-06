@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { GripVertical } from 'lucide-react';
 import { toast } from 'sonner';
 import { setProjectStatusAction } from './actions';
+import { enTransicion } from '@/lib/accion-segura';
 
 export type KanbanProject = {
   id: string;
@@ -37,7 +38,7 @@ export function KanbanBoard({ projects, currency }: { projects: KanbanProject[];
     const project = optimistic.find((p) => p.id === id);
     if (!project || project.status === status) return;
     setOptimistic((current) => current.map((p) => (p.id === id ? { ...p, status } : p)));
-    startTransition(async () => {
+    enTransicion(startTransition, async () => {
       await setProjectStatusAction(id, status);
       toast.success(`"${project.name}" movido a ${COLUMNS.find((c) => c.key === status)?.label}.`);
     });

@@ -16,6 +16,7 @@ import {
   Gavel,
 } from 'lucide-react';
 import { searchPropertiesAction, briefingAction, previewAction, issueViolationAction, type IssueState } from './actions';
+import { enTransicion } from '@/lib/accion-segura';
 
 /**
  * Emisión en tres pasos.
@@ -102,7 +103,7 @@ function FormularioRapido({
       return;
     }
     const t = setTimeout(() => {
-      startBuscar(async () => setHits(await searchPropertiesAction(condominiumId, q)));
+      enTransicion(startBuscar, async () => setHits(await searchPropertiesAction(condominiumId, q)));
     }, 220);
     return () => clearTimeout(t);
   }, [query, condominiumId, filial]);
@@ -118,7 +119,7 @@ function FormularioRapido({
     setTipo(t);
     setPreview(null);
     if (!filial) return;
-    startPreview(async () => setPreview(await previewAction(filial.propertyId, t.id)));
+    enTransicion(startPreview, async () => setPreview(await previewAction(filial.propertyId, t.id)));
   }
 
   function reiniciar() {

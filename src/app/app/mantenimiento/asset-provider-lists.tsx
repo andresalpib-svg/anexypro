@@ -11,6 +11,7 @@ import {
   deleteProviderAction,
   type ActionState,
 } from './actions';
+import { enTransicion } from '@/lib/accion-segura';
 
 const CATEGORY_LABEL: Record<string, string> = {
   elevador: 'Elevador',
@@ -57,7 +58,7 @@ function DeleteButton({ onDelete, label }: { onDelete: () => Promise<{ ok: boole
       disabled={pending}
       onClick={() => {
         if (!window.confirm(`¿Eliminar ${label}? Esta acción no se puede deshacer.`)) return;
-        startTransition(async () => {
+        enTransicion(startTransition, async () => {
           const result = await onDelete();
           if (result.ok) toast.success('Eliminado.');
           else toast.error(result.error);

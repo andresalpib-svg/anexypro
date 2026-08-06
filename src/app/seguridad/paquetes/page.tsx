@@ -1,7 +1,7 @@
 import { Package as PackageIcon } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { resolveCondoId } from '@/lib/active-condo';
-import { listCondominiums } from '@/lib/services/condominiums';
+import { listCondominiumsForSession } from '@/lib/services/condominiums';
 import { listPackages } from '@/lib/services/security';
 import { listPropertiesByCondo } from '@/lib/services/properties';
 import { PageHeader } from '@/components/ui/page-header';
@@ -12,7 +12,7 @@ import { deliverPackageAction } from '../incidentes/actions';
 
 export default async function SecurityPackagesPage({ searchParams }: { searchParams: { condoId?: string } }) {
   const session = await auth();
-  const condos = await listCondominiums(session!.user.companyId);
+  const condos = await listCondominiumsForSession(session!);
   const condoId = resolveCondoId(searchParams.condoId, condos);
   if (!condoId) return <div className="card p-10 text-center text-sm text-muted">No hay condominios administrados todavía.</div>;
 

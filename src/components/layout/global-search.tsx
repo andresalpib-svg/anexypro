@@ -4,6 +4,7 @@ import { useState, useTransition, useRef, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import { globalSearchAction } from '@/app/app/asistentes-ia/search-actions';
 import type { SearchResult } from '@/lib/services/search';
+import { enTransicion } from '@/lib/accion-segura';
 
 export function GlobalSearch() {
   const [query, setQuery] = useState('');
@@ -23,14 +24,14 @@ export function GlobalSearch() {
   function onChange(value: string) {
     setQuery(value);
     setOpen(true);
-    startTransition(async () => {
+    enTransicion(startTransition, async () => {
       const r = await globalSearchAction(value);
       setResults(r);
     });
   }
 
   return (
-    <div ref={boxRef} className="relative ml-4 max-w-sm flex-1">
+    <div ref={boxRef} className="relative min-w-0 flex-1 sm:ml-4 sm:max-w-sm">
       <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
       <input
         type="search"

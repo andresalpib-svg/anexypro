@@ -5,7 +5,7 @@ import { listStaffUsers, listBoardCandidates, PERMISSION_AREAS, BOARD_AREAS } fr
 import { listCondominiumsForSession } from '@/lib/services/condominiums';
 import { PageHeader } from '@/components/ui/page-header';
 import { CondoSelect } from '../propiedades/condo-select';
-import { PermissionCheckbox, BoardMemberToggle, BoardAreaCheckbox, InviteUserForm } from './controls';
+import { PermissionCheckbox, BoardMemberToggle, BoardAreaCheckbox, InviteUserForm, PasswordManager } from './controls';
 
 export default async function ConfiguracionPage({ searchParams }: { searchParams: { condoId?: string } }) {
   const session = await auth();
@@ -67,6 +67,10 @@ export default async function ConfiguracionPage({ searchParams }: { searchParams
             ))}
           </tbody>
         </table>
+      </div>
+
+      <div className="mb-8">
+        <PasswordManager />
       </div>
 
       <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted">Junta Directiva</p>

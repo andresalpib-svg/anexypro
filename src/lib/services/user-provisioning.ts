@@ -39,6 +39,8 @@ function generatePassword(): string {
 export type ProvisionResult = {
   created: number;
   emailed: number;
+  /** Ya tenían cuenta con ese correo: se vinculó, no se creó otra. */
+  linked: number;
   errors: { name: string; reason: string }[];
 };
 
@@ -65,12 +67,27 @@ export async function provisionCondoUsers(
   );
   const provisionable = await listProvisionableResidents(companyId, condominiumId);
 
-  const result: ProvisionResult = { created: 0, emailed: 0, errors: [] };
+  const result: ProvisionResult = { created: 0, emailed: 0, linked: 0, errors: [] };
 
   for (const member of provisionable) {
     const person = member.person;
     const email = person.email!;
     const password = generatePassword();
+
+    // Ya tiene cuenta en la empresa (típicamente porque también tiene
+    // propiedad en otro condominio): se le vincula esta ficha y se
+    // sigue. Crear una segunda cuenta con el mismo correo es lo que la
+    // base rechazaba con "ya existe", sin decir por qué.
+    try {
+      const vinculado = await vincularUsuarioExistente(companyId, person.id, email);
+      if (vinculado) {
+        result.linked++;
+        continue;
+      }
+    } catch (e: any) {
+      result.errors.push({ name: person.fullName, reason: e?.message ?? 'no se pudo vincular la cuenta existente' });
+      continue;
+    }
 
     let userId: string | null = null;
     try {
@@ -116,7 +133,7 @@ export async function provisionCondoUsers(
       userName: actor.userName,
       module: 'Residentes',
       action: 'Usuarios de condóminos creados',
-      target: `${condominium.name}: ${result.created} cuenta(s), ${result.emailed} correo(s)`,
+      target: `${condominium.name}: ${result.created} cuenta(s), ${result.emailed} correo(s), ${result.linked} vinculada(s)`,
     })
   );
 
@@ -124,18 +141,75 @@ export async function provisionCondoUsers(
 }
 
 /**
+ * Vincula a la persona con una cuenta que YA existe, si la hay.
+ *
+ * Es la mitad silenciosa de "no duplicar": una persona con propiedad en
+ * dos condominios entra UNA vez al sistema y ve las dos. Devuelve la
+ * cuenta vinculada, o `null` si no había ninguna con ese correo.
+ *
+ * Si el correo pertenece a OTRA persona, no se toca nada y se avisa con
+ * nombre y apellido — dos residentes distintos no pueden compartir
+ * cuenta, y silenciarlo dejaría a uno viendo el estado de cuenta del
+ * otro.
+ */
+export async function vincularUsuarioExistente(
+  companyId: string,
+  personId: string,
+  email: string
+): Promise<{ id: string; email: string; fullName: string } | null> {
+  const usuario = await prisma.user.findFirst({
+    where: { companyId, email: { equals: email.trim(), mode: 'insensitive' } },
+    select: { id: true, email: true, fullName: true },
+  });
+  if (!usuario) return null;
+
+  return withTenantContext(companyId, async (tx) => {
+    const dueño = await tx.person.findUnique({
+      where: { userId: usuario.id },
+      select: { id: true, fullName: true },
+    });
+    if (dueño && dueño.id !== personId) {
+      throw new Error(
+        `El correo ${usuario.email} ya es la cuenta de ${dueño.fullName}. Si son la misma persona, corregí su ficha en vez de crear otra; si no, usá un correo distinto.`
+      );
+    }
+    if (!dueño) await tx.person.update({ where: { id: personId }, data: { userId: usuario.id } });
+    return usuario;
+  });
+}
+
+/**
  * Crea el usuario de acceso de una persona con contraseña definida por
  * la administración (alta manual desde "Agregar persona").
+ *
+ * Antes de crear nada comprueba dos cosas: que la persona no tenga ya
+ * cuenta, y que el correo no corresponda a una cuenta existente. En
+ * ambos casos se REUTILIZA — quien tiene propiedades en dos condominios
+ * entra con el mismo usuario y ve las dos.
  */
 export async function createUserForPerson(
   companyId: string,
   personId: string,
   input: { email: string; password: string; fullName: string }
 ) {
+  const persona = await withTenantContext(companyId, (tx) =>
+    tx.person.findUniqueOrThrow({ where: { id: personId }, select: { userId: true } })
+  );
+  if (persona.userId) {
+    return prisma.user.findUniqueOrThrow({
+      where: { id: persona.userId },
+      select: { id: true, email: true, fullName: true },
+    });
+  }
+
+  const yaExistente = await vincularUsuarioExistente(companyId, personId, input.email);
+  if (yaExistente) return yaExistente;
+
   const bcryptMod = await import('bcryptjs');
   const passwordHash = await bcryptMod.default.hash(input.password, 12);
   const user = await prisma.user.create({
     data: { companyId, email: input.email, passwordHash, fullName: input.fullName, role: 'condomino' },
+    select: { id: true, email: true, fullName: true },
   });
   await withTenantContext(companyId, (tx) =>
     tx.person.update({ where: { id: personId }, data: { userId: user.id } })

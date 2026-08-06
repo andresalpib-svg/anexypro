@@ -4,7 +4,15 @@
  * Configuración (.env):
  *   RESEND_API_KEY  — API key de la cuenta de Resend de la administración.
  *   EMAIL_FROM      — remitente, p. ej. "AnexyPRO <notificaciones@anexypro.com>".
- *   APP_URL         — enlace de acceso que va en los correos (default app.anexypro.com).
+ *   APP_URL         — dirección pública desde la que se entra a la
+ *                     aplicación. Es el enlace que se le manda a los
+ *                     residentes en el correo de bienvenida y en el de
+ *                     recuperación de contraseña, así que si apunta a
+ *                     un dominio equivocado NADIE lo nota desde adentro:
+ *                     el sistema funciona y los correos llevan a la
+ *                     nada. Pasó: quedó apuntando a app.anexypro.com,
+ *                     que no responde, mientras la plataforma vive en
+ *                     api.anexypro.com. Lo vigila el Estado del Sistema.
  *
  * Anti-spam: el dominio del remitente DEBE estar verificado en Resend
  * (Domains → Add Domain → agregar los registros SPF y DKIM que Resend
@@ -21,7 +29,7 @@ export function isEmailConfigured(): boolean {
 }
 
 export function appUrl(): string {
-  return process.env.APP_URL || 'https://app.anexypro.com';
+  return process.env.APP_URL || 'https://api.anexypro.com';
 }
 
 export async function sendEmail(input: { to: string; subject: string; html: string }): Promise<void> {

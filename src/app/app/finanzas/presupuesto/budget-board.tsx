@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Sparkles, Save, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { saveBudgetAction } from './actions';
+import { enTransicion } from '@/lib/accion-segura';
 
 export type BudgetRowView = {
   accountId: string;
@@ -69,7 +70,7 @@ export function BudgetBoard({
   };
 
   const guardar = () =>
-    startTransition(async () => {
+    enTransicion(startTransition, async () => {
       const r = await saveBudgetAction(
         condominiumId,
         year,
@@ -153,7 +154,7 @@ export function BudgetBoard({
         </div>
       </div>
 
-      <div className="card mt-4 overflow-hidden">
+      <div className="card mt-4 overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="border-b border-line bg-canvas text-left text-xs uppercase tracking-wide text-muted">
             <tr>

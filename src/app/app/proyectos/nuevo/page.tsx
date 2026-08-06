@@ -29,7 +29,7 @@ export default function NuevoProyectoPage({ searchParams }: { searchParams: { co
           <label className="field-label">Descripción</label>
           <textarea name="description" rows={3} className="field-input" />
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div>
             <label className="field-label">Presupuesto</label>
             <input name="budget" type="number" step="0.01" defaultValue="0" className="field-input" />

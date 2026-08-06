@@ -1,7 +1,7 @@
 import { ListTree, DoorOpen, Package as PackageIcon, AlertTriangle } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { resolveCondoId } from '@/lib/active-condo';
-import { listCondominiums } from '@/lib/services/condominiums';
+import { listCondominiumsForSession } from '@/lib/services/condominiums';
 import { getSecurityLog } from '@/lib/services/security';
 import { PageHeader } from '@/components/ui/page-header';
 import { SecurityCondoSelect } from '../condo-select';
@@ -12,7 +12,7 @@ const LABEL: Record<string, string> = { ingreso: 'Ingreso', salida: 'Salida', pa
 
 export default async function BitacoraPage({ searchParams }: { searchParams: { condoId?: string } }) {
   const session = await auth();
-  const condos = await listCondominiums(session!.user.companyId);
+  const condos = await listCondominiumsForSession(session!);
   const condoId = resolveCondoId(searchParams.condoId, condos);
   if (!condoId) return <div className="card p-10 text-center text-sm text-muted">No hay condominios administrados todavía.</div>;
 

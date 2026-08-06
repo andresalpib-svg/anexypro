@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { Sparkles } from 'lucide-react';
 import { explainReportAction } from './explain-actions';
+import { enTransicion } from '@/lib/accion-segura';
 
 export function ExplainWithAI({ tab }: { tab: string }) {
   const [explanation, setExplanation] = useState<string | null>(null);
@@ -12,7 +13,7 @@ export function ExplainWithAI({ tab }: { tab: string }) {
     <div className="mt-3">
       <button
         type="button"
-        onClick={() => startTransition(async () => setExplanation(await explainReportAction(tab)))}
+        onClick={() => enTransicion(startTransition, async () => setExplanation(await explainReportAction(tab)))}
         disabled={isPending}
         className="btn-ia py-2 text-xs"
       >

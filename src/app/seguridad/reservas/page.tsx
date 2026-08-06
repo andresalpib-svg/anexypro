@@ -1,6 +1,6 @@
 import { auth } from '@/lib/auth';
 import { resolveCondoId } from '@/lib/active-condo';
-import { listCondominiums } from '@/lib/services/condominiums';
+import { listCondominiumsForSession } from '@/lib/services/condominiums';
 import { listReservations } from '@/lib/services/reservations';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatusChip } from '@/components/ui/status-chip';
@@ -11,7 +11,7 @@ const STATUS_VARIANT: Record<string, 'warn' | 'ok' | 'danger' | 'neutral'> = { p
 
 export default async function SecurityReservationsPage({ searchParams }: { searchParams: { condoId?: string } }) {
   const session = await auth();
-  const condos = await listCondominiums(session!.user.companyId);
+  const condos = await listCondominiumsForSession(session!);
   const condoId = resolveCondoId(searchParams.condoId, condos);
   if (!condoId) return <div className="card p-10 text-center text-sm text-muted">No hay condominios administrados todavía.</div>;
 
@@ -24,7 +24,7 @@ export default async function SecurityReservationsPage({ searchParams }: { searc
       <PageHeader title="Reservas" subtitle="Consulta — quién tiene reservada cada área hoy" />
       <SecurityCondoSelect condos={condos} selected={condoId} />
 
-      <div className="card mt-5 overflow-hidden">
+      <div className="card mt-5 overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="border-b border-line bg-canvas text-left text-xs uppercase tracking-wide text-muted">
             <tr>

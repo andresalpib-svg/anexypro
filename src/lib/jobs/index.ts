@@ -6,6 +6,7 @@ import { generateRecurringExpenses, refreshContractStatuses } from '@/lib/servic
 import { runCollectionLadder } from '@/lib/services/collections';
 import { generateMonthlyReports } from '@/lib/services/monthly-report';
 import { createFollowUpTasks } from '@/lib/services/violation-followup';
+import { JOB_REVISION } from '@/lib/services/system-health';
 
 const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -219,6 +220,54 @@ registerJob({
           ? 'Ningún expediente próximo a escalar.'
           : `${r.due} expediente(s) por escalar · ${r.created} tarea(s) creada(s) · ${r.skipped} ya tenían aviso`,
       details: r as unknown as Record<string, unknown>,
+    };
+  },
+});
+
+/**
+ * Revisión del sistema — diaria.
+ *
+ * POR QUÉ ES UN JOB Y NO SOLO UNA PANTALLA. `/master/estado` comprueba
+ * en vivo, pero solo cuando alguien la abre. Una credencial que caduca
+ * un martes no le avisa a nadie: sigue todo aparentemente normal hasta
+ * que un residente se queda sin su correo de bienvenida. Eso pasó de
+ * verdad con la clave de Resend.
+ *
+ * Este proceso hace la misma comprobación todos los días y **anota el
+ * resultado**. Si algo falla, el job TERMINA EN ERROR a propósito: así
+ * la avería queda registrada en la bitácora con su detalle, el panel la
+ * levanta de ahí sin volver a salir a la red, y —como el programador
+ * reintenta lo que no terminó bien— la próxima corrida vuelve a
+ * comprobar en vez de dar por buena una foto vieja.
+ *
+ * Los avisos y lo que está sin configurar NO tumban la corrida: se
+ * anotan en el resumen. Solo las fallas reales cuentan como error.
+ */
+registerJob({
+  name: JOB_REVISION,
+  description: 'Comprueba que las credenciales y los servicios externos sigan respondiendo',
+  runKey: (now) => `salud:${isoDay(now)}`,
+  run: async () => {
+    const { comprobarSistema, comoTexto } = await import('@/lib/services/system-health');
+    const { comprobaciones } = await comprobarSistema();
+    const fallas = comprobaciones.filter((c) => c.estado === 'error');
+
+    if (fallas.length > 0) {
+      // El mensaje del error ES la bitácora: se guarda tal cual en
+      // JobRun.error y es lo que el panel muestra.
+      throw new Error(
+        `${fallas.length} servicio(s) con falla: ${fallas.map((c) => c.titulo).join(', ')}.\n\n` +
+          comoTexto(comprobaciones)
+      );
+    }
+
+    const avisos = comprobaciones.filter((c) => c.estado === 'aviso' || c.estado === 'apagado');
+    return {
+      summary:
+        avisos.length === 0
+          ? `Los ${comprobaciones.length} servicios responden con normalidad.`
+          : `Sin fallas. ${avisos.length} con aviso o sin configurar: ${avisos.map((c) => c.titulo).join(', ')}.`,
+      details: { comprobaciones } as unknown as Record<string, unknown>,
     };
   },
 });

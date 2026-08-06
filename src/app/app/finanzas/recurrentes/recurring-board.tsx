@@ -13,6 +13,7 @@ import {
   deleteContractAction,
   type ActionState,
 } from './actions';
+import { enTransicion } from '@/lib/accion-segura';
 
 export type RecurringRow = {
   id: string;
@@ -383,7 +384,7 @@ export function RecurringBoard({
                         title="Eliminar"
                         onClick={() => {
                           if (!window.confirm(`¿Eliminar "${r.description}"? Los gastos ya creados se conservan.`)) return;
-                          startTransition(async () => {
+                          enTransicion(startTransition, async () => {
                             const res = await deleteRecurringAction(r.id, condominiumId);
                             if (res.ok) toast.success('Eliminado.');
                             else toast.error(res.error);
@@ -451,7 +452,7 @@ export function RecurringBoard({
                       title="Eliminar"
                       onClick={() => {
                         if (!window.confirm(`¿Eliminar el contrato "${c.title}"?`)) return;
-                        startTransition(async () => {
+                        enTransicion(startTransition, async () => {
                           const res = await deleteContractAction(c.id, condominiumId);
                           if (res.ok) toast.success('Contrato eliminado.');
                           else toast.error(res.error);

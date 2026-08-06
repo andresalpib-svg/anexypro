@@ -38,7 +38,7 @@ export function NewContentForm({ condominiumId }: { condominiumId: string }) {
   return (
     <form ref={formRef} action={formAction} className="card space-y-3 p-4">
       <input type="hidden" name="condominiumId" value={condominiumId} />
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <label className="field-label">Título</label>
           <input name="title" className="field-input" placeholder="Cómo reciclar en el condominio" />

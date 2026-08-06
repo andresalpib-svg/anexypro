@@ -187,7 +187,7 @@ export default async function PanelFinancieroPage({ searchParams }: { searchPara
 
         <div className="card p-5">
           <p className="mb-3 text-xs font-bold uppercase tracking-wide text-muted">Indicadores financieros</p>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {data.indicators.map((i) => (
               <div key={i.key}>
                 <p className="text-xs text-muted">{i.label}</p>

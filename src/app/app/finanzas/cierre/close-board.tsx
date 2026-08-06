@@ -6,6 +6,7 @@ import { CheckCircle2, AlertCircle, Lock, Unlock, CalendarCheck } from 'lucide-r
 import { toast } from 'sonner';
 import { StatusChip } from '@/components/ui/status-chip';
 import { closePeriodAction, reopenPeriodAction } from './actions';
+import { enTransicion } from '@/lib/accion-segura';
 
 export type CheckView = { key: string; label: string; ok: boolean; detail: string };
 export type PeriodView = { period: string; status: string; closedAt: string | null; closedBy: string | null };
@@ -103,7 +104,7 @@ export function CloseBoard({
                     '¿Por qué se reabre este mes? El motivo queda registrado en la auditoría.'
                   );
                   if (!reason) return;
-                  startTransition(async () => {
+                  enTransicion(startTransition, async () => {
                     const r = await reopenPeriodAction(condominiumId, period, reason);
                     if (r.ok) {
                       toast.success('Mes reabierto.');
@@ -122,7 +123,7 @@ export function CloseBoard({
                 type="button"
                 disabled={!listo || !canClose || pending}
                 onClick={() =>
-                  startTransition(async () => {
+                  enTransicion(startTransition, async () => {
                     const r = await closePeriodAction(condominiumId, period);
                     if (r.ok) {
                       toast.success(`${nombreMes(period)} cerrado.`);

@@ -3,8 +3,14 @@ import { notFound } from 'next/navigation';
 import { ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { requireOwner } from '@/lib/guard';
-import { getCondominium, activateCondominium, listSupervisors, MAX_SUPERVISORS, canAccessCondo } from '@/lib/services/condominiums';
-import { listAdminUsers } from '@/lib/services/tasks';
+import {
+  getCondominium,
+  activateCondominium,
+  listSupervisors,
+  listAssignableUsers,
+  MAX_SUPERVISORS,
+  canAccessCondo,
+} from '@/lib/services/condominiums';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatusChip } from '@/components/ui/status-chip';
 import { SupervisorsCard } from '../supervisors-card';
@@ -23,7 +29,7 @@ export default async function CondominioDetailPage({ params }: { params: { id: s
   if (!(await canAccessCondo(session!, condo.id))) notFound();
   const [supervisors, staff] = await Promise.all([
     listSupervisors(session!.user.companyId, params.id),
-    listAdminUsers(session!.user.companyId),
+    listAssignableUsers(session!.user.companyId),
   ]);
 
   async function handleActivate() {
@@ -60,7 +66,7 @@ export default async function CondominioDetailPage({ params }: { params: { id: s
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="card p-5">
           <p className="mb-3 text-xs font-bold uppercase tracking-wide text-muted">Datos generales</p>
           <dl className="space-y-2 text-sm">
@@ -100,7 +106,10 @@ export default async function CondominioDetailPage({ params }: { params: { id: s
 
       <SupervisorsCard
         condominiumId={condo.id}
-        supervisors={supervisors.map((s) => ({ id: s.id, user: { id: s.user.id, fullName: s.user.fullName, email: s.user.email } }))}
+        supervisors={supervisors.map((s) => ({
+          id: s.id,
+          user: { id: s.user.id, fullName: s.user.fullName, email: s.user.email, role: s.user.role },
+        }))}
         staff={staff}
         canManage={session!.user.role === 'admin_owner'}
         max={MAX_SUPERVISORS}

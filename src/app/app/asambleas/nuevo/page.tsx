@@ -21,7 +21,7 @@ export default function NuevaAsambleaPage({ searchParams }: { searchParams: { co
         <input type="hidden" name="condominiumId" value={searchParams.condoId ?? ''} />
         {state.formError && <p className="rounded-lg bg-danger-bg px-3 py-2 text-sm text-danger">{state.formError}</p>}
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <label className="field-label">Título</label>
             <input name="title" className="field-input" placeholder="Asamblea Ordinaria Anual 2026" />
@@ -36,7 +36,7 @@ export default function NuevaAsambleaPage({ searchParams }: { searchParams: { co
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div>
             <label className="field-label">Fecha</label>
             <input name="eventDate" type="date" className="field-input" />

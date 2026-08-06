@@ -8,6 +8,7 @@ import { Modal } from '@/components/ui/modal';
 import { StatusChip } from '@/components/ui/status-chip';
 import { createAdminAction, resetPasswordAction, setUserStatusAction, type AltaState } from '../../actions';
 import { Credenciales } from '../new-company-form';
+import { enTransicion } from '@/lib/accion-segura';
 
 const VACIO: AltaState = {};
 
@@ -40,7 +41,7 @@ export function AdminList({ companyId, usuarios }: { companyId: string; usuarios
   function restablecer(u: Usuario) {
     if (!window.confirm(`¿Restablecer la contraseña de ${u.fullName}? La actual dejará de servir.`)) return;
     setError(null);
-    start(async () => {
+    enTransicion(start, async () => {
       const r = await resetPasswordAction(u.id);
       if (r.error) setError(r.error);
       else if (r.email && r.password) setReset({ email: r.email, password: r.password });
@@ -50,7 +51,7 @@ export function AdminList({ companyId, usuarios }: { companyId: string; usuarios
 
   function alternar(u: Usuario) {
     const nuevo = u.status === 'activo' ? 'bloqueado' : 'activo';
-    start(async () => {
+    enTransicion(start, async () => {
       const r = await setUserStatusAction(u.id, nuevo as 'activo' | 'bloqueado');
       if (!r.ok) setError(r.error ?? 'No se pudo actualizar.');
       router.refresh();

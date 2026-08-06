@@ -16,6 +16,7 @@ import {
   searchAction,
   type ActionState,
 } from './actions';
+import { enTransicion } from '@/lib/accion-segura';
 
 export type FolderRow = {
   id: string;
@@ -87,7 +88,7 @@ export function RepositoryBrowser({
       return;
     }
     const t = setTimeout(() => {
-      startTransition(async () => {
+      enTransicion(startTransition, async () => {
         const r = await searchAction(condominiumId, query);
         if (r.ok) setResults(r.results ?? []);
       });
@@ -103,7 +104,7 @@ export function RepositoryBrowser({
    * compartir.
    */
   const open = (objectId: string, mode: 'v' | 'd') =>
-    startTransition(async () => {
+    enTransicion(startTransition, async () => {
       const r = await linkForAction(objectId, condominiumId, mode);
       if (!r.ok || !r.url) {
         toast.error(r.error ?? 'No se pudo abrir el documento.');
@@ -135,7 +136,7 @@ export function RepositoryBrowser({
             type="button"
             disabled={pending}
             onClick={() =>
-              startTransition(async () => {
+              enTransicion(startTransition, async () => {
                 const r = await rebuildTreeAction(condominiumId);
                 if (r.ok) toast.success(r.detail ?? 'Repositorio verificado.');
                 else toast.error(r.error);
@@ -308,7 +309,7 @@ export function RepositoryBrowser({
                               onClick={() => {
                                 const nuevo = window.prompt('Nuevo nombre del documento:', o.name);
                                 if (!nuevo) return;
-                                startTransition(async () => {
+                                enTransicion(startTransition, async () => {
                                   const r = await renameDocumentAction(o.id, condominiumId, nuevo);
                                   if (r.ok) toast.success('Documento renombrado.');
                                   else toast.error(r.error);
@@ -326,7 +327,7 @@ export function RepositoryBrowser({
                               disabled={pending}
                               onClick={() => {
                                 if (!window.confirm(`¿Eliminar "${o.name}"?`)) return;
-                                startTransition(async () => {
+                                enTransicion(startTransition, async () => {
                                   const r = await deleteDocumentAction(o.id, condominiumId);
                                   if (r.ok) toast.success('Documento eliminado.');
                                   else toast.error(r.error);
