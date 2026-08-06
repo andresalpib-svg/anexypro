@@ -1,0 +1,31 @@
+# Qué NO se sube a Vercel al desplegar desde el CLI.
+#
+# POR QUÉ EXISTE: sin este archivo el CLI empaqueta la carpeta entera,
+# incluidas las compilaciones locales. El 6/8 un despliegue falló con
+# "File size limit exceeded (100 MB)" porque subió 523 MB: `node_modules`
+# (807 MB), `.next` (799 MB) y `.next-prod` (525 MB). Nada de eso hace
+# falta —Vercel instala las dependencias y compila del lado suyo— y
+# `.next-prod` es una carpeta puramente local (ver `build:local`).
+
+# TODAS LAS RUTAS VAN ANCLADAS CON "/". Un patrón suelto se comporta
+# como en .gitignore y excluye CUALQUIER carpeta con ese nombre, a
+# cualquier profundidad. Con `storage` a secas se fue también
+# `src/lib/storage` —el repositorio de documentos entero— y la
+# compilación se cayó con "Module not found: Can't resolve
+# '@/lib/storage'". Comprobado el 6/8.
+
+# Dependencias: las instala Vercel
+/node_modules
+
+# Compilaciones: las hace Vercel
+/.next
+/.next-prod
+/out
+*.tsbuildinfo
+
+# Archivos guardados por el proveedor local de almacenamiento; en
+# producción el repositorio vive en Google Drive.
+/storage
+
+# Historial: no interviene en la compilación
+/.git
