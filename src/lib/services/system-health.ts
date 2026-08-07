@@ -152,9 +152,10 @@ async function comprobarCorreo() {
     if (propio.status !== 'verified') {
       return {
         estado: 'aviso' as const,
-        detalle: `El dominio "${dominio}" está en Resend pero su estado es "${propio.status}".`,
+        detalle: `El dominio "${dominio}" está en Resend pero su estado es "${propio.status}". Hasta que quede "verified" no sale ningún correo desde ese dominio.`,
         arreglo:
-          'Faltan registros DNS por publicar o por propagar. OJO con el SPF: no agregues un segundo registro TXT, editá el que ya existe para que lleve los dos `include` — dos SPF separados se anulan entre sí.',
+          'Publicá en tu DNS los registros que da Resend (Domains → el dominio): el DKIM en `resend._domainkey` y, en el subdominio `send`, un MX y un TXT. ' +
+          'El SPF de Resend va en ese subdominio, así que NO toques el SPF del dominio raíz — el que usa tu proveedor de buzones se queda como está.',
       };
     }
     return {
