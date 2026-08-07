@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 /**
  * Última red: errores que ocurren en el LAYOUT de una zona o en el
@@ -25,9 +25,33 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const [copiado, setCopiado] = useState(false);
+  const [donde, setDonde] = useState('');
+
   useEffect(() => {
     console.error(error);
+    // La RUTA es la pieza que faltaba. El digest identifica el error en
+    // los registros del servidor, pero solo sirve si se reporta antes
+    // de que la ventana de registros lo deje atrás. Sabiendo en qué
+    // pantalla ocurrió, se reproduce y se encuentra.
+    setDonde(`${window.location.pathname}${window.location.search}`);
   }, [error]);
+
+  const informe = [
+    `Código: ${error.digest ?? 'sin código'}`,
+    `Pantalla: ${donde}`,
+    `Fecha: ${new Date().toLocaleString('es-CR')}`,
+  ].join('\n');
+
+  const copiar = async () => {
+    try {
+      await navigator.clipboard.writeText(informe);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2500);
+    } catch {
+      // Sin permiso de portapapeles el texto sigue a la vista.
+    }
+  };
 
   return (
     <html lang="es">
@@ -62,11 +86,39 @@ export default function GlobalError({
             Hubo un problema al iniciar la aplicación. Reintentá en unos segundos; si continúa,
             avisá al soporte indicando el código.
           </p>
-          {error.digest && (
-            <p style={{ marginTop: '.75rem', fontSize: '.75rem', color: '#94a3b8', fontFamily: 'monospace' }}>
-              Código: {error.digest}
-            </p>
-          )}
+          <div
+            style={{
+              marginTop: '1rem',
+              padding: '.75rem',
+              background: '#f8fafc',
+              borderRadius: '.5rem',
+              fontSize: '.75rem',
+              color: '#64748b',
+              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+              textAlign: 'left',
+              wordBreak: 'break-all',
+            }}
+          >
+            <div>Código: {error.digest ?? 'sin código'}</div>
+            {donde && <div style={{ marginTop: '.25rem' }}>Pantalla: {donde}</div>}
+          </div>
+          <button
+            type="button"
+            onClick={copiar}
+            style={{
+              marginTop: '.6rem',
+              background: 'transparent',
+              color: '#2f5fe0',
+              border: '1px solid #cbd5e1',
+              borderRadius: '.5rem',
+              padding: '.45rem 1rem',
+              fontSize: '.8rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            {copiado ? 'Copiado ✓' : 'Copiar para soporte'}
+          </button>
           <button
             type="button"
             onClick={reset}
