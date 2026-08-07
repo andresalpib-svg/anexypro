@@ -254,7 +254,11 @@ export async function importResidentsExcel(
     }
 
     return result;
-  });
+  },
+  // Una carga de 95 filiales son cientos de consultas: con el plazo de
+  // 5 s de Prisma, contra una base remota la transacción se cortaba a
+  // mitad y se revertía el archivo entero. Ver `withTenantContext`.
+  { timeout: 180_000, maxWait: 20_000 });
 }
 
 /** Genera la plantilla de importación con filas de ejemplo. */

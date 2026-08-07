@@ -32,14 +32,40 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
  * src/lib/services/*.ts que reciba `tx` como parámetro (por ejemplo,
  * accounting.ts) es compatible sin fricciones de tipos.
  */
+export type OpcionesTransaccion = {
+  /** Milisegundos que puede durar la transacción. Prisma da 5000 por omisión. */
+  timeout?: number;
+  /** Milisegundos esperando una conexión libre del pool. */
+  maxWait?: number;
+};
+
+/**
+ * `opciones` existe por una avería concreta: **el plazo de Prisma son 5
+ * segundos**, y eso alcanza de sobra en la máquina de desarrollo —donde
+ * la base está en localhost— pero no contra una base remota. La
+ * importación de residentes hace cientos de consultas dentro de una sola
+ * transacción; con 95 filiales contra Supabase se pasó del plazo y
+ * Postgres revirtió la carga entera con un error incomprensible
+ * ("Transaction not found... refers to an old closed transaction").
+ *
+ * Es la clase de fallo que solo aparece en producción, así que las
+ * operaciones EN LOTE tienen que pedir su propio plazo. Las demás se
+ * quedan con el de Prisma a propósito: una transacción larga retiene la
+ * conexión, y volverlo el valor por omisión escondería consultas lentas
+ * en vez de arreglarlas.
+ */
 export async function withTenantContext<T>(
   companyId: string,
-  fn: (tx: Prisma.TransactionClient) => Promise<T>
+  fn: (tx: Prisma.TransactionClient) => Promise<T>,
+  opciones?: OpcionesTransaccion
 ): Promise<T> {
-  return prisma.$transaction(async (tx) => {
-    await tx.$executeRawUnsafe(`SELECT set_config('app.current_company_id', $1, true)`, companyId);
-    return fn(tx);
-  });
+  return prisma.$transaction(
+    async (tx) => {
+      await tx.$executeRawUnsafe(`SELECT set_config('app.current_company_id', $1, true)`, companyId);
+      return fn(tx);
+    },
+    opciones
+  );
 }
 
 /**
