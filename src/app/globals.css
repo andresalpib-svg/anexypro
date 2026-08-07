@@ -131,6 +131,37 @@ body {
   }
 }
 
+/*
+  Entrada del logo en la cortina de arranque, estirada a los 3.0s
+  completos que dura la cortina en pantalla —para que no quede un
+  tramo "congelado" antes del fundido—: llega grande y rápido —como si
+  viniera "de adelante"— en el primer tercio, y el resto del tiempo se
+  asienta con un balanceo suave ("hacia atrás") hasta quedar quieto
+  justo cuando empieza a desvanecerse.
+*/
+@keyframes splash-logo {
+  0% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+  30% {
+    transform: scale(0.96);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.985);
+  }
+  85% {
+    transform: scale(1.015);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 @layer components {
   /* Masa de color desenfocada que deriva despacio. */
   .liquid-blob {
@@ -236,13 +267,18 @@ body {
   .liquid-button:disabled {
     @apply cursor-not-allowed opacity-60;
   }
+
+  .splash-logo {
+    animation: splash-logo 3s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
 }
 
 /* Quien pidió menos movimiento no debería ver nada derivando. */
 @media (prefers-reduced-motion: reduce) {
   .liquid-blob-a,
   .liquid-blob-b,
-  .liquid-sheen::before {
+  .liquid-sheen::before,
+  .splash-logo {
     animation: none;
   }
 }
