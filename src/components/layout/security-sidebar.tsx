@@ -26,6 +26,7 @@ export function SecuritySidebar({ session }: { session: Session }) {
             <Link
               key={item.href}
               href={item.href}
+        prefetch={false}
               className={clsx(
                 'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition',
                 active ? 'bg-gradient-to-br from-royal to-royal-dark font-semibold text-white shadow-lg shadow-royal/30' : 'text-white/80 hover:bg-white/5 hover:text-white'

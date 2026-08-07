@@ -72,6 +72,13 @@ export function Sidebar({
       <Link
         key={item.href}
         href={item.href}
+        // Sin precarga: el menú tiene ~20 módulos y el navegador pedía
+        // TODOS al entrar. Cada uno ejecuta el layout completo —cuatro
+        // consultas a la base— más su propia página, así que una sola
+        // visita disparaba quince peticiones simultáneas y agotaba el
+        // pool de conexiones. Está en los registros del 7/8:
+        // "max clients reached in session mode".
+        prefetch={false}
         className={clsx(
           'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition',
           indent && 'ml-4',
