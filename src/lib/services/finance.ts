@@ -162,7 +162,12 @@ export async function generateOrdinaryBilling(companyId: string, condominiumId: 
     }
 
     return { batch, created: true, chargesCreated: createdCharges.length };
-  });
+  },
+  // Emitir la cuota de un condominio grande son cientos de escrituras
+  // —un cargo y su asiento de devengo por filial— dentro de una sola
+  // transacción. Con el plazo de 5 s de Prisma, contra una base remota
+  // se corta a mitad y no se emite nada. Ver `withTenantContext`.
+  { timeout: 120_000, maxWait: 20_000 });
 }
 
 export async function addManualCharge(
@@ -218,6 +223,14 @@ export async function makePayment(
     method: string;
     reference?: string;
     notes?: string;
+    /**
+     * Fecha real del pago. Se omite en el uso normal —el cajero
+     * registra lo que acaba de recibir— pero es imprescindible al
+     * cargar movimientos bancarios de meses anteriores: sin esto todo
+     * el histórico queda fechado el día de la carga y el estado de
+     * cuenta del condómino miente sobre cuándo pagó.
+     */
+    paymentDate?: Date;
   },
   userId: string,
   userName: string
@@ -235,6 +248,7 @@ export async function makePayment(
         propertyId: input.propertyId,
         amount: input.amount,
         method: input.method as any,
+        ...(input.paymentDate ? { paymentDate: input.paymentDate } : {}),
         reference: input.reference || null,
         notes: input.notes || null,
         receivedById: userId,

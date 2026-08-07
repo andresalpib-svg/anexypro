@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { prisma, forEachCompany, withTenantContext } from '@/lib/db';
 import { MARCA_POR_DEFECTO } from '@/lib/branding';
+import { ensureChartOfAccounts } from '@/lib/services/chart-of-accounts';
 
 /**
  * Operaciones de plataforma — solo el usuario master.
@@ -88,6 +89,11 @@ export async function createCompanyWithAdmin(
         status: 'activo',
       },
     });
+    // El plan de cuentas va en la MISMA transacción, por el mismo
+    // criterio que el administrador: una empresa sin plan contable no
+    // puede emitir un solo cargo —el motor de partida doble busca la
+    // cuenta 1101 y aborta—, así que no debe poder existir a medias.
+    await ensureChartOfAccounts(tx, company.id);
     return { company, user };
   });
 
