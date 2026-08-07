@@ -39,6 +39,38 @@ const nextConfig = {
   images: {
     remotePatterns: [],
   },
+
+  /**
+   * Una sola puerta de entrada.
+   *
+   * El proyecto responde por dos direcciones: el dominio propio
+   * (api.anexypro.com) y el alias que da Vercel (anexypro.vercel.app).
+   * Eso no es solo cosmético: `NEXTAUTH_URL` apunta al dominio propio,
+   * así que entrando por el alias la sesión se intentaba establecer en
+   * OTRO dominio — la cookie no quedaba donde estaba el usuario y
+   * navegar terminaba en redirecciones y pantallas de error.
+   *
+   * DETALLES DELIBERADOS:
+   *
+   * - Es TEMPORAL (307), no permanente. Un 308 se queda cacheado en el
+   *   navegador y, si algún día hubiera que volver atrás, habría que
+   *   perseguir la caché de cada usuario. Ante la duda, reversible.
+   * - Solo el alias EXACTO. Las direcciones de cada despliegue
+   *   (anexypro-<hash>-arruzab.vercel.app) no se tocan, porque son las
+   *   que se usan para probar una versión antes de publicarla.
+   * - El 307 conserva método y cuerpo, así que tampoco rompe una
+   *   petición POST que llegue por el alias.
+   */
+  async redirects() {
+    return [
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'anexypro.vercel.app' }],
+        destination: 'https://api.anexypro.com/:path*',
+        permanent: false,
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;
