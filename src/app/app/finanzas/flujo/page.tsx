@@ -5,6 +5,7 @@ import { resolveCondoId } from '@/lib/active-condo';
 import { listCondominiumsForSession, getCondominium } from '@/lib/services/condominiums';
 import { getCashFlow } from '@/lib/services/cash-flow';
 import { PageHeader } from '@/components/ui/page-header';
+import { SinCondominio } from '@/components/ui/sin-condominio';
 import { CondoSelect } from '../../propiedades/condo-select';
 import { FinanceTabs } from '../finance-tabs';
 import { CashFlowChart } from './cash-flow-chart';
@@ -22,7 +23,7 @@ export default async function FlujoPage({ searchParams }: { searchParams: { cond
 
   const condos = await listCondominiumsForSession(session!);
   const condoId = resolveCondoId(searchParams.condoId, condos);
-  if (!condoId) return <div className="card p-10 text-center text-sm text-muted">Primero creá un condominio.</div>;
+  if (!condoId) return <SinCondominio companyId={session!.user.companyId} role={session!.user.role} />;
 
   const [flow, condo] = await Promise.all([
     getCashFlow(session!.user.companyId, condoId),

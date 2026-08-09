@@ -6,6 +6,7 @@ import { listCondominiumsForSession, getCondominium } from '@/lib/services/condo
 import { listRecurring, listContracts } from '@/lib/services/recurring';
 import { listSuppliers, CATEGORY_LABEL } from '@/lib/services/expenses';
 import { PageHeader } from '@/components/ui/page-header';
+import { SinCondominio } from '@/components/ui/sin-condominio';
 import { CondoSelect } from '../../propiedades/condo-select';
 import { FinanceTabs } from '../finance-tabs';
 import {
@@ -28,7 +29,7 @@ export default async function RecurrentesPage({ searchParams }: { searchParams: 
 
   const condos = await listCondominiumsForSession(session!);
   const condoId = resolveCondoId(searchParams.condoId, condos);
-  if (!condoId) return <div className="card p-10 text-center text-sm text-muted">Primero creá un condominio.</div>;
+  if (!condoId) return <SinCondominio companyId={session!.user.companyId} role={session!.user.role} />;
 
   const [recurring, contracts, suppliers, condo] = await Promise.all([
     listRecurring(session!.user.companyId, condoId),

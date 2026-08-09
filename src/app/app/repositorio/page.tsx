@@ -6,6 +6,7 @@ import { actorFromSession, listVisibleFolders, listFolderObjects, condoStorageUs
 import { getStorageSettings, PROVIDER_LABEL } from '@/lib/storage';
 import { PageHeader } from '@/components/ui/page-header';
 import { ModuleActions } from '@/components/ui/module-actions';
+import { SinCondominio } from '@/components/ui/sin-condominio';
 import { CondoSelect } from '../propiedades/condo-select';
 import { RepositoryBrowser, type FolderRow, type ObjectRow } from './repository-browser';
 
@@ -27,7 +28,7 @@ export default async function RepositorioPage({
 
   const condos = await listCondominiumsForSession(session);
   const condoId = resolveCondoId(searchParams.condoId, condos);
-  if (!condoId) return <div className="card p-10 text-center text-sm text-muted">Primero creá un condominio.</div>;
+  if (!condoId) return <SinCondominio companyId={session!.user.companyId} role={session!.user.role} />;
 
   const [actor, condo, settings] = await Promise.all([
     actorFromSession(session),

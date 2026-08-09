@@ -6,6 +6,7 @@ import { listCondominiumsForSession, getCondominium } from '@/lib/services/condo
 import { getBudget, listBudgetYears } from '@/lib/services/budget';
 import { getReserveFund } from '@/lib/services/reserve-fund';
 import { PageHeader } from '@/components/ui/page-header';
+import { SinCondominio } from '@/components/ui/sin-condominio';
 import { CondoSelect } from '../../propiedades/condo-select';
 import { FinanceTabs } from '../finance-tabs';
 import { BudgetBoard, type BudgetRowView } from './budget-board';
@@ -28,7 +29,7 @@ export default async function PresupuestoPage({
 
   const condos = await listCondominiumsForSession(session!);
   const condoId = resolveCondoId(searchParams.condoId, condos);
-  if (!condoId) return <div className="card p-10 text-center text-sm text-muted">Primero creá un condominio.</div>;
+  if (!condoId) return <SinCondominio companyId={session!.user.companyId} role={session!.user.role} />;
 
   const year = Number(searchParams.anio) || new Date().getUTCFullYear();
   const [budget, years, condo, reserve] = await Promise.all([

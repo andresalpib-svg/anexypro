@@ -5,6 +5,7 @@ import { resolveCondoId } from '@/lib/active-condo';
 import { listCondominiumsForSession } from '@/lib/services/condominiums';
 import { getCloseChecks, listPeriods, periodOf } from '@/lib/services/accounting-periods';
 import { PageHeader } from '@/components/ui/page-header';
+import { SinCondominio } from '@/components/ui/sin-condominio';
 import { CondoSelect } from '../../propiedades/condo-select';
 import { FinanceTabs } from '../finance-tabs';
 import { CloseBoard, type CheckView, type PeriodView } from './close-board';
@@ -26,7 +27,7 @@ export default async function CierrePage({
 
   const condos = await listCondominiumsForSession(session!);
   const condoId = resolveCondoId(searchParams.condoId, condos);
-  if (!condoId) return <div className="card p-10 text-center text-sm text-muted">Primero creá un condominio.</div>;
+  if (!condoId) return <SinCondominio companyId={session!.user.companyId} role={session!.user.role} />;
 
   // Por defecto se propone cerrar el mes ANTERIOR: el mes en curso
   // todavía recibe movimientos.
