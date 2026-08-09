@@ -1,7 +1,8 @@
 import { withTenantContext } from '@/lib/db';
+import { listCondominiumsForSession } from '@/lib/services/condominiums';
 
 /**
- * Resumen de atrasos para la administración y la supervisión.
+ * Resumen de atrasos para la SUPERVISIÓN.
  *
  * Regla: se avisa de todo lo que acumula 2 O MÁS DÍAS de atraso —
  * tareas internas (por su fecha límite) y tickets de mantenimiento,
@@ -10,7 +11,20 @@ import { withTenantContext } from '@/lib/db';
  *
  * El aviso se muestra UNA VEZ AL DÍA, en el primer ingreso: la fecha
  * del último aviso visto vive en una cookie (ver overdue-modal.tsx).
+ *
+ * A QUIÉN LE SALE: al supervisor (`admin_staff`), que es quien da
+ * seguimiento al trabajo del día. El administrador tiene el atraso a
+ * la vista en su dashboard y en Gestión de Tareas; interrumpirlo con
+ * una ventana en cada primer ingreso no le aportaba nada.
+ *
+ * QUÉ VE: solo lo suyo. Las tareas que tiene asignadas o que creó —el
+ * mismo filtro de `listTasksForSession`— y los tickets de los
+ * condominios que la administración le asignó. Un supervisor sin
+ * asignaciones no ve tickets de ningún condominio, igual que en el
+ * resto del panel.
  */
+
+type SessionLike = { user: { id: string; companyId: string; role: string } };
 
 export const OVERDUE_DAYS_THRESHOLD = 2;
 
@@ -73,19 +87,31 @@ export function avisoYaVistoHoy(valorCookie: string | undefined): boolean {
   return valorCookie === `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
-export async function getOverdueBriefing(companyId: string): Promise<OverdueBriefing> {
+export async function getOverdueBriefing(session: SessionLike): Promise<OverdueBriefing> {
+  const { id: userId, companyId, role } = session.user;
+  const esSupervisor = role === 'admin_staff';
+
   const limit = new Date();
   limit.setHours(0, 0, 0, 0);
   limit.setDate(limit.getDate() - OVERDUE_DAYS_THRESHOLD);
+
+  // El alcance del supervisor se resuelve con la MISMA función que usa
+  // el resto del panel, no con una consulta propia: si mañana cambia la
+  // regla de asignación, cambia en un solo sitio.
+  const condoIds = esSupervisor
+    ? (await listCondominiumsForSession(session)).map((c) => c.id)
+    : null;
 
   return withTenantContext(companyId, async (tx) => {
     const dondeTareas = {
       companyId,
       status: { not: 'completada' as const },
       dueDate: { not: null, lte: new Date(`${limit.toISOString().slice(0, 10)}T00:00:00Z`) },
+      ...(esSupervisor ? { OR: [{ assignedToId: userId }, { createdById: userId }] } : {}),
     };
     const dondeTickets = {
       condominium: { companyId, deletedAt: null },
+      ...(condoIds ? { condominiumId: { in: condoIds } } : {}),
       status: { notIn: ['completado' as const, 'cancelado' as const] },
       createdAt: { lte: limit },
     };

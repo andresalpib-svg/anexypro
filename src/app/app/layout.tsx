@@ -20,16 +20,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     redirect('/login');
   }
 
-  // El aviso de atrasos se muestra una vez al día. Si la cookie dice
-  // que ya se vio, ni siquiera se calcula: son dos consultas que de
-  // otro modo corrían en cada navegación para descartarse enseguida.
+  // El aviso de atrasos es del SUPERVISOR: es quien da seguimiento al
+  // trabajo del día. Al administrador ya no se le interrumpe con la
+  // ventana —tiene el atraso en su dashboard y en Gestión de Tareas—.
+  const esSupervisor = session.user.role === 'admin_staff';
+  // Se muestra una vez al día. Si la cookie dice que ya se vio, ni
+  // siquiera se calcula: son dos consultas que de otro modo corrían en
+  // cada navegación para descartarse enseguida.
   const yaVioAtrasos = avisoYaVistoHoy(cookies().get('anexypro-atrasos-visto')?.value);
 
   const [notifications, briefing, me, empresa] = await Promise.all([
     // Alarmas de Gestión de Tareas: vencidas (obligatorio) + programadas.
     getTaskNotifications(session.user.companyId),
     // Aviso de primera instancia: pendientes con 2+ días de atraso.
-    yaVioAtrasos ? Promise.resolve(SIN_ATRASOS) : getOverdueBriefing(session.user.companyId),
+    esSupervisor && !yaVioAtrasos ? getOverdueBriefing(session) : Promise.resolve(SIN_ATRASOS),
     prisma.user.findUnique({ where: { id: session.user.id }, select: { photoUrl: true } }),
     // Módulos ocultos + marca + suscripción: UNA sola lectura de la
     // fila de la empresa, en vez de las tres encadenadas que había.
@@ -80,12 +84,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     // h-screen + overflow-hidden: el sidebar de módulos y la pantalla
-    // general se desplazan de forma independiente.
-    <div className="flex h-screen overflow-hidden" style={marca}>
-      <OverdueModal items={briefing.items} taskCount={briefing.taskCount} ticketCount={briefing.ticketCount} />
+    // general se desplazan de forma independiente. h-dvh (con h-screen
+    // de respaldo) porque en el teléfono 100vh mide más que la pantalla
+    // útil y el final de cada pantalla quedaba debajo de la barra del
+    // navegador.
+    <div className="flex h-screen overflow-hidden supports-[height:100dvh]:h-dvh" style={marca}>
+      {esSupervisor && (
+        <OverdueModal items={briefing.items} taskCount={briefing.taskCount} ticketCount={briefing.ticketCount} />
+      )}
       <Sidebar session={session} photoUrl={me?.photoUrl} hiddenModules={hiddenModules} />
       {/* pt-14 en móvil: deja sitio a la barra superior con el menú. */}
-      <div className="flex h-screen min-w-0 flex-1 flex-col pt-14 lg:pt-0">
+      <div className="flex h-screen min-w-0 flex-1 flex-col pt-14 supports-[height:100dvh]:h-dvh lg:pt-0">
         <Topbar
           notifications={notifications.map((n) => ({
             taskId: n.taskId,
