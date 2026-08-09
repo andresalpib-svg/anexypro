@@ -100,15 +100,17 @@ export function Sidebar({
 
   return (
     <SidebarShell width="w-72">
-      <div className="mb-5 flex items-center gap-2 px-2">
+      <div className="mb-5 flex flex-none items-center gap-2 px-2">
         <Logo className="text-xl" />
       </div>
 
-      <p className="mb-2 px-3 text-[.68rem] font-semibold uppercase tracking-widest text-white/40">
+      <p className="mb-2 flex-none px-3 text-[.68rem] font-semibold uppercase tracking-widest text-white/40">
         Administradora
       </p>
 
-      <nav className="flex flex-1 flex-col gap-0.5">
+      {/* Solo la lista de módulos se desplaza; el bloque del usuario
+          queda anclado abajo (ver SidebarShell). */}
+      <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overscroll-contain">
         {categories.map((category) => {
           // Categoría de un solo módulo → enlace directo, sin submenú.
           if (category.items.length === 1) return renderItem(category.items[0]!, false);
@@ -137,7 +139,7 @@ export function Sidebar({
         })}
       </nav>
 
-      <div className="mt-auto border-t border-deep-line px-2 pt-4">
+      <div className="mt-auto flex-none border-t border-deep-line px-2 pt-4">
         <Link href="/app/perfil" className="flex items-center gap-2.5 rounded-lg p-1 transition hover:bg-white/5">
           {photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element

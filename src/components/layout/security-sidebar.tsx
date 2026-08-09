@@ -14,11 +14,13 @@ export function SecuritySidebar({ session }: { session: Session }) {
   const pathname = usePathname();
   return (
     <SidebarShell width="w-60">
-      <div className="mb-6 flex items-center gap-2 px-2">
+      <div className="mb-6 flex flex-none items-center gap-2 px-2">
         <Logo className="text-xl" />
       </div>
-      <p className="mb-2 px-3 text-[.68rem] font-semibold uppercase tracking-widest text-white/40">Portal de Seguridad</p>
-      <nav className="flex flex-1 flex-col gap-0.5">
+      <p className="mb-2 flex-none px-3 text-[.68rem] font-semibold uppercase tracking-widest text-white/40">Portal de Seguridad</p>
+      {/* Solo la lista de módulos se desplaza; el bloque del usuario
+          queda anclado abajo (ver SidebarShell). */}
+      <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overscroll-contain">
         {SECURITY_NAV.map((item) => {
           const active = pathname.startsWith(item.href);
           const Icon = item.icon;
@@ -38,7 +40,7 @@ export function SecuritySidebar({ session }: { session: Session }) {
           );
         })}
       </nav>
-      <div className="mt-auto border-t border-deep-line px-2 pt-4">
+      <div className="mt-auto flex-none border-t border-deep-line px-2 pt-4">
         <div className="flex items-center gap-2.5">
           <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-gradient-to-br from-royal to-royal-dark text-sm font-bold">
             {(session.user.name ?? 'G').charAt(0).toUpperCase()}

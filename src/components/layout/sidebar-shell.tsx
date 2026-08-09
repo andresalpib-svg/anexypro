@@ -29,6 +29,22 @@ import { Logo } from '@/components/ui/logo';
  * tiene que viajar en cada petición.
  *
  * El contenido de cada barra no se toca: se pasa como `children`.
+ *
+ * CÓMO SE DESPLAZA (y por qué así). La barra NO se desplaza entera:
+ * se desplaza SOLO la lista de módulos, y el bloque del usuario con
+ * "Cerrar sesión" queda anclado abajo, siempre visible. Con la barra
+ * entera desplazable, en un teléfono con muchos módulos había que
+ * recorrer toda la lista para llegar al pie… y aun así no aparecía,
+ * porque `h-screen` (100vh) mide MÁS que la pantalla útil cuando el
+ * navegador móvil muestra su propia barra: el pie quedaba debajo de
+ * ella, fuera de alcance. Por eso dos cosas aquí:
+ *
+ *  1. `h-dvh` (alto de ventana DINÁMICO, el que de verdad se ve) con
+ *     `h-screen` de respaldo para navegadores que no lo conocen.
+ *  2. `overflow-hidden` en la barra: el desplazamiento lo pone cada
+ *     `<nav>` con `flex-1 min-h-0 overflow-y-auto`. Toda barra que use
+ *     esta envoltura DEBE marcar así su lista, o su contenido se
+ *     recorta.
  */
 
 const CLAVE_OCULTO = 'anexypro-menu-oculto';
@@ -111,7 +127,8 @@ export function SidebarShell({
       {/* ---------- La barra ---------- */}
       <aside
         className={clsx(
-          'fixed inset-y-0 left-0 z-50 flex h-screen flex-none flex-col overflow-y-auto bg-deep px-3 py-5 text-white',
+          'fixed inset-y-0 left-0 z-50 flex h-screen flex-none flex-col overflow-hidden bg-deep px-3 py-5 text-white',
+          'supports-[height:100dvh]:h-dvh',
           'transition-transform duration-200 lg:static lg:translate-x-0 lg:transition-none',
           width,
           abierto ? 'translate-x-0' : '-translate-x-full',
