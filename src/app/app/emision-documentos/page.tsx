@@ -6,6 +6,7 @@ import { listCondominiumsForSession } from '@/lib/services/condominiums';
 import { listRequestsByCondo, getTemplate, getAccountSnapshot } from '@/lib/services/document-requests';
 import { PageHeader } from '@/components/ui/page-header';
 import { ModuleActions } from '@/components/ui/module-actions';
+import { SinCondominio } from '@/components/ui/sin-condominio';
 import { CondoSelect } from '../propiedades/condo-select';
 import { RequestQueue, type QueueRow } from './request-queue';
 import { TemplateEditor, type TemplateData } from './template-editor';
@@ -23,7 +24,7 @@ export default async function EmisionDocumentosPage({ searchParams }: { searchPa
 
   const condos = await listCondominiumsForSession(session!);
   const condoId = resolveCondoId(searchParams.condoId, condos);
-  if (!condoId) return <div className="card p-10 text-center text-sm text-muted">Primero crea un condominio.</div>;
+  if (!condoId) return <SinCondominio companyId={session!.user.companyId} role={session!.user.role} />;
 
   const [requests, certTemplate, statementTemplate] = await Promise.all([
     listRequestsByCondo(session!.user.companyId, condoId),

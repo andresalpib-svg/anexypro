@@ -56,9 +56,17 @@ describe('winAnsi()', () => {
 
 describe('money()', () => {
   it('rotula la moneda con su código y el formato de Costa Rica', () => {
-    expect(money(25000, 'CRC')).toBe('CRC 25.000,00');
-    expect(money(1234567.5, 'CRC')).toBe('CRC 1.234.567,50');
+    // Miles con espacio normal, igual que el "₡25 000,00" del resto del
+    // sistema — antes usaba punto y el residente veía "CRC 25.000,00"
+    // en su portal, un formato que no aparece en ninguna otra pantalla.
+    expect(money(25000, 'CRC')).toBe('CRC 25 000,00');
+    expect(money(1234567.5, 'CRC')).toBe('CRC 1 234 567,50');
     expect(money(0, 'USD')).toBe('USD 0,00');
+  });
+
+  it('el separador de miles es un espacio normal, no el fino que rompe el PDF', () => {
+    expect(money(25000, 'CRC')).not.toContain(' ');
+    expect(money(25000, 'CRC')).toContain('25 000');
   });
 
   it('no produce caracteres que el PDF tendría que descartar', () => {

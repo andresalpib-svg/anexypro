@@ -5,9 +5,11 @@ import { listCondominiumsForSession } from '@/lib/services/condominiums';
 import { listAmenities } from '@/lib/services/amenities';
 import { listReservations } from '@/lib/services/reservations';
 import { listPropertiesByCondo } from '@/lib/services/properties';
+import { fechaSolo } from '@/lib/fecha-local';
 import { PageHeader } from '@/components/ui/page-header';
 import { ModuleActions } from '@/components/ui/module-actions';
 import { StatusChip } from '@/components/ui/status-chip';
+import { SinCondominio } from '@/components/ui/sin-condominio';
 import { CondoSelect } from '../propiedades/condo-select';
 import { NewAmenityForm } from './new-amenity-form';
 import { NewReservationForm } from './new-reservation-form';
@@ -33,7 +35,7 @@ export default async function ReservasPage({ searchParams }: { searchParams: { c
   const condoId = resolveCondoId(searchParams.condoId, condos);
 
   if (!condoId) {
-    return <div className="card p-10 text-center text-sm text-muted">Primero crea un condominio.</div>;
+    return <SinCondominio companyId={session!.user.companyId} role={session!.user.role} />;
   }
 
   const [amenities, reservations, properties] = await Promise.all([
@@ -107,7 +109,7 @@ export default async function ReservasPage({ searchParams }: { searchParams: { c
                 <tr key={r.id} className="border-b border-line last:border-0">
                   <td className="px-4 py-3 font-medium text-ink">{r.amenity.name}</td>
                   <td className="px-4 py-3 text-muted">{r.property.code}</td>
-                  <td className="px-4 py-3 text-muted">{new Date(r.resDate).toLocaleDateString('es-CR')}</td>
+                  <td className="px-4 py-3 text-muted">{fechaSolo(r.resDate)}</td>
                   <td className="px-4 py-3 text-muted">
                     {r.startsAt}–{r.endsAt}
                   </td>

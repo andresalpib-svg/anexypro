@@ -5,8 +5,10 @@ import { resolveCondoId } from '@/lib/active-condo';
 import { can } from '@/lib/rbac';
 import { listCondominiumsForSession } from '@/lib/services/condominiums';
 import { listAssemblies } from '@/lib/services/assemblies';
+import { fechaSolo } from '@/lib/fecha-local';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatusChip } from '@/components/ui/status-chip';
+import { SinCondominio } from '@/components/ui/sin-condominio';
 import { CondoSelect } from '../propiedades/condo-select';
 
 const STATUS_LABEL: Record<string, string> = { convocada: 'Convocada', en_curso: 'En curso', cerrada: 'Cerrada', cancelada: 'Cancelada' };
@@ -42,7 +44,7 @@ export default async function AsambleasPage({ searchParams }: { searchParams: { 
       />
 
       {condos.length === 0 ? (
-        <div className="card p-10 text-center text-sm text-muted">Primero crea un condominio.</div>
+        <SinCondominio companyId={session!.user.companyId} role={session!.user.role} />
       ) : (
         <>
           <CondoSelect condos={condos} selected={condoId!} />
@@ -58,7 +60,7 @@ export default async function AsambleasPage({ searchParams }: { searchParams: { 
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium text-ink">{a.title}</p>
                     <p className="text-xs text-muted">
-                      {a.type === 'ordinaria' ? 'Ordinaria' : 'Extraordinaria'} · {new Date(a.eventDate).toLocaleDateString('es-CR')}
+                      {a.type === 'ordinaria' ? 'Ordinaria' : 'Extraordinaria'} · {fechaSolo(a.eventDate)}
                     </p>
                   </div>
                   <StatusChip variant={STATUS_VARIANT[a.status]}>{STATUS_LABEL[a.status]}</StatusChip>

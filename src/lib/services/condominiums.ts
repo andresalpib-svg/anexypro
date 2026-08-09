@@ -14,6 +14,22 @@ export async function listCondominiums(companyId: string) {
   );
 }
 
+/**
+ * ¿La empresa tiene algún condominio registrado?
+ *
+ * Sirve para distinguir las dos causas de una pantalla vacía: que
+ * todavía no exista ningún condominio, o que existan pero este usuario
+ * no tenga ninguno asignado. Decirle "primero creá un condominio" a un
+ * supervisor —que no puede crearlos ni ve ese módulo— lo deja sin
+ * saber a quién pedirle nada.
+ */
+export async function companyHasCondominiums(companyId: string): Promise<boolean> {
+  const total = await withTenantContext(companyId, (tx) =>
+    tx.condominium.count({ where: { deletedAt: null } })
+  );
+  return total > 0;
+}
+
 /** Condominios asignados a un usuario, por su id. */
 async function assignedCondoIds(companyId: string, userId: string) {
   const filas = await withTenantContext(companyId, (tx) =>
@@ -155,8 +171,17 @@ export async function activateCondominium(companyId: string, id: string) {
 
 export const MAX_SUPERVISORS = 5;
 
-/** Roles a los que se les puede asignar un condominio. */
-const ROLES_ASIGNABLES = ['admin_staff', 'admin_owner', 'seguridad'] as const;
+/**
+ * Roles a los que se les puede asignar un condominio.
+ *
+ * `admin_owner` NO está: el dueño de la cuenta ve todos los condominios
+ * de su empresa por definición (`listCondominiumsForSession` ni siquiera
+ * consulta las asignaciones para ese rol), así que ofrecerlo en el
+ * selector era ofrecer una acción que no hace nada — y peor, sugería que
+ * asignarlo lo LIMITARÍA a ese condominio, que es justo lo contrario de
+ * lo que pasa.
+ */
+const ROLES_ASIGNABLES = ['admin_staff', 'seguridad'] as const;
 
 export async function listSupervisors(companyId: string, condominiumId: string) {
   return withTenantContext(companyId, (tx) =>

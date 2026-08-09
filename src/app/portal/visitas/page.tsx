@@ -2,6 +2,7 @@ import QRCode from 'qrcode';
 import { auth } from '@/lib/auth';
 import { getResidentContext } from '@/lib/services/resident-context';
 import { listVisitsByProperty, getResidentVisitAlerts, isInside, hasFinished } from '@/lib/services/visits';
+import { getPropertySuspension } from '@/lib/services/finance';
 import { PageHeader } from '@/components/ui/page-header';
 import { VisitManager, type PortalVisit } from './visit-manager';
 
@@ -18,7 +19,10 @@ export default async function ResidentVisitsPage() {
 
   // Los avisos se derivan de la MISMA lista: antes cada uno hacía su
   // propia consulta y la pesada corría dos veces por carga.
-  const visits = await listVisitsByProperty(session!.user.companyId, ctx.property.id);
+  const [visits, suspension] = await Promise.all([
+    listVisitsByProperty(session!.user.companyId, ctx.property.id),
+    getPropertySuspension(session!.user.companyId, ctx.property.id),
+  ]);
   const alerts = getResidentVisitAlerts(visits);
 
   const today = localToday();
@@ -69,6 +73,7 @@ export default async function ResidentVisitsPage() {
         visits={serialized}
         condoName={ctx.condominium.name}
         alerts={alerts.map((a) => ({ id: a.id, kind: a.kind, text: a.text, when: a.when.toISOString() }))}
+        suspension={{ suspended: suspension.suspended, monthsOverdue: suspension.monthsOverdue }}
       />
     </div>
   );

@@ -4,13 +4,14 @@ import { resolveCondoId } from '@/lib/active-condo';
 import { listCondominiumsForSession } from '@/lib/services/condominiums';
 import { getRecurringMaintenanceInsights } from '@/lib/services/maintenance';
 import { PageHeader } from '@/components/ui/page-header';
+import { SinCondominio } from '@/components/ui/sin-condominio';
 import { CondoSelect } from '../../propiedades/condo-select';
 
 export default async function MaintenanceAssistantPage({ searchParams }: { searchParams: { condoId?: string } }) {
   const session = await auth();
   const condos = await listCondominiumsForSession(session!);
   const condoId = resolveCondoId(searchParams.condoId, condos);
-  if (!condoId) return <div className="card p-10 text-center text-sm text-muted">Primero crea un condominio.</div>;
+  if (!condoId) return <SinCondominio companyId={session!.user.companyId} role={session!.user.role} />;
 
   const insights = await getRecurringMaintenanceInsights(session!.user.companyId, condoId);
 

@@ -26,6 +26,16 @@ const CHARGE_INCOME_ACCOUNT: Record<string, string> = {
 type JournalLineInput = { accountCode: string; debit?: number; credit?: number };
 
 /**
+ * Medianoche UTC del día que representa esta marca de tiempo — la
+ * forma en que el sistema guarda todas las columnas `@db.Date`.
+ * Sin esto, un `createdAt` con hora se trunca según la zona del
+ * proceso y el asiento se puede correr un día.
+ */
+function startOfUtcDay(d: Date): Date {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+}
+
+/**
  * Crea un asiento contable, validando que cuadre ANTES de escribir
  * (mensaje de error legible en la aplicación) — el trigger
  * check_journal_balance de prisma/sql/01_views_functions_triggers.sql
@@ -98,16 +108,33 @@ async function createJournalEntry(
  * (1101) / Crédito Ingreso — se llama SIEMPRE que se emite un cargo,
  * sea por facturación automática o manual. Un cargo anulado nunca
  * genera este asiento.
+ *
+ * FECHA DEL ASIENTO: el período que cubre el cargo (la cuota de agosto
+ * se devenga en agosto) y, cuando no lo tiene, el día en que se EMITIÓ.
+ * Antes caía en `dueDate` y eso mandaba el ingreso a otro mes: las
+ * multas emitidas el 2 de agosto, con vencimiento el 1.º de setiembre,
+ * quedaron asentadas en setiembre — el Estado de Resultados de agosto
+ * no las mostraba y el de setiembre reportaba ingresos de agosto.
  */
 export async function recordChargeAccrual(
   tx: Prisma.TransactionClient,
   companyId: string,
-  charge: { id: string; condominiumId: string; propertyCode: string; chargeType: string; description: string; amount: number; period: Date | null; dueDate: Date }
+  charge: {
+    id: string;
+    condominiumId: string;
+    propertyCode: string;
+    chargeType: string;
+    description: string;
+    amount: number;
+    period: Date | null;
+    /** Cuándo se emitió el cargo — normalmente `charge.createdAt`. */
+    issuedAt: Date;
+  }
 ) {
   const accountCode = CHARGE_INCOME_ACCOUNT[charge.chargeType] ?? '4901';
   return createJournalEntry(tx, companyId, {
     condominiumId: charge.condominiumId,
-    date: charge.period ?? charge.dueDate,
+    date: charge.period ?? startOfUtcDay(charge.issuedAt),
     description: `Cargo emitido: ${charge.description} — ${charge.propertyCode}`,
     source: 'cuota',
     sourceTable: 'charges',

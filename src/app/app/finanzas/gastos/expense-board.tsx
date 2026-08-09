@@ -16,6 +16,7 @@ import {
   type ActionState,
 } from './actions';
 import { enTransicion } from '@/lib/accion-segura';
+import { hoyISO as hoy } from '@/lib/fecha-local';
 
 export type ExpenseRow = {
   id: string;
@@ -46,7 +47,6 @@ const STATUS_VARIANT: Record<string, 'neutral' | 'warn' | 'royal' | 'ok' | 'dang
   anulado: 'danger',
 };
 
-const hoy = () => new Date().toISOString().slice(0, 10);
 const fecha = (iso: string) =>
   new Date(iso).toLocaleDateString('es-CR', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
 

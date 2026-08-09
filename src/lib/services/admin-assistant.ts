@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { withTenantContext } from '@/lib/db';
+import { fechaSolo } from '@/lib/fecha-local';
 
 const SYSTEM_PROMPT = `Eres el Asistente Administrativo de ANEXYpro. Recibes un resumen de datos REALES del sistema (ya calculados, no los inventes ni los cambies) y una pregunta del administrador. Responde SOLO con base en esos datos, en 1-3 oraciones, en español, tono profesional y directo. Si la pregunta no se puede responder con los datos entregados, dilo explícitamente en vez de adivinar.`;
 
@@ -25,7 +26,7 @@ async function getSystemSnapshot(companyId: string, condominiumId: string) {
       unitsDelinquent: unitsDelinquent.length,
       openIncidents,
       pendingTickets,
-      nextAssembly: upcomingAssembly ? `${upcomingAssembly.title} el ${upcomingAssembly.eventDate.toLocaleDateString('es-CR')}` : 'ninguna programada',
+      nextAssembly: upcomingAssembly ? `${upcomingAssembly.title} el ${fechaSolo(upcomingAssembly.eventDate)}` : 'ninguna programada',
       pendingReservations,
     };
   });

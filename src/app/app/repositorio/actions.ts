@@ -12,6 +12,7 @@ import {
   searchObjects,
 } from '@/lib/services/storage';
 import { issueLink, linkPath } from '@/lib/services/storage-links';
+import { decodeUploadName } from '@/lib/services/file-refs';
 import { guessMime } from '@/lib/storage/local-provider';
 import { pickFile, MEDIA_EXT, MEDIA_MAX_BYTES } from '@/lib/upload';
 import { mensajeDeError } from '@/lib/errores';
@@ -41,7 +42,8 @@ export async function uploadDocumentAction(_prev: ActionState, formData: FormDat
 
   // Misma lista blanca que el resto de subidas del sistema: sin ella se
   // podía subir .html/.svg, que servidos en el origen son XSS almacenado.
-  const ext = (file.name.split('.').pop() ?? '').toLowerCase();
+  const fileName = decodeUploadName(file.name);
+  const ext = (fileName.split('.').pop() ?? '').toLowerCase();
   if (!MEDIA_EXT.has(ext)) {
     return { errors: { file: [`Tipo de archivo no permitido (.${ext}). Usá: ${[...MEDIA_EXT].join(', ')}.`] } };
   }
@@ -53,8 +55,8 @@ export async function uploadDocumentAction(_prev: ActionState, formData: FormDat
     const actor = await actorFromSession(session);
     await uploadToFolder(actor, {
       folderId,
-      fileName: file.name,
-      mimeType: guessMime(file.name),
+      fileName,
+      mimeType: guessMime(fileName),
       data: Buffer.from(await file.arrayBuffer()),
       userId: session.user.id,
       userName: session.user.name ?? 'Usuario',

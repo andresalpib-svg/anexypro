@@ -6,6 +6,7 @@ import { listCondominiumsForSession } from '@/lib/services/condominiums';
 import { listDocuments } from '@/lib/services/documents';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatusChip } from '@/components/ui/status-chip';
+import { SinCondominio } from '@/components/ui/sin-condominio';
 import { CondoSelect } from '../propiedades/condo-select';
 import { NewDocumentForm, NewVersionForm, BodyTextForm } from './forms';
 import { archiveDocumentAction } from './actions';
@@ -48,7 +49,7 @@ export default async function DocumentosPage({ searchParams }: { searchParams: {
       <PageHeader title="Gestión Documental" subtitle="Reglamentos, contratos, actas, manuales, seguros — con versionado real" />
 
       {condos.length === 0 ? (
-        <div className="card p-10 text-center text-sm text-muted">Primero crea un condominio.</div>
+        <SinCondominio companyId={session!.user.companyId} role={session!.user.role} />
       ) : (
         <>
           <CondoSelect condos={condos} selected={condoId!} />

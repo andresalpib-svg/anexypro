@@ -4,6 +4,7 @@ import { ArrowLeft, CalendarDays, Clock, MapPin, Users } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { getEvent } from '@/lib/services/calendar';
 import { getResidentContext } from '@/lib/services/resident-context';
+import { fechaSolo } from '@/lib/fecha-local';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatusChip } from '@/components/ui/status-chip';
 
@@ -68,12 +69,11 @@ export default async function EventoPage({ params }: { params: { id: string } })
           <div className="flex items-center gap-2.5">
             <CalendarDays size={16} className="flex-none text-royal" />
             <span className="text-ink">
-              {new Date(event.eventDate).toLocaleDateString('es-CR', {
+              {fechaSolo(event.eventDate, {
                 weekday: 'long',
                 day: 'numeric',
                 month: 'long',
                 year: 'numeric',
-                timeZone: 'UTC',
               })}
             </span>
           </div>

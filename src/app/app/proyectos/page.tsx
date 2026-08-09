@@ -6,6 +6,7 @@ import { can } from '@/lib/rbac';
 import { listCondominiumsForSession } from '@/lib/services/condominiums';
 import { listProjects } from '@/lib/services/projects';
 import { PageHeader } from '@/components/ui/page-header';
+import { SinCondominio } from '@/components/ui/sin-condominio';
 import { CondoSelect } from '../propiedades/condo-select';
 import { KanbanBoard } from './kanban-board';
 
@@ -40,7 +41,7 @@ export default async function ProyectosPage({ searchParams }: { searchParams: { 
       />
 
       {condos.length === 0 ? (
-        <div className="card p-10 text-center text-sm text-muted">Primero crea un condominio.</div>
+        <SinCondominio companyId={session!.user.companyId} role={session!.user.role} />
       ) : (
         <>
           <CondoSelect condos={condos} selected={condoId!} />

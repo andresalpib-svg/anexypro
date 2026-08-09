@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import { getResidentContext } from '@/lib/services/resident-context';
 import { listChargesByProperty, listPaymentsByProperty } from '@/lib/services/finance';
 import { getAccountSnapshot, listRequestsByProperty } from '@/lib/services/document-requests';
+import { fechaSolo } from '@/lib/fecha-local';
 import { PageHeader } from '@/components/ui/page-header';
 import { RequestDocs } from './request-docs';
 
@@ -135,7 +136,7 @@ export default async function StatementPage() {
                 running += r.charge - r.credit;
                 return (
                   <tr key={i} className="border-b border-line last:border-0">
-                    <td className="px-4 py-2.5 text-muted">{new Date(r.date).toLocaleDateString('es-CR')}</td>
+                    <td className="px-4 py-2.5 text-muted">{fechaSolo(r.date)}</td>
                     <td className="px-4 py-2.5 text-ink">{r.desc}</td>
                     <td className="px-4 py-2.5 font-mono text-xs text-muted">{r.reference || '—'}</td>
                     <td className="px-4 py-2.5 text-right">{r.charge > 0 ? fmt(r.charge) : ''}</td>

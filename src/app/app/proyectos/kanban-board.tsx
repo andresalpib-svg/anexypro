@@ -88,8 +88,17 @@ export function KanbanBoard({ projects, currency }: { projects: KanbanProject[];
                       <Link href={`/app/proyectos/${p.id}`} className="text-sm font-semibold text-ink hover:text-royal hover:underline">
                         {p.name}
                       </Link>
+                      {/*
+                        Solo se muestra lo ejecutado cuando de verdad hay
+                        algo registrado. El módulo para anotar gastos de
+                        proyecto se retiró (ese trabajo pasó a Finanzas) y
+                        `Expense` no tiene forma de apuntar a un proyecto,
+                        así que `spent` es 0 para todo lo nuevo: "₡0 de
+                        ₡2 100 000" se leía como un proyecto sin ejecutar,
+                        no como un dato que ya nadie alimenta.
+                      */}
                       <p className="mt-1 text-[.7rem] text-muted">
-                        {fmt(p.spent)} de {fmt(p.budget)}
+                        {p.spent > 0 ? `${fmt(p.spent)} de ${fmt(p.budget)}` : `Presupuesto ${fmt(p.budget)}`}
                       </p>
                       {/* Alternativa al arrastre — también sirve en pantallas táctiles */}
                       <select

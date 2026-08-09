@@ -7,6 +7,7 @@ import { listIncidents, listPackages } from '@/lib/services/security';
 import { listPropertiesByCondo } from '@/lib/services/properties';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatusChip } from '@/components/ui/status-chip';
+import { SinCondominio } from '@/components/ui/sin-condominio';
 import { CondoSelect } from '../propiedades/condo-select';
 import { NewIncidentForm, NewPackageForm } from './forms';
 import { IncidentStatusSelect } from './incident-status-select';
@@ -28,7 +29,7 @@ export default async function SeguridadPage({ searchParams }: { searchParams: { 
 
   const condos = await listCondominiumsForSession(session!);
   const condoId = resolveCondoId(searchParams.condoId, condos);
-  if (!condoId) return <div className="card p-10 text-center text-sm text-muted">Primero crea un condominio.</div>;
+  if (!condoId) return <SinCondominio companyId={session!.user.companyId} role={session!.user.role} />;
 
   const [incidents, packages, properties] = await Promise.all([
     listIncidents(session!.user.companyId, condoId),

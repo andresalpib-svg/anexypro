@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { fechaISOOpcional } from './comunes';
+import { fechaISOOpcional, telefonoOpcional } from './comunes';
 
 export const visitSchema = z.object({
   condominiumId: z.string().uuid(),
@@ -9,7 +9,7 @@ export const visitSchema = z.object({
   visitorIdNumber: z.string().max(30).optional().or(z.literal('')),
   vehiclePlate: z.string().max(15).optional().or(z.literal('')),
   courier: z.string().max(80).optional().or(z.literal('')), // empresa
-  phone: z.string().max(30).optional().or(z.literal('')),
+  phone: telefonoOpcional,
   relation: z.string().max(120).optional().or(z.literal('')),
   validDate: fechaISOOpcional,
   arrivalTime: z.string().optional().or(z.literal('')),

@@ -11,7 +11,7 @@ import {
   deletePettyCashAllocation,
 } from '@/lib/services/petty-cash';
 import { pickFile } from '@/lib/upload';
-import { saveToRepository } from '@/lib/services/file-refs';
+import { saveToRepository, decodeUploadName } from '@/lib/services/file-refs';
 import { isSafePng, isSafeJpeg, MAX_IMAGE_BYTES } from '@/lib/image-safety';
 
 export type ActionState = { errors?: Record<string, string[]>; formError?: string; success?: boolean };
@@ -101,7 +101,7 @@ export async function addExpenseAction(_prev: ActionState, formData: FormData): 
       detail: parsed.data.detail,
       amount: parsed.data.amount,
       invoiceUrl,
-      invoiceName: file.name,
+      invoiceName: decodeUploadName(file.name),
     });
   } catch (e: any) {
     return { formError: e?.message ?? 'No se pudo registrar el gasto.' };

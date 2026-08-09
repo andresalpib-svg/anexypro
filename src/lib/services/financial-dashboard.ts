@@ -67,8 +67,12 @@ export async function getFinancialDashboard(companyId: string, condominiumId: st
             },
             _sum: { total: true },
           }),
+          // SOLO `por_aprobar`. Un borrador no espera aprobación: nadie
+          // lo ha enviado todavía. Incluirlo hacía que el panel dijera
+          // "1 esperan aprobación" mientras la pestaña Gastos —que sí
+          // filtra— decía 0, sobre el mismo gasto.
           tx.expense.findMany({
-            where: { condominiumId, status: { in: ['por_aprobar', 'borrador'] } },
+            where: { condominiumId, status: 'por_aprobar' },
             select: { id: true, expenseNumber: true, description: true, total: true, status: true },
             orderBy: { issueDate: 'asc' },
             take: 10,
@@ -104,7 +108,7 @@ export async function getFinancialDashboard(companyId: string, condominiumId: st
   // --- Alertas: solo lo que requiere una decisión ---
   const alerts: Alert[] = [];
 
-  const porAprobar = operational.pendingApproval.filter((e) => e.status === 'por_aprobar');
+  const porAprobar = operational.pendingApproval;
   if (porAprobar.length > 0) {
     alerts.push({
       level: 'atencion',

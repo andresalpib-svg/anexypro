@@ -17,6 +17,7 @@ import {
   type ActionState,
 } from './actions';
 import { enTransicion } from '@/lib/accion-segura';
+import { hoyISO } from '@/lib/fecha-local';
 
 export type AccountRow = {
   id: string;
@@ -130,7 +131,7 @@ function NewAccountModal({
           </div>
           <div>
             <label className="field-label">Desde</label>
-            <input name="openingDate" type="date" defaultValue={new Date().toISOString().slice(0, 10)} className="field-input w-40" />
+            <input name="openingDate" type="date" defaultValue={hoyISO()} className="field-input w-40" />
           </div>
         </div>
         <Errors state={state} />

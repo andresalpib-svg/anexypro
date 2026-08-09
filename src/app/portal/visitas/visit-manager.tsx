@@ -5,8 +5,10 @@ import { useFormState, useFormStatus } from 'react-dom';
 import { Plus, QrCode, MessageCircle, PauseCircle, PlayCircle, XCircle, Bell } from 'lucide-react';
 import { toast } from 'sonner';
 import { StatusChip } from '@/components/ui/status-chip';
+import { AvisoSuspension } from '@/components/ui/aviso-suspension';
 import { authorizeVisitAction, setMyVisitStatusAction, type ActionState } from './actions';
 import { enTransicion } from '@/lib/accion-segura';
+import { etiquetaTipoVisita } from '@/lib/etiquetas-visita';
 
 export type PortalVisit = {
   id: string;
@@ -36,7 +38,6 @@ export type PortalVisit = {
 
 type Alert = { id: string; kind: string; text: string; when: string };
 
-const TYPE_LABEL: Record<string, string> = { entrega: 'Entrega', rapida: 'Visita rápida', recurrente: 'Recurrente', empleado: 'Empleado' };
 const ESTADO_VARIANT: Record<PortalVisit['estado'], 'ok' | 'royal' | 'neutral' | 'danger' | 'warn'> = {
   Autorizada: 'ok',
   'Dentro del condominio': 'royal',
@@ -214,7 +215,7 @@ function VisitCard({ visit, condoName }: { visit: PortalVisit; condoName: string
   const canSuspend = (visit.visitType === 'recurrente' || visit.visitType === 'empleado') && visit.estado !== 'Cancelada' && visit.estado !== 'Vencida';
 
   const waText = encodeURIComponent(
-    `Autorización de visita — ${condoName}\n${TYPE_LABEL[visit.visitType]}: ${visit.visitorName}\nCódigo de acceso: ${visit.code}\n${visit.validDate ? `Fecha: ${visit.validDate}` : 'Vigente'}${visit.arrivalTime ? ` · ${visit.arrivalTime}` : ''}\nPreséntalo en la caseta de seguridad.`
+    `Autorización de visita — ${condoName}\n${etiquetaTipoVisita(visit.visitType)}: ${visit.visitorName}\nCódigo de acceso: ${visit.code}\n${visit.validDate ? `Fecha: ${visit.validDate}` : 'Vigente'}${visit.arrivalTime ? ` · ${visit.arrivalTime}` : ''}\nPreséntalo en la caseta de seguridad.`
   );
 
   const setStatus = (status: 'cancelada' | 'suspendida' | 'vigente', confirmMsg: string) => {
@@ -240,7 +241,7 @@ function VisitCard({ visit, condoName }: { visit: PortalVisit; condoName: string
         <div className="min-w-0 flex-1">
           <p className="font-medium text-ink">
             {visit.visitorName}
-            <span className="ml-2 text-xs text-muted">{TYPE_LABEL[visit.visitType]}</span>
+            <span className="ml-2 text-xs text-muted">{etiquetaTipoVisita(visit.visitType)}</span>
           </p>
           <p className="text-xs text-muted">
             Código <b className="font-mono">{visit.code}</b>
@@ -320,7 +321,17 @@ function VisitCard({ visit, condoName }: { visit: PortalVisit; condoName: string
   );
 }
 
-export function VisitManager({ visits, alerts, condoName }: { visits: PortalVisit[]; alerts: Alert[]; condoName: string }) {
+export function VisitManager({
+  visits,
+  alerts,
+  condoName,
+  suspension,
+}: {
+  visits: PortalVisit[];
+  alerts: Alert[];
+  condoName: string;
+  suspension: { suspended: boolean; monthsOverdue: number };
+}) {
   const [tab, setTab] = useState<(typeof TABS)[number]>('Hoy');
 
   const filtered = visits.filter((v) => {
@@ -356,7 +367,12 @@ export function VisitManager({ visits, alerts, condoName }: { visits: PortalVisi
         </div>
       )}
 
-      <NewVisitForm />
+      {/* El bloqueo se avisa ANTES de llenar el formulario, no al enviarlo. */}
+      {suspension.suspended ? (
+        <AvisoSuspension servicio="autorizar visitas" monthsOverdue={suspension.monthsOverdue} />
+      ) : (
+        <NewVisitForm />
+      )}
 
       <div className="mt-5 flex gap-1 rounded-xl bg-canvas p-1">
         {TABS.map((t) => (

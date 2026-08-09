@@ -190,7 +190,14 @@ export async function vincularUsuarioExistente(
 export async function createUserForPerson(
   companyId: string,
   personId: string,
-  input: { email: string; password: string; fullName: string }
+  input: { email: string; password: string; fullName: string },
+  /**
+   * Quién la crea. Dar de alta un acceso es justo lo que una bitácora
+   * tiene que registrar, y esta vía —la de "Agregar persona" con
+   * contraseña— no dejaba rastro en Auditoría; solo lo hacía el alta
+   * masiva.
+   */
+  actor?: { userId: string; userName: string }
 ) {
   const persona = await withTenantContext(companyId, (tx) =>
     tx.person.findUniqueOrThrow({ where: { id: personId }, select: { userId: true } })
@@ -211,8 +218,17 @@ export async function createUserForPerson(
     data: { companyId, email: input.email, passwordHash, fullName: input.fullName, role: 'condomino' },
     select: { id: true, email: true, fullName: true },
   });
-  await withTenantContext(companyId, (tx) =>
-    tx.person.update({ where: { id: personId }, data: { userId: user.id } })
-  );
+  await withTenantContext(companyId, async (tx) => {
+    await tx.person.update({ where: { id: personId }, data: { userId: user.id } });
+    if (actor) {
+      await logActivity(tx, companyId, {
+        userId: actor.userId,
+        userName: actor.userName,
+        module: 'Residentes',
+        action: 'Cuenta de condómino creada',
+        target: `${input.fullName} · ${input.email}`,
+      });
+    }
+  });
   return user;
 }

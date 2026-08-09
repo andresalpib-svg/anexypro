@@ -3,6 +3,7 @@ import { ClipboardCheck } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { getResidentContext } from '@/lib/services/resident-context';
 import { listAssemblies } from '@/lib/services/assemblies';
+import { fechaSolo } from '@/lib/fecha-local';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatusChip } from '@/components/ui/status-chip';
 
@@ -31,7 +32,7 @@ export default async function ResidentAssembliesPage() {
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium text-ink">{a.title}</p>
                 <p className="text-xs text-muted">
-                  {a.type === 'ordinaria' ? 'Ordinaria' : 'Extraordinaria'} · {new Date(a.eventDate).toLocaleDateString('es-CR')}
+                  {a.type === 'ordinaria' ? 'Ordinaria' : 'Extraordinaria'} · {fechaSolo(a.eventDate)}
                 </p>
               </div>
               <StatusChip variant={STATUS_VARIANT[a.status]}>{STATUS_LABEL[a.status]}</StatusChip>

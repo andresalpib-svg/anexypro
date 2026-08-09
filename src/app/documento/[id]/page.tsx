@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { getIssuedDocument, DOC_TYPE_LABEL } from '@/lib/services/document-requests';
 import { getResidentContext } from '@/lib/services/resident-context';
+import { fechaSolo } from '@/lib/fecha-local';
 import { PrintButton } from './print-button';
 
 /**
@@ -152,7 +153,7 @@ export default async function DocumentoPage({ params }: { params: { id: string }
                     running += m.charge - m.credit;
                     return (
                       <tr key={i} className="border-b border-line">
-                        <td className="py-1.5 text-muted">{new Date(m.date).toLocaleDateString('es-CR')}</td>
+                        <td className="py-1.5 text-muted">{fechaSolo(m.date)}</td>
                         <td className="py-1.5 text-ink">{m.desc}</td>
                         <td className="py-1.5 text-right">{m.charge > 0 ? fmt(m.charge) : ''}</td>
                         <td className="py-1.5 text-right">{m.credit > 0 ? fmt(m.credit) : ''}</td>

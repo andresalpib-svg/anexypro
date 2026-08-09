@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { Modal } from '@/components/ui/modal';
 import { saveFundAction, addMovementAction, deleteMovementAction, type ActionState } from './reserve-actions';
 import { enTransicion } from '@/lib/accion-segura';
+import { hoyISO as hoy } from '@/lib/fecha-local';
 
 export type FundView = {
   id: string;
@@ -29,7 +30,6 @@ export type MovementView = {
   reference: string | null;
 };
 
-const hoy = () => new Date().toISOString().slice(0, 10);
 const fecha = (iso: string) =>
   new Date(iso).toLocaleDateString('es-CR', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
 

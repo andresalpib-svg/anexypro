@@ -9,6 +9,8 @@ import {
 } from '@/lib/services/storage';
 import { guessMime } from '@/lib/storage/local-provider';
 import { MEDIA_EXT, MEDIA_MAX_BYTES } from '@/lib/upload';
+import { decodeUploadName } from '@/lib/nombre-subida';
+import { refFromObjectId } from '@/lib/rutas-archivo';
 
 /**
  * Reemplazo de `saveUpload` para todas las subidas del sistema.
@@ -30,25 +32,12 @@ import { MEDIA_EXT, MEDIA_MAX_BYTES } from '@/lib/upload';
  * en cada petición.
  */
 
-export const REF_PREFIX = '/api/archivo/';
-
-/** ¿Este valor guardado apunta al repositorio privado? */
-export function isRepositoryRef(value: string | null | undefined): boolean {
-  return Boolean(value && value.startsWith(REF_PREFIX));
-}
-
-/** ¿Es una subida antigua, todavía en la carpeta pública? */
-export function isLegacyPublicRef(value: string | null | undefined): boolean {
-  return Boolean(value && value.startsWith('/uploads/'));
-}
-
-export function refFromObjectId(objectId: string): string {
-  return `${REF_PREFIX}${objectId}`;
-}
-
-export function objectIdFromRef(ref: string): string | null {
-  return isRepositoryRef(ref) ? ref.slice(REF_PREFIX.length) : null;
-}
+// Las funciones que solo miran la FORMA de la referencia viven en
+// `lib/rutas-archivo.ts` (sin sesión ni Prisma, para poder usarlas
+// también desde componentes de cliente). Se reexportan para no
+// cambiar los puntos que ya las importaban desde aquí.
+export { REF_PREFIX, isRepositoryRef, isLegacyPublicRef, refFromObjectId, objectIdFromRef } from '@/lib/rutas-archivo';
+export { decodeUploadName } from '@/lib/nombre-subida';
 
 /** Destino de la subida: una carpeta del condominio o una de la empresa. */
 export type Destination =
@@ -85,7 +74,8 @@ export async function saveToRepository(
   if (file.size > maxBytes) {
     throw new Error(`El archivo supera el máximo de ${Math.round(maxBytes / 1024 / 1024)} MB.`);
   }
-  const ext = (file.name.split('.').pop() ?? '').toLowerCase();
+  const fileName = decodeUploadName(file.name);
+  const ext = (fileName.split('.').pop() ?? '').toLowerCase();
   if (!allowed.has(ext)) {
     throw new Error(`Tipo de archivo no permitido (.${ext}). Usá: ${[...allowed].join(', ')}.`);
   }
@@ -104,9 +94,9 @@ export async function saveToRepository(
   const actor = await actorFromSession(session);
   const stored = await uploadToFolder(actor, {
     folderId,
-    fileName: file.name,
+    fileName,
     // Nunca el `file.type` del cliente (falsificable): siempre por extensión.
-    mimeType: guessMime(file.name),
+    mimeType: guessMime(fileName),
     data: Buffer.from(await file.arrayBuffer()),
     ownerPersonId: opts.ownerPersonId ?? null,
     userId: session.user.id,

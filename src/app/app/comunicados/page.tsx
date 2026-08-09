@@ -6,6 +6,7 @@ import { listCondominiumsForSession } from '@/lib/services/condominiums';
 import { listCommunications } from '@/lib/services/communications';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatusChip } from '@/components/ui/status-chip';
+import { SinCondominio } from '@/components/ui/sin-condominio';
 import { CondoSelect } from '../propiedades/condo-select';
 import { audienceLabel } from '@/lib/comm-audience';
 
@@ -42,9 +43,7 @@ export default async function ComunicadosPage({ searchParams }: { searchParams: 
       />
 
       {condos.length === 0 ? (
-        <div className="card p-10 text-center text-sm text-muted">
-          Primero crea un condominio en Gestión de Condominios.
-        </div>
+        <SinCondominio companyId={session!.user.companyId} role={session!.user.role} />
       ) : (
         <>
           <CondoSelect condos={condos} selected={condoId!} />

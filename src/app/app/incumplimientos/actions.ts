@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { requirePanel, allowsCondo, SIN_PERMISO } from '@/lib/guard';
 import { pickFile, IMAGE_EXT, fileKind } from '@/lib/upload';
-import { saveToRepository } from '@/lib/services/file-refs';
+import { saveToRepository, decodeUploadName } from '@/lib/services/file-refs';
 import { condoOfProperty } from '@/lib/services/entity-scope';
 import {
   searchProperties,
@@ -112,10 +112,11 @@ export async function issueViolationAction(_prev: IssueState, formData: FormData
         { kind: 'condo', condominiumId, slug: 'incumplimientos' },
         { maxBytes: 25 * 1024 * 1024, ownerPersonId }
       );
-      const tipo = fileKind(file.name);
+      const fileName = decodeUploadName(file.name);
+      const tipo = fileKind(fileName);
       evidences.push({
         fileRef: ref,
-        fileName: file.name,
+        fileName,
         mimeType: file.type || 'application/octet-stream',
         kind: tipo === 'video' ? ('video' as const) : ('imagen' as const),
         sizeBytes: file.size,

@@ -2,7 +2,10 @@ import { Waves, FileText } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { getResidentContext } from '@/lib/services/resident-context';
 import { listAmenities } from '@/lib/services/amenities';
+import { getPropertySuspension } from '@/lib/services/finance';
+import { AvisoSuspension } from '@/components/ui/aviso-suspension';
 import { withTenantContext } from '@/lib/db';
+import { fechaSolo } from '@/lib/fecha-local';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatusChip } from '@/components/ui/status-chip';
 import { NewReservationForm } from './new-reservation-form';
@@ -17,11 +20,12 @@ export default async function ResidentReservationsPage() {
   const ctx = await getResidentContext(session!.user.id);
   if (!ctx) return null;
 
-  const [amenities, myReservations] = await Promise.all([
+  const [amenities, myReservations, suspension] = await Promise.all([
     listAmenities(session!.user.companyId, ctx.condominium.id),
     withTenantContext(session!.user.companyId, (tx) =>
       tx.reservation.findMany(  { where: { propertyId: ctx.property.id }, orderBy: { resDate: 'desc' }, include: { amenity: true } })
     ),
+    getPropertySuspension(session!.user.companyId, ctx.property.id),
   ]);
 
   return (
@@ -63,7 +67,12 @@ export default async function ResidentReservationsPage() {
         </div>
       )}
 
-      <NewReservationForm condominiumId={ctx.condominium.id} amenities={amenities.map((a) => ({ id: a.id, name: a.name, reservationCost: a.reservationCost.toString() }))} />
+      {/* El bloqueo se avisa ANTES de llenar el formulario, no al enviarlo. */}
+      {suspension.suspended ? (
+        <AvisoSuspension servicio="reservar áreas comunes" monthsOverdue={suspension.monthsOverdue} />
+      ) : (
+        <NewReservationForm condominiumId={ctx.condominium.id} amenities={amenities.map((a) => ({ id: a.id, name: a.name, reservationCost: a.reservationCost.toString() }))} />
+      )}
 
       <div className="card mt-5 divide-y divide-line">
         {myReservations.length === 0 ? (
@@ -73,7 +82,7 @@ export default async function ResidentReservationsPage() {
             <div key={r.id} className="flex items-center gap-3 p-3 text-sm">
               <span className="font-medium text-ink">{r.amenity.name}</span>
               <span className="text-muted">
-                {new Date(r.resDate).toLocaleDateString('es-CR')} · {r.startsAt}–{r.endsAt}
+                {fechaSolo(r.resDate)} · {r.startsAt}–{r.endsAt}
               </span>
               <StatusChip variant={STATUS_VARIANT[r.status]}>{STATUS_LABEL[r.status]}</StatusChip>
             </div>

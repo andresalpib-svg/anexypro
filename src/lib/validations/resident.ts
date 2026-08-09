@@ -1,11 +1,12 @@
 import { z } from 'zod';
+import { telefono, telefonoOpcional } from '@/lib/validations/comunes';
 
 export const personSchema = z.object({
   propertyId: z.string().uuid(),
   fullName: z.string().min(2, 'El nombre es muy corto').max(150),
   idNumber: z.string().max(30).optional().or(z.literal('')),
   email: z.string().email('Correo inválido').optional().or(z.literal('')),
-  phone: z.string().max(30).optional().or(z.literal('')),
+  phone: telefonoOpcional,
   role: z.enum(['propietario', 'residente', 'inquilino', 'familiar', 'empleado']),
   // Si se escribe una contraseña, se crea el usuario de acceso del
   // Ecosistema Condómino (requiere correo).
@@ -17,7 +18,7 @@ export const updatePersonSchema = z.object({
   fullName: z.string().min(2, 'El nombre es muy corto').max(150),
   idNumber: z.string().max(30).optional().or(z.literal('')),
   email: z.string().email('Correo inválido').optional().or(z.literal('')),
-  phone: z.string().max(30).optional().or(z.literal('')),
+  phone: telefonoOpcional,
 });
 
 export const vehicleSchema = z.object({
@@ -39,6 +40,6 @@ export const petSchema = z.object({
 export const emergencyContactSchema = z.object({
   propertyId: z.string().uuid(),
   name: z.string().min(2, 'El nombre es muy corto').max(120),
-  phone: z.string().min(4, 'Indica un teléfono').max(30),
+  phone: telefono,
   relationship: z.string().max(60).optional().or(z.literal('')),
 });

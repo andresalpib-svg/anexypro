@@ -104,7 +104,15 @@ export function winAnsi(text: string): string {
 export function money(n: number, currency: string): string {
   const signo = n < 0 ? '-' : '';
   const [entero = '0', decimales = '00'] = Math.abs(n).toFixed(2).split('.');
-  const miles = entero.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  // Separador de miles: espacio NORMAL, como el resto del sistema
+  // ("₡25 000,00"). Antes era un punto y el residente veía en su portal
+  // "CRC 25.000,00", con un formato que no aparece en ninguna otra
+  // pantalla. No se puede usar `toLocaleString('es-CR')` porque separa
+  // con espacio fino (U+202F) y ese carácter no existe en WinAnsi: el
+  // PDF revienta. El símbolo se deja como "CRC" por la misma razón —
+  // ₡ tampoco está en WinAnsi— y este texto es el mismo que firma el
+  // documento formal, así que debe coincidir con el del PDF.
+  const miles = entero.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
   return `${currency} ${signo}${miles},${decimales}`;
 }
 

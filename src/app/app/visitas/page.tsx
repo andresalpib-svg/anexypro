@@ -6,27 +6,32 @@ import { listVisits } from '@/lib/services/visits';
 import { listPropertiesByCondo } from '@/lib/services/properties';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatusChip } from '@/components/ui/status-chip';
+import { SinCondominio } from '@/components/ui/sin-condominio';
+import {
+  VISIT_TYPE_LABEL as TYPE_LABEL,
+  VISIT_STATUS_LABEL as STATUS_LABEL,
+  VISIT_STATUS_VARIANT as STATUS_VARIANT,
+} from '@/lib/etiquetas-visita';
 import { CondoSelect } from '../propiedades/condo-select';
 import { NewVisitForm } from './new-visit-form';
 import { CheckInButton, CheckOutButton } from './check-buttons';
-
-const TYPE_LABEL: Record<string, string> = { rapida: 'Rápida', recurrente: 'Recurrente', entrega: 'Entrega' };
-const STATUS_LABEL: Record<string, string> = { vigente: 'Vigente', usada: 'Usada', vencida: 'Vencida', cancelada: 'Cancelada' };
-const STATUS_VARIANT: Record<string, 'ok' | 'neutral' | 'danger'> = { vigente: 'ok', usada: 'neutral', vencida: 'danger', cancelada: 'danger' };
 
 export default async function VisitasPage({ searchParams }: { searchParams: { condoId?: string } }) {
   const session = await auth();
   const condos = await listCondominiumsForSession(session!);
   const condoId = resolveCondoId(searchParams.condoId, condos);
-  if (!condoId) return <div className="card p-10 text-center text-sm text-muted">Primero crea un condominio.</div>;
+  if (!condoId) return <SinCondominio companyId={session!.user.companyId} role={session!.user.role} />;
 
   const [visits, properties] = await Promise.all([
     listVisits(session!.user.companyId, condoId),
     listPropertiesByCondo(session!.user.companyId, condoId),
   ]);
 
-  // "Por ingresar": la visita todavía no completó su ciclo (no ha salido).
-  // "Ingresadas": ya registró ingreso Y salida — es el historial.
+  // "Activas": la visita todavía no cerró su ciclo — puede estar
+  // esperando el ingreso o ya estar adentro. Se llamaba "por ingresar",
+  // y era falso: tres de cinco filas decían "Adentro" y ofrecían el
+  // botón de salida.
+  // "Cerradas": ya registró ingreso Y salida — es el historial.
   const completed = (v: (typeof visits)[number]) => {
     const last = v.checkins[v.checkins.length - 1];
     return Boolean(last && last.checkoutAt);
@@ -44,7 +49,7 @@ export default async function VisitasPage({ searchParams }: { searchParams: { co
       </div>
 
       <p className="mb-2 mt-6 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-muted">
-        <DoorOpen size={14} /> Visitas por ingresar ({porIngresar.length})
+        <DoorOpen size={14} /> Visitas activas ({porIngresar.length}) — por ingresar y dentro del condominio
       </p>
       <div className="card overflow-x-auto">
         <table className="w-full text-sm">
@@ -63,7 +68,7 @@ export default async function VisitasPage({ searchParams }: { searchParams: { co
               <tr>
                 <td colSpan={6} className="px-4 py-10 text-center text-muted">
                   <DoorOpen className="mx-auto mb-2 text-muted" size={22} />
-                  Sin visitas pendientes de ingreso.
+                  Ninguna visita activa en este momento.
                 </td>
               </tr>
             ) : (
@@ -96,7 +101,7 @@ export default async function VisitasPage({ searchParams }: { searchParams: { co
       </div>
 
       <p className="mb-2 mt-6 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-muted">
-        <History size={14} /> Registro de visitas ingresadas ({ingresadas.length})
+        <History size={14} /> Visitas cerradas ({ingresadas.length}) — con ingreso y salida registrados
       </p>
       <div className="card overflow-x-auto">
         <table className="w-full text-sm">

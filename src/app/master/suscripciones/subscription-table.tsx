@@ -12,6 +12,7 @@ import {
   unblockCompanyAction,
 } from './actions';
 import { enTransicion } from '@/lib/accion-segura';
+import { hoyISO } from '@/lib/fecha-local';
 
 export type Fila = {
   companyId: string;
@@ -322,7 +323,7 @@ function PlanModal({
   onClose: () => void;
 }) {
   const [planId, setPlanId] = useState(fila.planId ?? '');
-  const [fecha, setFecha] = useState(fila.nextPaymentDate ?? new Date().toISOString().slice(0, 10));
+  const [fecha, setFecha] = useState(fila.nextPaymentDate ?? hoyISO());
   const [error, setError] = useState<string | null>(null);
   const [enviando, start] = useTransition();
 

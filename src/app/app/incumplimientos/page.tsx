@@ -7,6 +7,7 @@ import { listViolationTypes, listCases } from '@/lib/services/violations';
 import { PageHeader } from '@/components/ui/page-header';
 import { ModuleActions } from '@/components/ui/module-actions';
 import { StatusChip } from '@/components/ui/status-chip';
+import { SinCondominio } from '@/components/ui/sin-condominio';
 import { CondoSelect } from '../propiedades/condo-select';
 import { QuickNotice } from './quick-notice';
 
@@ -29,7 +30,7 @@ export default async function IncumplimientosPage({
   const condoId = resolveCondoId(searchParams.condoId, condos);
 
   if (!condoId) {
-    return <div className="card p-10 text-center text-sm text-muted">Primero crea un condominio.</div>;
+    return <SinCondominio companyId={session!.user.companyId} role={session!.user.role} />;
   }
 
   const condo = condos.find((c) => c.id === condoId)!;

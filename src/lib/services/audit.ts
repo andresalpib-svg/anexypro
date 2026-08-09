@@ -40,15 +40,32 @@ export async function listAuditLog(companyId: string, moduleFilter?: string) {
   );
 }
 
+/**
+ * Los módulos que aparecen en el filtro de Auditoría.
+ *
+ * DEBE contener todos los valores que se escriben como `module:` en las
+ * llamadas a `logActivity`. Faltaban seis —Caja chica, Incumplimientos,
+ * Plataforma, Residentes, Suscripción y Visitas—: esos movimientos SÍ
+ * se registraban, pero no había forma de filtrarlos y desde la pantalla
+ * parecía que nadie los auditaba.
+ *
+ * Si agregás un módulo nuevo a `logActivity`, agregalo también acá.
+ */
 export const AUDIT_MODULES = [
-  'Autenticación',
-  'Condominios',
-  'Finanzas',
-  'Mantenimiento',
-  'Proyectos',
   'Asambleas',
-  'Documentos',
+  'Autenticación',
+  'Caja chica',
   'Comunicados',
+  'Condominios',
   'Configuración',
+  'Documentos',
+  'Finanzas',
+  'Incumplimientos',
+  'Mantenimiento',
+  'Plataforma',
+  'Proyectos',
+  'Residentes',
   'Seguridad',
+  'Suscripción',
+  'Visitas',
 ];

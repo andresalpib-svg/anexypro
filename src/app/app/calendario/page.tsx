@@ -5,6 +5,7 @@ import { listMonthEvents, toMonthEvent } from '@/lib/services/calendar';
 import { getTaskBuckets } from '@/lib/services/tasks';
 import { PageHeader } from '@/components/ui/page-header';
 import { MonthCalendar, SummaryRows } from '@/components/ui/month-calendar';
+import { SinCondominio } from '@/components/ui/sin-condominio';
 import { CondoSelect } from '../propiedades/condo-select';
 import { NewEventForm } from './new-event-form';
 
@@ -33,7 +34,7 @@ export default async function CalendarioPage({
   const { year, month } = parseMonth(searchParams.mes);
 
   if (!condoId) {
-    return <div className="card p-10 text-center text-sm text-muted">Primero crea un condominio.</div>;
+    return <SinCondominio companyId={session!.user.companyId} role={session!.user.role} />;
   }
 
   const [events, buckets] = await Promise.all([

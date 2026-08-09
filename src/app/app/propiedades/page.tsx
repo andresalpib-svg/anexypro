@@ -8,6 +8,7 @@ import { listProvisionableResidents } from '@/lib/services/user-provisioning';
 import { isEmailConfigured } from '@/lib/email';
 import { PageHeader } from '@/components/ui/page-header';
 import { ModuleActions } from '@/components/ui/module-actions';
+import { SinCondominio } from '@/components/ui/sin-condominio';
 import { CondoSelect } from './condo-select';
 import { NewPropertyForm } from './new-property-form';
 import { ImportExcelForm } from './import-excel-form';
@@ -48,10 +49,7 @@ export default async function PropiedadesPage({
       />
 
       {condos.length === 0 ? (
-        <div className="card p-10 text-center text-sm text-muted">
-          Primero crea un condominio en Gestión de Condominios — las propiedades siempre pertenecen a
-          uno.
-        </div>
+        <SinCondominio companyId={session!.user.companyId} role={session!.user.role} />
       ) : (
         <>
           <div className="mb-5 flex flex-wrap items-center justify-between gap-4">

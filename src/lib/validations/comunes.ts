@@ -23,6 +23,35 @@ export const fechaISO = z
     return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v;
   }, 'Esa fecha no existe');
 
+/**
+ * Un número de teléfono utilizable.
+ *
+ * POR QUÉ EXISTE: el campo era `z.string().max(30)` a secas, así que
+ * entraba cualquier cosa. Los datos demo quedaron con números de nueve
+ * dígitos —"87013-1071"— que no se pueden marcar; y un teléfono que no
+ * sirve solo se descubre el día que hay que llamar al residente.
+ *
+ * Se cuenta por DÍGITOS y no por formato: la gente escribe
+ * "8888-1010", "8888 1010" o "+506 8888 1010" y las tres son válidas.
+ *
+ * Sin código de país se exigen los 8 dígitos exactos de Costa Rica —así
+ * se atrapa el error real, que es un dígito de más o de menos—. Con
+ * código de país (empieza con `+`, o son 11 dígitos que arrancan en
+ * 506) se admite cualquier largo de E.164, para no bloquear al
+ * propietario que vive fuera.
+ */
+export const telefono = z
+  .string()
+  .max(30)
+  .refine((v) => {
+    const digitos = v.replace(/\D/g, '');
+    const internacional = v.trim().startsWith('+') || (digitos.length === 11 && digitos.startsWith('506'));
+    return internacional ? digitos.length >= 8 && digitos.length <= 15 : digitos.length === 8;
+  }, 'Revisá el teléfono: en Costa Rica son 8 dígitos (ej. 8888-1010)');
+
+/** Igual que `telefono` pero admite el campo vacío. */
+export const telefonoOpcional = z.union([telefono, z.literal('')]).optional();
+
 /** `HH:mm` en 24 horas. */
 export const horaHHMM = z
   .string()

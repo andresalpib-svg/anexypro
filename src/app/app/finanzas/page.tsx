@@ -4,6 +4,7 @@ import { can } from '@/lib/rbac';
 import { listCondominiumsForSession } from '@/lib/services/condominiums';
 import { listPropertiesWithBalance, getCondoFinanceSummary } from '@/lib/services/finance';
 import { PageHeader } from '@/components/ui/page-header';
+import { SinCondominio } from '@/components/ui/sin-condominio';
 import { CondoSelect } from '../propiedades/condo-select';
 import { FinanceTabs } from './finance-tabs';
 import { GenerateBillingForm } from './generate-billing-form';
@@ -30,9 +31,7 @@ export default async function FinanzasPage({ searchParams }: { searchParams: { c
 
   if (condos.length === 0) {
     return (
-      <div className="card p-10 text-center text-sm text-muted">
-        Primero crea un condominio en Gestión de Condominios.
-      </div>
+      <SinCondominio companyId={session!.user.companyId} role={session!.user.role} />
     );
   }
 

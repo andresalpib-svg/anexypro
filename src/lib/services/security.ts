@@ -1,4 +1,5 @@
 import { withTenantContext } from '@/lib/db';
+import { etiquetaTipoVisita } from '@/lib/etiquetas-visita';
 
 export async function listIncidents(companyId: string, condominiumId: string) {
   return withTenantContext(companyId, (tx) => tx.incident.findMany({ where: { condominiumId }, orderBy: { createdAt: 'desc' } }));
@@ -62,8 +63,8 @@ export async function getSecurityLog(companyId: string, condominiumId: string): 
 
     const entries: SecurityLogEntry[] = [];
     for (const c of checkins) {
-      entries.push({ occurredAt: c.checkinAt, kind: 'ingreso', summary: `${c.authorization.visitorName} — ${c.authorization.visitType}` });
-      if (c.checkoutAt) entries.push({ occurredAt: c.checkoutAt, kind: 'salida', summary: `${c.authorization.visitorName} — ${c.authorization.visitType}` });
+      entries.push({ occurredAt: c.checkinAt, kind: 'ingreso', summary: `${c.authorization.visitorName} — ${etiquetaTipoVisita(c.authorization.visitType)}` });
+      if (c.checkoutAt) entries.push({ occurredAt: c.checkoutAt, kind: 'salida', summary: `${c.authorization.visitorName} — ${etiquetaTipoVisita(c.authorization.visitType)}` });
     }
     for (const p of packages) entries.push({ occurredAt: p.receivedAt, kind: 'paquete', summary: `${p.courier ?? 'Paquete'} — recibido` });
     for (const i of incidents) entries.push({ occurredAt: i.createdAt, kind: 'incidente', summary: `${i.title} — ${i.category}` });

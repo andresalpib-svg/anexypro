@@ -4,6 +4,7 @@ import { useRef, useEffect, useState, useTransition } from 'react';
 import { useFormState, useFormStatus } from 'react-dom';
 import { Wallet, Plus, Trash2, Paperclip, TrendingDown, Banknote } from 'lucide-react';
 import { toast } from 'sonner';
+import { isLegacyPublicRef } from '@/lib/rutas-archivo';
 import {
   allocateAction,
   addExpenseAction,
@@ -12,6 +13,7 @@ import {
   type ActionState,
 } from './petty-cash-actions';
 import { enTransicion } from '@/lib/accion-segura';
+import { hoyISO as hoy } from '@/lib/fecha-local';
 
 export type CashMovement = {
   id: string;
@@ -52,8 +54,6 @@ function Errors({ state }: { state: ActionState }) {
     </div>
   );
 }
-
-const hoy = () => new Date().toISOString().slice(0, 10);
 
 export function PettyCash({
   condominiumId,
@@ -236,16 +236,31 @@ export function PettyCash({
                       {fecha(e.date)}
                       {e.author && ` · ${e.author}`}
                     </p>
-                    {e.invoiceUrl && (
-                      <a
-                        href={e.invoiceUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="mt-0.5 inline-flex items-center gap-1 text-xs font-semibold text-royal hover:underline"
-                      >
-                        <Paperclip size={12} /> {e.invoiceName ?? 'Factura'}
-                      </a>
-                    )}
+                    {/*
+                      Las subidas anteriores al repositorio privado
+                      apuntan a `/uploads/...`, una carpeta que ya no
+                      existe: el enlace daba 404 sin avisar de nada. Se
+                      muestra el nombre, pero no como algo que se pueda
+                      abrir.
+                    */}
+                    {e.invoiceUrl &&
+                      (isLegacyPublicRef(e.invoiceUrl) ? (
+                        <p
+                          title="El archivo se subió antes del repositorio privado y ya no está disponible."
+                          className="mt-0.5 inline-flex items-center gap-1 text-xs text-muted"
+                        >
+                          <Paperclip size={12} /> {e.invoiceName ?? 'Factura'} · no disponible
+                        </p>
+                      ) : (
+                        <a
+                          href={e.invoiceUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-0.5 inline-flex items-center gap-1 text-xs font-semibold text-royal hover:underline"
+                        >
+                          <Paperclip size={12} /> {e.invoiceName ?? 'Factura'}
+                        </a>
+                      ))}
                   </div>
                   <p className="flex-none font-sans font-bold text-ink">{fmt(e.amount, currency)}</p>
                   <button

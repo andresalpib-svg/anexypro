@@ -8,6 +8,7 @@ import { getPettyCash } from '@/lib/services/petty-cash';
 import { getCondominium } from '@/lib/services/condominiums';
 import { PageHeader } from '@/components/ui/page-header';
 import { ModuleActions } from '@/components/ui/module-actions';
+import { SinCondominio } from '@/components/ui/sin-condominio';
 import { CondoSelect } from '../propiedades/condo-select';
 import { QuickAddAsset, QuickAddProvider } from './quick-add';
 import { AssetList, ProviderList } from './asset-provider-lists';
@@ -26,7 +27,7 @@ export default async function MantenimientoPage({ searchParams }: { searchParams
 
   const condos = await listCondominiumsForSession(session!);
   const condoId = resolveCondoId(searchParams.condoId, condos);
-  if (!condoId) return <div className="card p-10 text-center text-sm text-muted">Primero crea un condominio.</div>;
+  if (!condoId) return <SinCondominio companyId={session!.user.companyId} role={session!.user.role} />;
 
   const [assets, providers, cash, condo] = await Promise.all([
     listAssets(session!.user.companyId, condoId),

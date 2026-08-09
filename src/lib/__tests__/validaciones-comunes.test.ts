@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fechaISO, horaHHMM, urlExterna, fechaISOOpcional } from '../validations/comunes';
+import { fechaISO, horaHHMM, urlExterna, fechaISOOpcional, telefono, telefonoOpcional } from '../validations/comunes';
 import { reservationSchema } from '../validations/reservation';
 import { mensajeDeError } from '../errores';
 
@@ -108,5 +108,31 @@ describe('mensajeDeError', () => {
   it('cae al genérico si no hay mensaje', () => {
     expect(mensajeDeError(null, 'generico')).toBe('generico');
     expect(mensajeDeError(new Error(''), 'generico')).toBe('generico');
+  });
+});
+
+describe('telefono', () => {
+  it('acepta los formatos con que la gente escribe un número de Costa Rica', () => {
+    for (const v of ['88881010', '8888-1010', '8888 1010', '+506 8888 1010', '(506) 8888-1010']) {
+      expect(telefono.safeParse(v).success).toBe(true);
+    }
+  });
+
+  it('rechaza el número de nueve dígitos que quedó en los datos demo', () => {
+    // "87013-1071" no se puede marcar: sobra un dígito.
+    expect(telefono.safeParse('87013-1071').success).toBe(false);
+  });
+
+  it('rechaza lo que claramente no es un teléfono', () => {
+    for (const v of ['', '123', 'no tengo', '8888-101']) {
+      expect(telefono.safeParse(v).success).toBe(false);
+    }
+  });
+
+  it('el opcional deja pasar el campo vacío pero no uno inválido', () => {
+    expect(telefonoOpcional.safeParse('').success).toBe(true);
+    expect(telefonoOpcional.safeParse(undefined).success).toBe(true);
+    expect(telefonoOpcional.safeParse('123').success).toBe(false);
+    expect(telefonoOpcional.safeParse('8888-1010').success).toBe(true);
   });
 });

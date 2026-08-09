@@ -19,7 +19,15 @@ export function PropertyBalanceRow({
   condominiumId,
   currency,
 }: {
-  property: { id: string; code: string; propertyType: string; balance: number; suspended: boolean; monthsOverdue: number };
+  property: {
+    id: string;
+    code: string;
+    propertyType: string;
+    balance: number;
+    suspended: boolean;
+    hasPaymentPlan: boolean;
+    monthsOverdue: number;
+  };
   condominiumId: string;
   currency: string;
 }) {
@@ -48,6 +56,8 @@ export function PropertyBalanceRow({
         <td className="px-4 py-3">
           {property.suspended ? (
             <StatusChip variant="danger">Suspendida ({property.monthsOverdue}m)</StatusChip>
+          ) : property.hasPaymentPlan && property.balance > 0 ? (
+            <StatusChip variant="royal">Convenio vigente</StatusChip>
           ) : property.balance > 0 ? (
             <StatusChip variant="warn">Saldo pendiente</StatusChip>
           ) : (

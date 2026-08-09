@@ -14,6 +14,7 @@ import {
   type ActionState,
 } from './actions';
 import { enTransicion } from '@/lib/accion-segura';
+import { hoyISO as hoy } from '@/lib/fecha-local';
 
 export type RecurringRow = {
   id: string;
@@ -68,7 +69,6 @@ const CONTRACT_LABEL: Record<string, string> = {
   cancelado: 'Cancelado',
 };
 
-const hoy = () => new Date().toISOString().slice(0, 10);
 const fecha = (iso: string) =>
   new Date(iso).toLocaleDateString('es-CR', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
 const diasPara = (iso: string) => Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000);

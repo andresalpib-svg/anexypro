@@ -4,6 +4,7 @@ import { resolveCondoId } from '@/lib/active-condo';
 import { listStaffUsers, listBoardCandidates, PERMISSION_AREAS, BOARD_AREAS } from '@/lib/services/settings';
 import { listCondominiumsForSession } from '@/lib/services/condominiums';
 import { PageHeader } from '@/components/ui/page-header';
+import { SinCondominio } from '@/components/ui/sin-condominio';
 import { CondoSelect } from '../propiedades/condo-select';
 import { PermissionCheckbox, BoardMemberToggle, BoardAreaCheckbox, InviteUserForm, PasswordManager } from './controls';
 
@@ -81,7 +82,7 @@ export default async function ConfiguracionPage({ searchParams }: { searchParams
       </p>
 
       {condos.length === 0 ? (
-        <p className="text-sm text-muted">Primero crea un condominio.</p>
+        <SinCondominio companyId={session!.user.companyId} role={session!.user.role} />
       ) : (
         <>
           <CondoSelect condos={condos} selected={condoId!} />

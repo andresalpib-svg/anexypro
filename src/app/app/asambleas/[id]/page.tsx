@@ -4,6 +4,7 @@ import { ArrowLeft, Lock } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { getAssembly } from '@/lib/services/assemblies';
 import { canAccessCondo } from '@/lib/services/condominiums';
+import { fechaSolo } from '@/lib/fecha-local';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatusChip } from '@/components/ui/status-chip';
 import { VoteControls, MinutesForm } from './vote-controls';
@@ -19,7 +20,7 @@ export default async function AssemblyDetailPage({ params }: { params: { id: str
     <div className="mx-auto max-w-3xl">
       <PageHeader
         title={assembly.title}
-        subtitle={`${new Date(assembly.eventDate).toLocaleDateString('es-CR')} · ${assembly.eventTime}${assembly.location ? ' · ' + assembly.location : ''}`}
+        subtitle={`${fechaSolo(assembly.eventDate)} · ${assembly.eventTime}${assembly.location ? ' · ' + assembly.location : ''}`}
         action={
           <Link href="/app/asambleas" className="btn-ghost">
             <ArrowLeft size={16} /> Volver

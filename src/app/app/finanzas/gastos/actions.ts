@@ -12,7 +12,7 @@ import {
   upsertSupplier,
 } from '@/lib/services/expenses';
 import { pickFile } from '@/lib/upload';
-import { saveToRepository } from '@/lib/services/file-refs';
+import { saveToRepository, decodeUploadName } from '@/lib/services/file-refs';
 import { isSafePng, isSafeJpeg, MAX_IMAGE_BYTES } from '@/lib/image-safety';
 import { parseInvoiceXml } from '@/lib/domain/invoice-xml';
 import { withTenantContext } from '@/lib/db';
@@ -70,7 +70,7 @@ async function saveDocument(
     if (!ok) return { error: 'No se pudo leer esa imagen — está dañada. Volvé a exportarla o subila en PDF.' };
   }
   const url = await saveToRepository(file, { kind: 'condo', condominiumId, slug: 'facturas' });
-  return { url, name: file.name };
+  return { url, name: decodeUploadName(file.name) };
 }
 
 export async function createExpenseAction(_prev: ActionState, formData: FormData): Promise<ActionState> {

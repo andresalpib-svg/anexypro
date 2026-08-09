@@ -8,6 +8,7 @@ import { StatusChip } from '@/components/ui/status-chip';
 import { Modal } from '@/components/ui/modal';
 import { logActionAction, createPlanAction, setPlanStatusAction, type ActionState } from './actions';
 import { enTransicion } from '@/lib/accion-segura';
+import { hoyISO as hoy } from '@/lib/fecha-local';
 
 export type DebtorView = {
   propertyId: string;
@@ -63,7 +64,6 @@ const PLAN_VARIANT: Record<string, 'ok' | 'warn' | 'danger' | 'neutral'> = {
   cancelado: 'neutral',
 };
 
-const hoy = () => new Date().toISOString().slice(0, 10);
 const fecha = (iso: string) =>
   new Date(iso).toLocaleDateString('es-CR', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
 

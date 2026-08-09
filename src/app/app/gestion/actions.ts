@@ -15,7 +15,7 @@ import {
   deleteTaskAttachment,
 } from '@/lib/services/tasks';
 import { pickFile } from '@/lib/upload';
-import { saveToRepository } from '@/lib/services/file-refs';
+import { saveToRepository, decodeUploadName } from '@/lib/services/file-refs';
 import { taskDestination, condoOfTask } from '@/lib/services/upload-destinations';
 import { condoOfChecklistItem, condoOfTaskAttachment } from '@/lib/services/entity-scope';
 import { canAccessCondo } from '@/lib/services/condominiums';
@@ -76,7 +76,7 @@ export async function createTaskAction(_prev: ActionState, formData: FormData): 
     const file = pickFile(formData, 'file');
     if (file) {
       const url = await saveToRepository(file, taskDestination(parsed.data.condominiumId));
-      await addTaskAttachment(session.user.companyId, task.id, file.name, url);
+      await addTaskAttachment(session.user.companyId, task.id, decodeUploadName(file.name), url);
     }
   } catch (e: any) {
     return { formError: e?.message ?? 'No se pudo crear la tarea.' };
@@ -170,7 +170,7 @@ export async function addAttachmentAction(_prev: ActionState, formData: FormData
 
   try {
     const url = await saveToRepository(file, taskDestination(condoId));
-    await addTaskAttachment(session.user.companyId, taskId, file.name, url);
+    await addTaskAttachment(session.user.companyId, taskId, decodeUploadName(file.name), url);
   } catch (e: any) {
     return { formError: e?.message ?? 'No se pudo adjuntar el archivo.' };
   }

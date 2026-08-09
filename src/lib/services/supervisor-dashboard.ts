@@ -18,9 +18,14 @@ export async function getSupervisorDashboard(session: SessionLike) {
   const condoIds = condos.map((c) => c.id);
 
   if (condoIds.length === 0) {
+    // Sin condominios asignados no hay nada acotado a un condominio,
+    // PERO las tareas sí llegan: se asignan a la persona, no al
+    // condominio. Devolver 0 aquí le decía al supervisor que no tenía
+    // nada que hacer mientras el módulo Gestión le mostraba dos tareas
+    // pendientes a su nombre.
     return {
       condos,
-      pendingTasks: 0,
+      pendingTasks: await countPendingTasksForSession(session),
       documentRequests: [],
       pendingReservations: [],
       residentTickets: [],

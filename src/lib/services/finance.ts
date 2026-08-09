@@ -2,6 +2,7 @@ import { withTenantContext } from '@/lib/db';
 import { recordChargeAccrual, recordPaymentEntry } from '@/lib/services/accounting';
 import { logActivity } from '@/lib/services/audit';
 import { allocatePaymentOldestFirst } from '@/lib/domain/payment-allocation';
+import { fechaSolo } from '@/lib/fecha-local';
 
 /**
  * Saldo de una unidad: cargos vigentes (no anulados) menos lo
@@ -44,20 +45,31 @@ export async function getPropertySuspension(companyId: string, propertyId: strin
     const settings = await tx.condominiumFinancialSettings.findUnique({
       where: { condominiumId: property.condominiumId },
     });
-    if (!settings) return { monthsOverdue: 0, suspended: false };
+    if (!settings) return { monthsOverdue: 0, hasPaymentPlan: false, suspended: false };
 
-    const overdueOrdinaryCharges = await tx.charge.count({
-      where: {
-        propertyId,
-        chargeType: 'cuota_ordinaria',
-        status: { in: ['pendiente', 'parcial'] },
-        dueDate: { lt: new Date() },
-      },
-    });
+    const [overdueOrdinaryCharges, plan] = await Promise.all([
+      tx.charge.count({
+        where: {
+          propertyId,
+          chargeType: 'cuota_ordinaria',
+          status: { in: ['pendiente', 'parcial'] },
+          dueDate: { lt: new Date() },
+        },
+      }),
+      // Convenio de pago vigente: la filial NO se suspende. El interés
+      // moratorio y la escalera de cobranza ya lo respetaban; dejar la
+      // suspensión fuera vaciaba el sentido del arreglo — al condómino
+      // que negoció y está pagando se le seguía cerrando la reserva, la
+      // autorización de visitas y el Árbitro Legal.
+      tx.paymentPlan.findFirst({ where: { propertyId, status: 'vigente' }, select: { id: true } }),
+    ]);
 
+    const hasPaymentPlan = Boolean(plan);
     return {
       monthsOverdue: overdueOrdinaryCharges,
-      suspended: settings.suspensionEnabled && overdueOrdinaryCharges >= settings.suspensionMonths,
+      hasPaymentPlan,
+      suspended:
+        !hasPaymentPlan && settings.suspensionEnabled && overdueOrdinaryCharges >= settings.suspensionMonths,
     };
   });
 }
@@ -114,15 +126,22 @@ export async function generateOrdinaryBilling(companyId: string, condominiumId: 
     });
     if (properties.length === 0) throw new Error('Este condominio no tiene unidades activas todavía.');
 
-    const dueDate = new Date(period);
-    dueDate.setDate(settings.dueDay);
+    // El período es una columna `@db.Date`: medianoche UTC del día 1.
+    // Todo el cálculo va en UTC. Con `setDate()` —que trabaja en hora
+    // LOCAL— un servidor en Costa Rica (UTC−6) leía ese instante como
+    // las 6 p.m. del último día del mes ANTERIOR, y la cuota de agosto
+    // salía descrita como "julio" y con vencimiento el 16 de julio: un
+    // cobro que nace vencido, devenga mora y puede suspender servicios.
+    const dueDate = new Date(
+      Date.UTC(period.getUTCFullYear(), period.getUTCMonth(), settings.dueDay)
+    );
 
     const batch = await tx.feeBatch.create({
       data: {
         condominiumId,
         batchType: 'ordinaria',
         period,
-        description: `Cuota ordinaria ${period.toLocaleDateString('es-CR', { month: 'long', year: 'numeric' })}`,
+        description: `Cuota ordinaria ${fechaSolo(period, { month: 'long', year: 'numeric' })}`,
         totalAmount: Number(settings.baseFee) * properties.length,
         unitsCount: properties.length,
       },
@@ -157,7 +176,7 @@ export async function generateOrdinaryBilling(companyId: string, condominiumId: 
         description: ch.description,
         amount: Number(ch.amount),
         period: ch.period,
-        dueDate: ch.dueDate,
+        issuedAt: ch.createdAt,
       });
     }
 
@@ -201,7 +220,7 @@ export async function addManualCharge(
       description: charge.description,
       amount: Number(charge.amount),
       period: charge.period,
-      dueDate: charge.dueDate,
+      issuedAt: charge.createdAt,
     });
     return charge;
   });
@@ -320,7 +339,7 @@ export async function getCondoFinanceSummary(companyId: string, condominiumId: s
  */
 export async function listPropertiesWithBalance(companyId: string, condominiumId: string) {
   return withTenantContext(companyId, async (tx) => {
-    const [properties, settings, charges, allocations] = await Promise.all([
+    const [properties, settings, charges, allocations, plans] = await Promise.all([
       tx.property.findMany({ where: { condominiumId, status: 'activa' }, orderBy: { code: 'asc' } }),
       tx.condominiumFinancialSettings.findUnique({ where: { condominiumId } }),
       tx.charge.findMany({
@@ -331,7 +350,11 @@ export async function listPropertiesWithBalance(companyId: string, condominiumId
         where: { charge: { condominiumId }, payment: { status: 'aplicado' } },
         select: { chargeId: true, amount: true },
       }),
+      // Mismo criterio que getPropertySuspension: un convenio vigente
+      // no suspende. Se trae en lote para no consultar por unidad.
+      tx.paymentPlan.findMany({ where: { condominiumId, status: 'vigente' }, select: { propertyId: true } }),
     ]);
+    const withPlan = new Set(plans.map((p) => p.propertyId));
 
     const paidByCharge = new Map<string, number>();
     for (const a of allocations) {
@@ -357,8 +380,10 @@ export async function listPropertiesWithBalance(companyId: string, condominiumId
           ['pendiente', 'parcial'].includes(c.status) &&
           c.dueDate < now
       ).length;
-      const suspended = !!settings?.suspensionEnabled && overdueOrdinary >= (settings?.suspensionMonths ?? 3);
-      return { ...p, balance, suspended, monthsOverdue: overdueOrdinary };
+      const hasPaymentPlan = withPlan.has(p.id);
+      const suspended =
+        !hasPaymentPlan && !!settings?.suspensionEnabled && overdueOrdinary >= (settings?.suspensionMonths ?? 3);
+      return { ...p, balance, suspended, hasPaymentPlan, monthsOverdue: overdueOrdinary };
     });
   });
 }

@@ -163,7 +163,7 @@ export async function applyLateInterestForCondo(
           description: nuevo.description,
           amount: result.toCharge,
           period: null,
-          dueDate: today,
+          issuedAt: today,
         });
         created += 1;
       }

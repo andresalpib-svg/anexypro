@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { getResidentContext } from '@/lib/services/resident-context';
 import { getAssembly } from '@/lib/services/assemblies';
+import { fechaSolo } from '@/lib/fecha-local';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatusChip } from '@/components/ui/status-chip';
 import { BallotForm } from './ballot-form';
@@ -20,7 +21,7 @@ export default async function ResidentAssemblyDetailPage({ params }: { params: {
     <div className="mx-auto max-w-2xl">
       <PageHeader
         title={assembly.title}
-        subtitle={`${new Date(assembly.eventDate).toLocaleDateString('es-CR')} · ${assembly.eventTime}${assembly.location ? ' · ' + assembly.location : ''}`}
+        subtitle={`${fechaSolo(assembly.eventDate)} · ${assembly.eventTime}${assembly.location ? ' · ' + assembly.location : ''}`}
         action={
           <Link href="/portal/asambleas" className="btn-ghost">
             <ArrowLeft size={16} /> Volver

@@ -56,8 +56,23 @@ const SEMAFORO_TEXT: Record<CasetaVisit['semaforo'], string> = {
 };
 const DAYS_SHORT = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
-function minutesSince(iso: string): number {
-  return Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+/**
+ * Cuánto lleva adentro, en la unidad que se entiende de un vistazo.
+ * En minutos, una visita de tres semanas se leía "25924 min" — un
+ * número que el guarda tiene que dividir mentalmente para saber si le
+ * importa (prueba por rol del 2026-08-08).
+ */
+function permanencia(iso: string): string {
+  const minutos = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (minutos < 60) return `${minutos} min`;
+  if (minutos < 60 * 24) {
+    const horas = Math.floor(minutos / 60);
+    const resto = minutos % 60;
+    return resto ? `${horas} h ${resto} min` : `${horas} h`;
+  }
+  const dias = Math.floor(minutos / (60 * 24));
+  const horas = Math.floor((minutos % (60 * 24)) / 60);
+  return horas ? `${dias} d ${horas} h` : `${dias} d`;
 }
 
 function EvidenceForm({ visit, onDone }: { visit: CasetaVisit; onDone: () => void }) {
@@ -153,7 +168,7 @@ function VisitRow({ visit }: { visit: CasetaVisit }) {
           </p>
           <p className={`truncate text-xs font-bold ${SEMAFORO_TEXT[visit.semaforo]}`}>
             {visit.estadoText}
-            {visit.inside && visit.checkinAt && ` · ${minutesSince(visit.checkinAt)} min`}
+            {visit.inside && visit.checkinAt && ` · ${permanencia(visit.checkinAt)}`}
           </p>
         </div>
 

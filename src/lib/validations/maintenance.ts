@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { telefonoOpcional } from '@/lib/validations/comunes';
 
 export const assetSchema = z.object({
   condominiumId: z.string().uuid(),
@@ -17,7 +18,7 @@ export const providerSchema = z.object({
   condominiumId: z.string().uuid(),
   name: z.string().min(2, 'El nombre es muy corto').max(100),
   serviceType: z.string().max(80).optional().or(z.literal('')),
-  phone: z.string().max(30).optional().or(z.literal('')),
+  phone: telefonoOpcional,
   email: z.string().email('Correo inválido').optional().or(z.literal('')),
 });
 

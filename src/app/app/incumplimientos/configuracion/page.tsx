@@ -6,6 +6,7 @@ import { resolveCondoId } from '@/lib/active-condo';
 import { listCondominiumsForSession } from '@/lib/services/condominiums';
 import { listViolationTypes, getViolationSettings } from '@/lib/services/violations';
 import { PageHeader } from '@/components/ui/page-header';
+import { SinCondominio } from '@/components/ui/sin-condominio';
 import { CondoSelect } from '../../propiedades/condo-select';
 import { TypeCatalog } from './type-catalog';
 import { DocumentSettings } from './document-settings';
@@ -24,7 +25,7 @@ export default async function ConfiguracionPage({ searchParams }: { searchParams
 
   const condos = await listCondominiumsForSession(session);
   const condoId = resolveCondoId(searchParams.condoId, condos);
-  if (!condoId) return <div className="card p-10 text-center text-sm text-muted">Primero crea un condominio.</div>;
+  if (!condoId) return <SinCondominio companyId={session!.user.companyId} role={session!.user.role} />;
 
   const [tipos, settings] = await Promise.all([
     listViolationTypes(session.user.companyId, condoId),

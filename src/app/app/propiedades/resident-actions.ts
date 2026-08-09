@@ -51,11 +51,12 @@ export async function addPersonAction(_prev: ActionState, formData: FormData): P
   if (parsed.data.password && parsed.data.email) {
     try {
       const { createUserForPerson } = await import('@/lib/services/user-provisioning');
-      await createUserForPerson(session.user.companyId, person.id, {
-        email: parsed.data.email,
-        password: parsed.data.password,
-        fullName: parsed.data.fullName,
-      });
+      await createUserForPerson(
+        session.user.companyId,
+        person.id,
+        { email: parsed.data.email, password: parsed.data.password, fullName: parsed.data.fullName },
+        { userId: session.user.id, userName: session.user.name ?? 'Usuario' }
+      );
     } catch (e: any) {
       const reason = e?.code === 'P2002' ? 'ya existe una cuenta con ese correo' : (e?.message ?? 'error');
       return { formError: `Persona agregada, pero no se pudo crear el usuario: ${reason}.` };

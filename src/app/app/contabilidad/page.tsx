@@ -4,7 +4,9 @@ import { resolveCondoId } from '@/lib/active-condo';
 import { can } from '@/lib/rbac';
 import { listCondominiumsForSession } from '@/lib/services/condominiums';
 import { getLibroDiario, getBalanceGeneral, getEstadoResultados } from '@/lib/services/accounting';
+import { fechaSolo } from '@/lib/fecha-local';
 import { PageHeader } from '@/components/ui/page-header';
+import { SinCondominio } from '@/components/ui/sin-condominio';
 import { CondoSelect } from '../propiedades/condo-select';
 import { FinanceTabs } from '../finanzas/finance-tabs';
 import { ReportTabs } from './report-tabs';
@@ -40,7 +42,7 @@ export default async function ContabilidadPage({
   const condos = await listCondominiumsForSession(session!);
   const condoId = resolveCondoId(searchParams.condoId, condos);
   if (!condoId) {
-    return <div className="card p-10 text-center text-sm text-muted">Primero crea un condominio.</div>;
+    return <SinCondominio companyId={session!.user.companyId} role={session!.user.role} />;
   }
   const condo = condos.find((c) => c.id === condoId)!;
   const tab = searchParams.tab ?? 'diario';
@@ -92,7 +94,7 @@ export default async function ContabilidadPage({
               ) : (
                 diario.map((r, i) => (
                   <tr key={i} className="border-b border-line last:border-0">
-                    <td className="px-4 py-2.5 text-muted">{new Date(r.entry_date).toLocaleDateString('es-CR')}</td>
+                    <td className="px-4 py-2.5 text-muted">{fechaSolo(r.entry_date)}</td>
                     <td className="px-4 py-2.5 font-medium text-ink">
                       {r.code} · {r.name}
                     </td>
