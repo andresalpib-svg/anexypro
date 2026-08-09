@@ -1580,7 +1580,11 @@ model Project {
   provider    Provider?              @relation(fields: [providerId], references: [id])
   milestones  ProjectMilestone[]
   checklist   ProjectChecklistItem[]
+  // `expenses` es el módulo retirado (ya no se alimenta, pero su
+  // historial sigue contando); `financeExpenses` son los gastos de
+  // Finanzas imputados al proyecto, que es la vía actual.
   expenses    ProjectExpense[]
+  financeExpenses Expense[]
   updates     ProjectUpdate[]
   feeBatches  FeeBatch[] // financiamiento real vía cuota extraordinaria, si se genera
 
@@ -2404,6 +2408,13 @@ model Expense {
   documentName  String?         @map("document_name")
   // Si nació de un gasto recurrente, de cuál.
   recurringId   String?         @map("recurring_id")
+  // Proyecto al que se imputa este gasto, si es de uno. Es lo que
+  // alimenta la ejecución del kanban de Proyectos: el módulo para
+  // anotar gastos de proyecto se retiró cuando ese trabajo pasó a
+  // Finanzas, y desde entonces la tarjeta mostraba "0 de X" para
+  // siempre. Opcional a propósito — la mayoría de los gastos son de
+  // operación, no de proyecto.
+  projectId     String?         @map("project_id")
   notes         String?
   approvedById  String?         @map("approved_by")
   approvedAt    DateTime?       @map("approved_at")
@@ -2416,6 +2427,7 @@ model Expense {
   condominium Condominium       @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
   supplier    Supplier?         @relation(fields: [supplierId], references: [id])
   recurring   RecurringExpense? @relation(fields: [recurringId], references: [id])
+  project     Project?          @relation(fields: [projectId], references: [id])
   createdBy   User?             @relation("ExpenseCreatedBy", fields: [createdById], references: [id])
   approvedBy  User?             @relation("ExpenseApprovedBy", fields: [approvedById], references: [id])
   payments    ExpensePayment[]
@@ -2423,6 +2435,7 @@ model Expense {
   @@unique([condominiumId, expenseNumber])
   @@index([companyId, condominiumId, issueDate(sort: Desc)])
   @@index([condominiumId, status])
+  @@index([projectId])
   @@map("expenses")
 }
 

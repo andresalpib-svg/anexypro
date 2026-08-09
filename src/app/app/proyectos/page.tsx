@@ -4,7 +4,7 @@ import { auth } from '@/lib/auth';
 import { resolveCondoId } from '@/lib/active-condo';
 import { can } from '@/lib/rbac';
 import { listCondominiumsForSession } from '@/lib/services/condominiums';
-import { listProjects } from '@/lib/services/projects';
+import { listProjects, projectSpent } from '@/lib/services/projects';
 import { PageHeader } from '@/components/ui/page-header';
 import { SinCondominio } from '@/components/ui/sin-condominio';
 import { CondoSelect } from '../propiedades/condo-select';
@@ -59,7 +59,7 @@ export default async function ProyectosPage({ searchParams }: { searchParams: { 
                 name: p.name,
                 status: p.status,
                 budget: p.budget.toString(),
-                spent: p.expenses?.reduce?.((s: number, e: any) => s + Number(e.amount), 0) ?? 0,
+                spent: projectSpent(p),
               }))}
             />
           )}

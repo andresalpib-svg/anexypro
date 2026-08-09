@@ -5,11 +5,12 @@ import { resolveCondoId } from '@/lib/active-condo';
 import { listCondominiumsForSession, getCondominium } from '@/lib/services/condominiums';
 import { listExpenses, listSuppliers, CATEGORY_LABEL } from '@/lib/services/expenses';
 import { listBankAccounts } from '@/lib/services/bank-accounts';
+import { listProjects } from '@/lib/services/projects';
 import { PageHeader } from '@/components/ui/page-header';
 import { SinCondominio } from '@/components/ui/sin-condominio';
 import { CondoSelect } from '../../propiedades/condo-select';
 import { FinanceTabs } from '../finance-tabs';
-import { ExpenseBoard, type ExpenseRow, type SupplierOpt, type BankOpt } from './expense-board';
+import { ExpenseBoard, type ExpenseRow, type SupplierOpt, type BankOpt, type ProjectOpt } from './expense-board';
 
 export default async function GastosPage({ searchParams }: { searchParams: { condoId?: string } }) {
   const session = await auth();
@@ -26,14 +27,21 @@ export default async function GastosPage({ searchParams }: { searchParams: { con
   const condoId = resolveCondoId(searchParams.condoId, condos);
   if (!condoId) return <SinCondominio companyId={session!.user.companyId} role={session!.user.role} />;
 
-  const [expenses, suppliers, banks, condo] = await Promise.all([
+  const [expenses, suppliers, banks, condo, projects] = await Promise.all([
     listExpenses(session!.user.companyId, condoId),
     listSuppliers(session!.user.companyId),
     listBankAccounts(session!.user.companyId, condoId),
     getCondominium(session!.user.companyId, condoId),
+    listProjects(session!.user.companyId, condoId),
   ]);
 
   const role = session!.user.role;
+
+  // Los proyectos cancelados no se ofrecen: no tiene sentido imputarles
+  // gasto nuevo. Los terminados sí — una factura puede llegar después.
+  const proyectosImputables = projects
+    .filter((p) => p.status !== 'cancelado')
+    .map((p): ProjectOpt => ({ id: p.id, name: p.name, status: p.status }));
 
   return (
     <div>
@@ -60,6 +68,7 @@ export default async function GastosPage({ searchParams }: { searchParams: { con
           })
         )}
         banks={banks.map((b): BankOpt => ({ id: b.id, name: `${b.bankName} — ${b.name}` }))}
+        projects={proyectosImputables}
         expenses={expenses.map((e): ExpenseRow => {
           const paid = e.payments.reduce((s, p) => s + Number(p.amount), 0);
           return {

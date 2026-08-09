@@ -63,6 +63,8 @@ export const STATUS_LABEL: Record<string, string> = {
 export type ExpenseInput = {
   condominiumId: string;
   supplierId?: string;
+  /** Proyecto al que se imputa, si el gasto es de uno. */
+  projectId?: string;
   category: string;
   description: string;
   invoiceNumber?: string;
@@ -116,11 +118,23 @@ export async function createExpense(
     const total = round2(input.subtotal + input.taxAmount);
     const requiresApproval = needsApproval(user.role, total, threshold);
 
+    // El proyecto se comprueba contra la BASE, no contra el formulario:
+    // un campo oculto no es prueba de nada, y sin esto se podría imputar
+    // el gasto de un condominio a un proyecto de otro.
+    if (input.projectId) {
+      const project = await tx.project.findFirst({
+        where: { id: input.projectId, condominiumId: input.condominiumId },
+        select: { id: true },
+      });
+      if (!project) throw new Error('Ese proyecto no pertenece a este condominio.');
+    }
+
     const expense = await tx.expense.create({
       data: {
         companyId,
         condominiumId: input.condominiumId,
         supplierId: input.supplierId || null,
+        projectId: input.projectId || null,
         expenseNumber: await nextExpenseNumber(tx, input.condominiumId),
         category: input.category as any,
         accountCode: CATEGORY_ACCOUNT[input.category] ?? CATEGORY_ACCOUNT.otro!,

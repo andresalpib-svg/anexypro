@@ -37,6 +37,7 @@ export type ExpenseRow = {
 };
 
 export type SupplierOpt = { id: string; name: string; defaultCategory: string | null };
+export type ProjectOpt = { id: string; name: string; status: string };
 export type BankOpt = { id: string; name: string };
 
 const STATUS_VARIANT: Record<string, 'neutral' | 'warn' | 'royal' | 'ok' | 'danger'> = {
@@ -85,12 +86,14 @@ function NewExpenseModal({
   condominiumId,
   currency,
   suppliers,
+  projects,
   categories,
   onDone,
 }: {
   condominiumId: string;
   currency: string;
   suppliers: SupplierOpt[];
+  projects: ProjectOpt[];
   categories: { value: string; label: string }[];
   onDone: () => void;
 }) {
@@ -262,6 +265,24 @@ function NewExpenseModal({
                   ))}
                 </select>
               </div>
+              {/*
+                Imputar el gasto a un proyecto es lo que alimenta la
+                ejecución de su kanban. Opcional: la mayoría de los
+                gastos son de operación.
+              */}
+              {projects.length > 0 && (
+                <div className="min-w-40 flex-1">
+                  <label className="field-label">Proyecto (opcional)</label>
+                  <select name="projectId" defaultValue="" className="field-input">
+                    <option value="">Gasto de operación</option>
+                    {projects.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="field-label">Fecha de la factura</label>
                 <input
@@ -473,6 +494,7 @@ export function ExpenseBoard({
   currency,
   expenses,
   suppliers,
+  projects,
   banks,
   categories,
   canApprove,
@@ -482,6 +504,7 @@ export function ExpenseBoard({
   currency: string;
   expenses: ExpenseRow[];
   suppliers: SupplierOpt[];
+  projects: ProjectOpt[];
   banks: BankOpt[];
   categories: { value: string; label: string }[];
   canApprove: boolean;
@@ -700,6 +723,7 @@ export function ExpenseBoard({
           condominiumId={condominiumId}
           currency={currency}
           suppliers={suppliers}
+          projects={projects}
           categories={categories}
           onDone={() => setShowNew(false)}
         />

@@ -2,6 +2,15 @@ import { withTenantContext } from '@/lib/db';
 import { recordProjectExpense } from '@/lib/services/accounting';
 import { logActivity } from '@/lib/services/audit';
 
+/**
+ * Qué gastos de Finanzas cuentan como ejecución de un proyecto.
+ *
+ * Solo lo aprobado o pagado, igual que en Presupuesto: un borrador o
+ * algo por aprobar todavía no compromete plata, y un gasto anulado
+ * nunca la comprometió.
+ */
+export const EXPENSE_EXECUTED = ['aprobado', 'pagado'] as const;
+
 export async function listProjects(companyId: string, condominiumId: string) {
   return withTenantContext(companyId, (tx) =>
     tx.project.findMany({
@@ -9,11 +18,28 @@ export async function listProjects(companyId: string, condominiumId: string) {
       orderBy: { createdAt: 'desc' },
       include: {
         provider: { select: { name: true } },
+        // Dos fuentes: el módulo retirado —cuyo historial sigue
+        // contando— y los gastos de Finanzas imputados al proyecto,
+        // que es la vía actual.
         expenses: { select: { amount: true } },
+        financeExpenses: {
+          where: { status: { in: [...EXPENSE_EXECUTED] } },
+          select: { total: true },
+        },
         _count: { select: { expenses: true, milestones: true } },
       },
     })
   );
+}
+
+/** Lo ejecutado de un proyecto: gastos heredados + gastos de Finanzas. */
+export function projectSpent(project: {
+  expenses?: { amount: unknown }[] | null;
+  financeExpenses?: { total: unknown }[] | null;
+}): number {
+  const heredado = (project.expenses ?? []).reduce((s, e) => s + Number(e.amount), 0);
+  const finanzas = (project.financeExpenses ?? []).reduce((s, e) => s + Number(e.total), 0);
+  return heredado + finanzas;
 }
 
 export async function getProject(companyId: string, id: string) {
@@ -26,6 +52,15 @@ export async function getProject(companyId: string, id: string) {
         milestones: { orderBy: { dueDate: 'asc' } },
         checklist: true,
         expenses: { orderBy: { expenseDate: 'desc' } },
+        // Los gastos de Finanzas imputados al proyecto. Se traen TODOS
+        // —no solo los ejecutados— para que el detalle muestre también
+        // lo que está por aprobar: la cifra de ejecución solo cuenta lo
+        // aprobado, pero quien mira el proyecto necesita ver lo que
+        // viene en camino.
+        financeExpenses: {
+          orderBy: { issueDate: 'desc' },
+          include: { supplier: { select: { legalName: true, tradeName: true } } },
+        },
         updates: { orderBy: { createdAt: 'desc' } },
       },
     })

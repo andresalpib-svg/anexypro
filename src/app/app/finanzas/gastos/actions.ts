@@ -24,6 +24,7 @@ const money = z.coerce.number().min(0).max(999_999_999);
 const expenseSchema = z.object({
   condominiumId: z.string().uuid(),
   supplierId: z.string().uuid().optional().or(z.literal('')),
+  projectId: z.string().uuid().optional().or(z.literal('')),
   category: z.string().min(1, 'Elegí una categoría'),
   description: z.string().min(3, 'Describí el gasto').max(300),
   invoiceNumber: z.string().max(60).optional().or(z.literal('')),
@@ -92,6 +93,7 @@ export async function createExpenseAction(_prev: ActionState, formData: FormData
       {
         condominiumId: parsed.data.condominiumId,
         supplierId: parsed.data.supplierId || undefined,
+        projectId: parsed.data.projectId || undefined,
         category: parsed.data.category,
         description: parsed.data.description,
         invoiceNumber: parsed.data.invoiceNumber || undefined,
