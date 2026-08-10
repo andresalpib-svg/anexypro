@@ -394,7 +394,73 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     var css = document.createElement('style');
     css.textContent = '[id]{scroll-margin-top:96px}';
-    document.head.appendChild(css);
+
+    // ---- Responsive: la maqueta usa estilos inline de escritorio; aquí se
+    // etiquetan los contenedores por su patrón y se anulan con media queries.
+    var rcss = document.createElement('style');
+    rcss.textContent = [
+      'html,body{overflow-x:hidden}',
+      'img,video{max-width:100%;height:auto}',
+      '[data-rgc]>*{min-width:0}',
+      '@media (max-width:980px){',
+      ' [data-rgc="hero"]{grid-template-columns:minmax(0,1fr) !important}',
+      ' [data-rgc="4"]{grid-template-columns:repeat(2,minmax(0,1fr)) !important}',
+      ' [data-rgc="6"]{grid-template-columns:repeat(3,minmax(0,1fr)) !important}',
+      '}',
+      '@media (max-width:760px){',
+      ' [style*="inline-flex"]{max-width:100% !important;flex-wrap:wrap !important;white-space:normal !important;height:auto !important}',
+      ' [style*="inline-flex"] *{white-space:normal !important}',
+      ' [data-rgc="3"]{grid-template-columns:minmax(0,1fr) !important}',
+      ' [data-rspan]{grid-column:auto !important}',
+      ' [data-rpd="hero"]{padding:88px 18px 0 !important}',
+      ' [data-rpd="sec"]{padding:44px 18px 40px !important}',
+      ' [data-rpd="card"]{padding:30px 22px !important}',
+      ' div:has(> nav){padding:8px 10px !important}',
+      ' nav{flex-wrap:wrap !important;gap:10px 16px !important;border-radius:26px !important;padding:12px 16px !important}',
+      ' nav>div{margin-left:0 !important;flex-wrap:wrap !important;gap:8px 16px !important;font-size:14px !important}',
+      '}',
+      '@media (max-width:520px){',
+      ' [data-rgc="6"]{grid-template-columns:repeat(2,minmax(0,1fr)) !important}',
+      ' [data-rgc="2"]{grid-template-columns:minmax(0,1fr) !important}',
+      ' [data-rgc="4"]{grid-template-columns:repeat(2,minmax(0,1fr)) !important}',
+      ' h1{font-size:clamp(30px,9.5vw,46px) !important;overflow-wrap:anywhere}',
+      ' h2{font-size:clamp(24px,8vw,38px) !important}',
+      '}'
+    ].join('\n');
+
+    // el runtime de la plantilla reconstruye el <head>; los estilos viven en
+    // <body> y se re-adjuntan si un render los saca del documento
+    function ensureStyles() {
+      if (!css.isConnected) document.body.appendChild(css);
+      if (!rcss.isConnected) document.body.appendChild(rcss);
+    }
+    ensureStyles();
+
+    function tagResponsive() {
+      var els = document.querySelectorAll('[style]');
+      for (var i = 0; i < els.length; i++) {
+        var el = els[i];
+        var g = el.style.gridTemplateColumns;
+        if (g && !el.hasAttribute('data-rgc')) {
+          var m = g.match(/^repeat\(\s*(\d+)/);
+          if (m) el.setAttribute('data-rgc', m[1]);
+          else if (g.indexOf('minmax') === -1 && g.trim().split(/\s+/).length === 2) el.setAttribute('data-rgc', 'hero');
+        }
+        if (el.style.gridColumn && el.style.gridColumn.indexOf('span 2') !== -1) el.setAttribute('data-rspan', '2');
+        var p = el.style.padding;
+        if (p && !el.hasAttribute('data-rpd')) {
+          if (p.indexOf('110px') === 0) el.setAttribute('data-rpd', 'hero');
+          else if (p.indexOf('56px') === 0) el.setAttribute('data-rpd', 'sec');
+          else if (p === '52px' || p === '64px') el.setAttribute('data-rpd', 'card');
+        }
+      }
+    }
+    tagResponsive();
+    var pending = null;
+    new MutationObserver(function () {
+      if (pending) return;
+      pending = setTimeout(function () { pending = null; ensureStyles(); tagResponsive(); }, 80);
+    }).observe(document.body, { childList: true, subtree: true });
 
     function tabButton(label) {
       var mod = document.getElementById('modulos');
@@ -409,7 +475,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     function jump(id) {
       var t = document.getElementById(id);
       if (!t) return;
-      if (id === 'top') { window.scrollTo(0, 0); }
+      if (id === 'top') { window.scrollTo(0, 0); document.body.scrollTop = 0; document.documentElement.scrollTop = 0; }
       else { t.scrollIntoView({ block: 'start' }); }
       history.replaceState(null, '', '#' + id);
     }
