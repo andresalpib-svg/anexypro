@@ -1,5 +1,6 @@
 import { withTenantContext } from '@/lib/db';
 import { listCondominiumsForSession } from '@/lib/services/condominiums';
+import { taskScopeForSession } from '@/lib/services/tasks';
 
 /**
  * Resumen de atrasos para la SUPERVISIÓN.
@@ -17,11 +18,13 @@ import { listCondominiumsForSession } from '@/lib/services/condominiums';
  * la vista en su dashboard y en Gestión de Tareas; interrumpirlo con
  * una ventana en cada primer ingreso no le aportaba nada.
  *
- * QUÉ VE: solo lo suyo. Las tareas que tiene asignadas o que creó —el
- * mismo filtro de `listTasksForSession`— y los tickets de los
- * condominios que la administración le asignó. Un supervisor sin
- * asignaciones no ve tickets de ningún condominio, igual que en el
- * resto del panel.
+ * QUÉ VE: lo que le toca. Las tareas de `taskScopeForSession` —las
+ * suyas y las de los condominios que administra, aunque las haya
+ * abierto otra persona— y los tickets de esos mismos condominios. Un
+ * supervisor sin asignaciones no ve tickets de ninguno, igual que en el
+ * resto del panel. El alcance se pide prestado a `tasks.ts` a
+ * propósito: si la lista de Gestión y este aviso usaran filtros
+ * distintos, avisaría de una tarea que después no puede abrir.
  */
 
 type SessionLike = { user: { id: string; companyId: string; role: string } };
@@ -88,26 +91,27 @@ export function avisoYaVistoHoy(valorCookie: string | undefined): boolean {
 }
 
 export async function getOverdueBriefing(session: SessionLike): Promise<OverdueBriefing> {
-  const { id: userId, companyId, role } = session.user;
+  const { companyId, role } = session.user;
   const esSupervisor = role === 'admin_staff';
 
   const limit = new Date();
   limit.setHours(0, 0, 0, 0);
   limit.setDate(limit.getDate() - OVERDUE_DAYS_THRESHOLD);
 
-  // El alcance del supervisor se resuelve con la MISMA función que usa
-  // el resto del panel, no con una consulta propia: si mañana cambia la
-  // regla de asignación, cambia en un solo sitio.
-  const condoIds = esSupervisor
-    ? (await listCondominiumsForSession(session)).map((c) => c.id)
-    : null;
+  // El alcance se resuelve con las MISMAS funciones que usa el resto
+  // del panel, no con consultas propias: si mañana cambia la regla de
+  // asignación, cambia en un solo sitio.
+  const [alcanceTareas, condoIds] = await Promise.all([
+    taskScopeForSession(session),
+    esSupervisor ? listCondominiumsForSession(session).then((cs) => cs.map((c) => c.id)) : Promise.resolve(null),
+  ]);
 
   return withTenantContext(companyId, async (tx) => {
     const dondeTareas = {
       companyId,
       status: { not: 'completada' as const },
       dueDate: { not: null, lte: new Date(`${limit.toISOString().slice(0, 10)}T00:00:00Z`) },
-      ...(esSupervisor ? { OR: [{ assignedToId: userId }, { createdById: userId }] } : {}),
+      ...alcanceTareas,
     };
     const dondeTickets = {
       condominium: { companyId, deletedAt: null },

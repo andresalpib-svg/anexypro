@@ -1,4 +1,5 @@
 import { withTenantContext } from '@/lib/db';
+import { listCondominiumsForSession } from '@/lib/services/condominiums';
 
 export type TaskInput = {
   title: string;
@@ -27,22 +28,50 @@ export async function listTasks(companyId: string) {
 }
 
 /**
- * Tareas visibles para el usuario de la sesión.
+ * Qué tareas alcanza el usuario de la sesión.
  *
- * El supervisor (admin_staff) NO ve el tablero completo de la empresa:
- * solo las tareas que la administración le asignó y las que él mismo
- * creó. La administración (admin_owner) sí ve todo.
+ * La administración (admin_owner) ve todo. El supervisor (admin_staff)
+ * ve TRES cosas: las que le asignaron, las que él creó y **las de los
+ * condominios que administra**, aunque las haya abierto otra persona o
+ * no tengan responsable.
+ *
+ * Ese tercer caso faltaba y dejaba un hueco real: una tarea de su
+ * condominio creada por la administración y sin asignar no le aparecía
+ * a nadie —el supervisor no la veía y el aviso de atrasos tampoco se
+ * la mostraba—, aunque las acciones de escritura SÍ le permitían
+ * cerrarla (`guardByCondo` autoriza por condominio asignado). Se veía
+ * menos de lo que se podía hacer.
+ *
+ * Se resuelve en un solo sitio para que la lista, el contador y el
+ * aviso de atrasos no puedan discrepar entre ellos.
  */
+export async function taskScopeForSession(session: {
+  user: { id: string; companyId: string; role: string };
+}) {
+  const { id, role } = session.user;
+  if (role !== 'admin_staff') return {};
+
+  const condoIds = (await listCondominiumsForSession(session)).map((c) => c.id);
+  return {
+    OR: [
+      { assignedToId: id },
+      { createdById: id },
+      // Sin condominios asignados esta rama no se agrega: un `in: []`
+      // no aporta nada y confunde al leer la consulta.
+      ...(condoIds.length > 0 ? [{ condominiumId: { in: condoIds } }] : []),
+    ],
+  };
+}
+
+/** Tareas visibles para el usuario de la sesión. */
 export async function listTasksForSession(session: {
   user: { id: string; companyId: string; role: string };
 }) {
-  const { id, companyId, role } = session.user;
+  const { companyId } = session.user;
+  const alcance = await taskScopeForSession(session);
   return withTenantContext(companyId, (tx) =>
     tx.adminTask.findMany({
-      where: {
-        companyId,
-        ...(role === 'admin_staff' ? { OR: [{ assignedToId: id }, { createdById: id }] } : {}),
-      },
+      where: { companyId, ...alcance },
       orderBy: [{ status: 'asc' }, { dueDate: { sort: 'asc', nulls: 'last' } }, { createdAt: 'desc' }],
       include: {
         assignedTo: { select: { id: true, fullName: true } },
@@ -58,13 +87,14 @@ export async function listTasksForSession(session: {
 export async function countPendingTasksForSession(session: {
   user: { id: string; companyId: string; role: string };
 }) {
-  const { id, companyId, role } = session.user;
+  const { companyId } = session.user;
+  const alcance = await taskScopeForSession(session);
   return withTenantContext(companyId, (tx) =>
     tx.adminTask.count({
       where: {
         companyId,
         status: { in: ['pendiente', 'en_progreso'] },
-        ...(role === 'admin_staff' ? { OR: [{ assignedToId: id }, { createdById: id }] } : {}),
+        ...alcance,
       },
     })
   );
