@@ -425,6 +425,13 @@ document.addEventListener('DOMContentLoaded', async function() {
       ' [data-rgc="4"]{grid-template-columns:repeat(2,minmax(0,1fr)) !important}',
       ' h1{font-size:clamp(30px,9.5vw,46px) !important;overflow-wrap:anywhere}',
       ' h2{font-size:clamp(24px,8vw,38px) !important}',
+      '}',
+      '@media (prefers-color-scheme: dark){',
+      ' html{color-scheme:dark}',
+      ' body{background:#0F1013 !important;color:#F0F1F4 !important}',
+      ' [data-rlight]{color:#101114}',
+      ' [data-rlight] .sc-placeholder{color:#101114}',
+      ' .sc-placeholder{background:rgba(255,255,255,.10) !important}',
       '}'
     ].join('\n');
 
@@ -455,12 +462,113 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
       }
     }
+    // ---- Modo oscuro: traduce los colores fijos del diseño según su rol.
+    var DARK_MQ = window.matchMedia('(prefers-color-scheme: dark)');
+    if (DARK_MQ.addEventListener) DARK_MQ.addEventListener('change', function () { location.reload(); });
+
+    // el CSSOM serializa #hex como rgb(r, g, b): cada mapa cubre ambas formas
+    function mapText(v) {
+      return v
+        .replace(/#101114\b/gi, '#F0F1F4').replace(/rgb\(16,\s*17,\s*20\)/gi, '#F0F1F4')
+        .replace(/rgba\(16,\s*17,\s*20,([^)]+)\)/gi, 'rgba(240,241,244,$1)')
+        .replace(/#5A5D66\b/gi, '#A8ACB8').replace(/rgb\(90,\s*93,\s*102\)/gi, '#A8ACB8')
+        .replace(/#3B4FE0\b/gi, '#8C9AFF').replace(/rgb\(59,\s*79,\s*224\)/gi, '#8C9AFF')
+        .replace(/#2C3BB5\b/gi, '#8C9AFF').replace(/rgb\(44,\s*59,\s*181\)/gi, '#8C9AFF')
+        .replace(/#0E7C66\b/gi, '#3DBFA4').replace(/rgb\(14,\s*124,\s*102\)/gi, '#3DBFA4')
+        .replace(/#666\b/gi, '#9BA0AB').replace(/rgb\(102,\s*102,\s*102\)/gi, '#9BA0AB')
+        .replace(/#999\b/gi, '#8A8E99').replace(/rgb\(153,\s*153,\s*153\)/gi, '#8A8E99');
+    }
+    function mapBg(v) {
+      return v
+        .replace(/#F4F3F0\b/gi, '#0F1013').replace(/rgb\(244,\s*243,\s*240\)/gi, '#0F1013')
+        .replace(/rgba\(244,\s*243,\s*240,([^)]+)\)/gi, 'rgba(18,19,23,$1)')
+        .replace(/#ffffff\b/gi, '#1A1C22').replace(/#fff\b/gi, '#1A1C22')
+        .replace(/rgb\(255,\s*255,\s*255\)/gi, '#1A1C22')
+        .replace(/rgba\(255,\s*255,\s*255,\s*(0?\.\d+|1)\)/gi, function (m, a) {
+          return parseFloat(a) >= 0.5 ? 'rgba(23,25,31,' + a + ')' : m;
+        })
+        .replace(/rgba\(16,\s*17,\s*20,\s*(0?\.\d+)\)/gi, function (m, a) {
+          return parseFloat(a) <= 0.2 ? 'rgba(255,255,255,' + a + ')' : m;
+        })
+        .replace(/#101114\b/gi, '#191C22').replace(/rgb\(16,\s*17,\s*20\)/gi, '#191C22')
+        .replace(/#DCDCD8\b/gi, '#2A2D35').replace(/rgb\(220,\s*220,\s*216\)/gi, '#2A2D35');
+    }
+    function mapBorder(v) {
+      return v
+        .replace(/rgba\(16,\s*17,\s*20,\s*[^)]+\)/gi, 'rgba(255,255,255,.14)')
+        .replace(/rgb\(16,\s*17,\s*20\)/gi, 'rgba(255,255,255,.2)')
+        .replace(/#DCDCD8\b/gi, 'rgba(255,255,255,.16)').replace(/rgb\(220,\s*220,\s*216\)/gi, 'rgba(255,255,255,.16)')
+        .replace(/#B7BEC4\b/gi, 'rgba(255,255,255,.22)').replace(/rgb\(183,\s*190,\s*196\)/gi, 'rgba(255,255,255,.22)')
+        .replace(/rgba\(255,\s*255,\s*255,\s*(0?\.\d+|1)\)/gi, function (m, a) {
+          return parseFloat(a) >= 0.5 ? 'rgba(255,255,255,.09)' : m;
+        });
+    }
+    function mapShadow(v) {
+      return v.replace(/rgba\(16,\s*17,\s*20,\s*[^)]+\)/gi, 'rgba(0,0,0,.55)');
+    }
+    function mapDecl(prop, v) {
+      if (prop === 'color' || prop === '-webkit-text-fill-color') return mapText(v);
+      if (prop.indexOf('background') === 0) return mapBg(v);
+      if (prop.indexOf('border') === 0 || prop === 'outline') return mapBorder(v);
+      if (prop === 'box-shadow') return mapShadow(v);
+      return v;
+    }
+    function markLightWindows() {
+      // las "ventanas" de la app (con los 3 puntos de 9px) son capturas del
+      // producto: se conservan claras dentro del tema oscuro
+      var dots = document.querySelectorAll('[style]');
+      for (var i = 0; i < dots.length; i++) {
+        var d = dots[i];
+        if (d.style.width !== '9px' || d.style.borderRadius !== '50%') continue;
+        var e = d.parentElement;
+        for (var k = 0; k < 6 && e; k++, e = e.parentElement) {
+          if (e.style && e.style.overflow === 'hidden') { e.setAttribute('data-rlight', '1'); break; }
+        }
+      }
+    }
+    function darkify() {
+      if (!DARK_MQ.matches) return;
+      markLightWindows();
+      var els = document.querySelectorAll('[style]');
+      for (var i = 0; i < els.length; i++) {
+        var el = els[i];
+        if (el.closest && el.closest('[data-rlight]')) continue;
+        for (var j = el.style.length - 1; j >= 0; j--) {
+          var p = el.style[j];
+          var v = el.style.getPropertyValue(p);
+          var nv = mapDecl(p, v);
+          if (nv !== v) el.style.setProperty(p, nv, el.style.getPropertyPriority(p));
+        }
+        var hov = el.getAttribute('style-hover');
+        if (hov) {
+          el.setAttribute('style-hover', hov.split(';').map(function (d) {
+            var k = d.indexOf(':');
+            if (k < 0) return d;
+            var prop = d.slice(0, k).trim().toLowerCase();
+            return d.slice(0, k + 1) + mapDecl(prop, d.slice(k + 1));
+          }).join(';'));
+        }
+      }
+    }
+
     tagResponsive();
+    darkify();
     var pending = null;
-    new MutationObserver(function () {
+    function refresh() { ensureStyles(); tagResponsive(); darkify(); }
+    var mo = new MutationObserver(function () {
       if (pending) return;
-      pending = setTimeout(function () { pending = null; ensureStyles(); tagResponsive(); }, 80);
-    }).observe(document.body, { childList: true, subtree: true });
+      pending = setTimeout(function () { pending = null; refresh(); }, 80);
+    });
+    // el runtime puede reemplazar el <body>: re-observa el actual y refresca
+    var observedBody = null;
+    function watchBody() {
+      if (document.body && document.body !== observedBody) {
+        observedBody = document.body;
+        mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
+      }
+    }
+    watchBody();
+    setInterval(function () { watchBody(); refresh(); }, 1200);
 
     function tabButton(label) {
       var mod = document.getElementById('modulos');
