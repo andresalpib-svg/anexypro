@@ -17,9 +17,18 @@
 # Dependencias: las instala Vercel
 /node_modules
 
-# Compilaciones: las hace Vercel
+# Compilaciones: las hace Vercel.
+#
+# `distDir` es configurable por variable de entorno (NEXT_DIST_DIR), así
+# que cada tarea local se hace su propia carpeta: `.next-prod` para el
+# servidor de producción local, `.next-video` para grabar los recorridos.
+# Son cientos de megas cada una y ninguna interviene en la compilación de
+# Vercel. Si aparece una carpeta `.next-*` nueva, va aquí: el 9/8
+# `.next-video` pesaba 141 MB, de sobra para volver a tumbar el
+# despliegue con "File size limit exceeded (100 MB)".
 /.next
 /.next-prod
+/.next-video
 /out
 *.tsbuildinfo
 
