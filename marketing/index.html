@@ -3,6 +3,26 @@
 <head>
   <meta charset="utf-8">
   <title>ANEXYpro — Administra tu condominio como un sistema vivo</title>
+  <meta name="description" content="Tareas, calendario, finanzas, incumplimientos, estados de cuenta y consulta legal con IA para tu condominio, en una sola plataforma.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="ANEXYpro">
+  <meta property="og:title" content="ANEXYpro — Administra tu condominio como un sistema vivo">
+  <meta property="og:description" content="Tareas, calendario, finanzas, incumplimientos, estados de cuenta y consulta legal con IA en una sola plataforma.">
+  <meta property="og:url" content="https://www.anexypro.com/">
+  <meta property="og:image" content="https://www.anexypro.com/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:locale" content="es_CR">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="ANEXYpro — Administra tu condominio como un sistema vivo">
+  <meta name="twitter:description" content="Tareas, calendario, finanzas, incumplimientos, estados de cuenta y consulta legal con IA en una sola plataforma.">
+  <meta name="twitter:image" content="https://www.anexypro.com/og-image.png">
+  <link rel="icon" href="/favicon.ico" sizes="48x48">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F4F3F0">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0F1013">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #F4F3F0; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
@@ -435,9 +455,25 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // el runtime de la plantilla reconstruye el <head>; los estilos viven en
     // <body> y se re-adjuntan si un render los saca del documento
+    var iconLinks = [
+      ['icon', '/favicon.ico', null],
+      ['icon', '/favicon-32.png', 'image/png'],
+      ['apple-touch-icon', '/apple-touch-icon.png', null],
+      ['manifest', '/site.webmanifest', null]
+    ].map(function (spec) {
+      var l = document.createElement('link');
+      l.rel = spec[0];
+      l.href = spec[1];
+      if (spec[2]) l.type = spec[2];
+      return l;
+    });
     function ensureStyles() {
       if (!css.isConnected) document.body.appendChild(css);
       if (!rcss.isConnected) document.body.appendChild(rcss);
+      // el runtime reconstruye el <head>: re-adjunta los íconos si faltan
+      iconLinks.forEach(function (l) {
+        if (!l.isConnected) document.head.appendChild(l);
+      });
     }
     ensureStyles();
 
