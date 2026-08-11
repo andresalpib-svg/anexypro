@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth';
 import { resolveCondoId } from '@/lib/active-condo';
 import { can } from '@/lib/rbac';
 import { listCondominiumsForSession } from '@/lib/services/condominiums';
-import { listAssets, listProviders } from '@/lib/services/maintenance';
+import { listAssets, listAssetCategories, listProviders } from '@/lib/services/maintenance';
 import { getPettyCash } from '@/lib/services/petty-cash';
 import { getCondominium } from '@/lib/services/condominiums';
 import { PageHeader } from '@/components/ui/page-header';
@@ -29,8 +29,9 @@ export default async function MantenimientoPage({ searchParams }: { searchParams
   const condoId = resolveCondoId(searchParams.condoId, condos);
   if (!condoId) return <SinCondominio companyId={session!.user.companyId} role={session!.user.role} />;
 
-  const [assets, providers, cash, condo] = await Promise.all([
+  const [assets, categories, providers, cash, condo] = await Promise.all([
     listAssets(session!.user.companyId, condoId),
+    listAssetCategories(session!.user.companyId, condoId),
     listProviders(session!.user.companyId, condoId),
     getPettyCash(session!.user.companyId, condoId),
     getCondominium(session!.user.companyId, condoId),
@@ -51,13 +52,15 @@ export default async function MantenimientoPage({ searchParams }: { searchParams
         <div id="activos" className="card scroll-mt-24 p-4 transition-all">
           <div className="flex items-center justify-between">
             <p className="text-xs font-bold uppercase tracking-wide text-muted">Activos ({assets.length})</p>
-            <QuickAddAsset condominiumId={condoId} />
+            <QuickAddAsset condominiumId={condoId} categories={categories} />
           </div>
           <AssetList
+            condominiumId={condoId}
+            categories={categories}
             assets={assets.map((a) => ({
               id: a.id,
               name: a.name,
-              category: a.category,
+              category: a.category ? { id: a.category.id, name: a.category.name } : null,
               description: a.description,
               approxCost: a.approxCost?.toString() ?? null,
               location: a.location,

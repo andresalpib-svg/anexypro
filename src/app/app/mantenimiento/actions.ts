@@ -5,6 +5,7 @@ import { requirePanel, allowsCondo, SIN_PERMISO } from '@/lib/guard';
 import {
   assetSchema,
   updateAssetSchema,
+  assetCategorySchema,
   providerSchema,
   updateProviderSchema,
   ticketSchema,
@@ -14,6 +15,10 @@ import {
   createAsset,
   updateAsset,
   deleteAsset,
+  createAssetCategory,
+  renameAssetCategory,
+  toggleAssetCategory,
+  deleteAssetCategory,
   createProvider,
   updateProvider,
   deleteProvider,
@@ -23,7 +28,7 @@ import {
 } from '@/lib/services/maintenance';
 import { pickFile, IMAGE_EXT } from '@/lib/upload';
 import { saveToRepository } from '@/lib/services/file-refs';
-import { condoOfAsset, condoOfProvider, condoOfTicket } from '@/lib/services/entity-scope';
+import { condoOfAsset, condoOfAssetCategory, condoOfProvider, condoOfTicket } from '@/lib/services/entity-scope';
 
 export type ActionState = { errors?: Record<string, string[]>; formError?: string; success?: boolean };
 
@@ -96,6 +101,59 @@ export async function deleteAssetAction(assetId: string): Promise<{ ok: boolean;
     await deleteAsset(session.user.companyId, assetId);
   } catch (e: any) {
     return { ok: false, error: e?.message ?? 'No se pudo eliminar el activo.' };
+  }
+  revalidatePath('/app/mantenimiento');
+  return { ok: true };
+}
+
+// ============================================================
+// Categorías de activos — "Editar más opciones" del selector
+// ============================================================
+
+export async function saveAssetCategoryAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const parsed = assetCategorySchema.safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors as Record<string, string[]> };
+
+  const session = await requirePanel({ module: MODULO, condominiumId: parsed.data.condominiumId });
+  if (!session) return { formError: SIN_PERMISO };
+
+  try {
+    if (parsed.data.categoryId) {
+      await renameAssetCategory(session.user.companyId, parsed.data.categoryId, parsed.data.name);
+    } else {
+      await createAssetCategory(session.user.companyId, parsed.data.condominiumId, parsed.data.name);
+    }
+  } catch (e: any) {
+    if (e?.code === 'P2002') return { errors: { name: ['Ya existe una categoría con ese nombre.'] } };
+    return { formError: e?.message ?? 'No se pudo guardar la categoría.' };
+  }
+  revalidatePath('/app/mantenimiento');
+  return { success: true };
+}
+
+export async function toggleAssetCategoryAction(categoryId: string, isActive: boolean): Promise<{ ok: boolean; error?: string }> {
+  const session = await requirePanel({ module: MODULO });
+  if (!session) return { ok: false, error: SIN_PERMISO };
+  try {
+    const condoId = await condoOfAssetCategory(session.user.companyId, categoryId);
+    if (!(await allowsCondo(session, condoId))) return { ok: false, error: SIN_PERMISO };
+    await toggleAssetCategory(session.user.companyId, categoryId, isActive);
+  } catch (e: any) {
+    return { ok: false, error: e?.message ?? 'No se pudo actualizar la categoría.' };
+  }
+  revalidatePath('/app/mantenimiento');
+  return { ok: true };
+}
+
+export async function deleteAssetCategoryAction(categoryId: string): Promise<{ ok: boolean; error?: string }> {
+  const session = await requirePanel({ module: MODULO });
+  if (!session) return { ok: false, error: SIN_PERMISO };
+  try {
+    const condoId = await condoOfAssetCategory(session.user.companyId, categoryId);
+    if (!(await allowsCondo(session, condoId))) return { ok: false, error: SIN_PERMISO };
+    await deleteAssetCategory(session.user.companyId, categoryId);
+  } catch (e: any) {
+    return { ok: false, error: e?.message ?? 'No se pudo eliminar la categoría.' };
   }
   revalidatePath('/app/mantenimiento');
   return { ok: true };

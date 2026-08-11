@@ -25,6 +25,16 @@ export async function condoOfAsset(companyId: string, assetId: string): Promise<
   return asset.condominiumId;
 }
 
+export async function condoOfAssetCategory(companyId: string, categoryId: string): Promise<string> {
+  const category = await withTenantContext(companyId, (tx) =>
+    tx.assetCategoryOption.findFirstOrThrow({
+      where: { id: categoryId, condominium: { companyId } },
+      select: { condominiumId: true },
+    })
+  );
+  return category.condominiumId;
+}
+
 export async function condoOfAmenity(companyId: string, amenityId: string): Promise<string> {
   const amenity = await withTenantContext(companyId, (tx) =>
     tx.amenity.findFirstOrThrow({

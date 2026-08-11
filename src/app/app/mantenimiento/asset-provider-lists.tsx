@@ -12,21 +12,12 @@ import {
   type ActionState,
 } from './actions';
 import { enTransicion } from '@/lib/accion-segura';
-
-const CATEGORY_LABEL: Record<string, string> = {
-  elevador: 'Elevador',
-  bomba: 'Bomba',
-  generador: 'Generador',
-  piscina: 'Piscina',
-  porton: 'Portón',
-  techo: 'Techo',
-  otro: 'Otro',
-};
+import { CategorySelect, type AssetCategoryOption } from './category-select';
 
 export type AssetItem = {
   id: string;
   name: string;
-  category: string;
+  category: { id: string; name: string } | null;
   description: string | null;
   approxCost: string | null;
   location: string | null;
@@ -72,7 +63,7 @@ function DeleteButton({ onDelete, label }: { onDelete: () => Promise<{ ok: boole
   );
 }
 
-function AssetRow({ asset }: { asset: AssetItem }) {
+function AssetRow({ asset, condominiumId, categories }: { asset: AssetItem; condominiumId: string; categories: AssetCategoryOption[] }) {
   const [editing, setEditing] = useState(false);
   const [state, formAction] = useFormState<ActionState, FormData>(updateAssetAction, {});
   const formRef = useRef<HTMLFormElement>(null);
@@ -94,7 +85,7 @@ function AssetRow({ asset }: { asset: AssetItem }) {
         )}
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium text-ink">
-            {asset.name} <span className="font-normal text-muted">· {CATEGORY_LABEL[asset.category] ?? asset.category}</span>
+            {asset.name} <span className="font-normal text-muted">· {asset.category?.name ?? 'Sin categoría'}</span>
           </p>
           <p className="truncate text-xs text-muted">
             {asset.description || 'Sin descripción'}
@@ -119,13 +110,7 @@ function AssetRow({ asset }: { asset: AssetItem }) {
         </div>
         <div>
           <label className="field-label">Categoría</label>
-          <select name="category" defaultValue={asset.category} className="field-input">
-            {Object.entries(CATEGORY_LABEL).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
+          <CategorySelect condominiumId={condominiumId} categories={categories} defaultValue={asset.category?.id} />
         </div>
         <div>
           <label className="field-label">Descripción</label>
@@ -159,12 +144,20 @@ function AssetRow({ asset }: { asset: AssetItem }) {
   );
 }
 
-export function AssetList({ assets }: { assets: AssetItem[] }) {
+export function AssetList({
+  assets,
+  condominiumId,
+  categories,
+}: {
+  assets: AssetItem[];
+  condominiumId: string;
+  categories: AssetCategoryOption[];
+}) {
   if (assets.length === 0) return <p className="mt-2 text-sm text-muted">Sin activos registrados.</p>;
   return (
     <ul className="mt-2 divide-y divide-line text-sm">
       {assets.map((a) => (
-        <AssetRow key={a.id} asset={a} />
+        <AssetRow key={a.id} asset={a} condominiumId={condominiumId} categories={categories} />
       ))}
     </ul>
   );

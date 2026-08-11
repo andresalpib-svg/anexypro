@@ -15,7 +15,12 @@ export async function getCommunication(companyId: string, id: string) {
   return withTenantContext(companyId, async (tx) => {
     const comm = await tx.communication.findFirst({
       where: { id },
-      include: { recipients: { include: { person: true } }, targets: true, attachments: { orderBy: { uploadedAt: 'asc' } } },
+      include: {
+        recipients: { include: { person: true } },
+        targets: true,
+        attachments: { orderBy: { uploadedAt: 'asc' } },
+        calendarEvent: true,
+      },
     });
     if (!comm) return null;
     const reads = comm.recipients.filter((r) => r.readAt !== null).length;
@@ -64,12 +69,7 @@ export async function createCommunication(
   });
 }
 
-/**
- * Publica: resuelve la audiencia real en este momento (snapshot),
- * crea communication_recipients uno por persona, y crea el evento en
- * el Calendario General si el comunicado trae una fecha relevante
- * (no aplica en esta primera pasada — se deja documentado).
- */
+/** Marca como leído para esta persona los envíos pendientes de un comunicado. */
 export async function markCommunicationRead(companyId: string, communicationId: string, personId: string) {
   return withTenantContext(companyId, (tx) =>
     tx.communicationRecipient.updateMany({
@@ -183,6 +183,45 @@ export async function publishCommunication(companyId: string, userId: string, us
     });
     await logActivity(tx, companyId, { userId, userName, module: 'Comunicados', action: 'Comunicado publicado', target: comm.title });
     return updated;
+  });
+}
+
+/**
+ * Vincula el comunicado a una actividad del Calendario General, para
+ * que el residente la vea también ahí (no solo en Comunicados). Se
+ * arma con el título y el cuerpo del comunicado: quien edita solo
+ * decide fecha, hora, lugar y audiencia.
+ *
+ * `communicationId` es único en `calendar_events` — un comunicado no
+ * puede tener dos actividades vinculadas. Repetir el intento choca con
+ * esa restricción y quien llama responde con su propio mensaje.
+ */
+export async function addCommunicationToCalendar(
+  companyId: string,
+  userId: string,
+  userName: string,
+  communicationId: string,
+  input: { eventDate: Date; eventTime?: string; location?: string; audience?: string }
+) {
+  return withTenantContext(companyId, async (tx) => {
+    const comm = await tx.communication.findFirstOrThrow({ where: { id: communicationId } });
+    const event = await tx.calendarEvent.create({
+      data: {
+        condominiumId: comm.condominiumId,
+        title: comm.title,
+        eventType: 'actividad',
+        eventDate: input.eventDate,
+        eventTime: input.eventTime || null,
+        description: comm.body,
+        location: input.location || null,
+        audience: input.audience === 'interna' ? 'interna' : 'condominos',
+        source: 'comunicado',
+        communicationId: comm.id,
+        createdById: userId,
+      },
+    });
+    await logActivity(tx, companyId, { userId, userName, module: 'Comunicados', action: 'Actividad agregada al calendario', target: comm.title });
+    return event;
   });
 }
 

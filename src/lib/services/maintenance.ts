@@ -3,12 +3,14 @@ import { recordMaintenanceExpense } from '@/lib/services/accounting';
 import { logActivity } from '@/lib/services/audit';
 
 export async function listAssets(companyId: string, condominiumId: string) {
-  return withTenantContext(companyId, (tx) => tx.asset.findMany({ where: { condominiumId }, orderBy: { name: 'asc' } }));
+  return withTenantContext(companyId, (tx) =>
+    tx.asset.findMany({ where: { condominiumId }, include: { category: true }, orderBy: { name: 'asc' } })
+  );
 }
 
 export type AssetInput = {
   name: string;
-  category: string;
+  categoryId?: string;
   description?: string;
   approxCost?: number;
   location?: string;
@@ -21,7 +23,7 @@ export async function createAsset(companyId: string, input: AssetInput & { condo
       data: {
         condominiumId: input.condominiumId,
         name: input.name,
-        category: input.category as any,
+        categoryId: input.categoryId || null,
         description: input.description || null,
         approxCost: input.approxCost ?? null,
         location: input.location || null,
@@ -37,7 +39,7 @@ export async function updateAsset(companyId: string, assetId: string, input: Ass
       where: { id: assetId },
       data: {
         name: input.name,
-        category: input.category as any,
+        categoryId: input.categoryId || null,
         description: input.description || null,
         approxCost: input.approxCost ?? null,
         location: input.location || null,
@@ -58,6 +60,62 @@ export async function deleteAsset(companyId: string, assetId: string) {
     }
     return tx.asset.delete({ where: { id: assetId } });
   });
+}
+
+// ============================================================
+// Categorías de activos
+//
+// Catálogo propio de cada condominio, editable desde "Editar más
+// opciones" en el selector de Categoría — mismo patrón que el
+// catálogo de incumplimientos (ViolationType).
+// ============================================================
+
+export async function listAssetCategories(companyId: string, condominiumId: string, soloActivas = false) {
+  return withTenantContext(companyId, (tx) =>
+    tx.assetCategoryOption.findMany({
+      where: { condominiumId, ...(soloActivas ? { isActive: true } : {}) },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+    })
+  );
+}
+
+export async function createAssetCategory(companyId: string, condominiumId: string, name: string) {
+  return withTenantContext(companyId, (tx) =>
+    tx.assetCategoryOption.create({ data: { condominiumId, name: name.trim() } })
+  );
+}
+
+export async function renameAssetCategory(companyId: string, categoryId: string, name: string) {
+  return withTenantContext(companyId, async (tx) => {
+    await assertCategoryInCompany(tx, categoryId, companyId);
+    return tx.assetCategoryOption.update({ where: { id: categoryId }, data: { name: name.trim() } });
+  });
+}
+
+export async function toggleAssetCategory(companyId: string, categoryId: string, isActive: boolean) {
+  return withTenantContext(companyId, async (tx) => {
+    await assertCategoryInCompany(tx, categoryId, companyId);
+    return tx.assetCategoryOption.update({ where: { id: categoryId }, data: { isActive } });
+  });
+}
+
+export async function deleteAssetCategory(companyId: string, categoryId: string) {
+  return withTenantContext(companyId, async (tx) => {
+    await assertCategoryInCompany(tx, categoryId, companyId);
+    const enUso = await tx.asset.count({ where: { categoryId } });
+    if (enUso > 0) {
+      throw new Error(`Esta categoría tiene ${enUso} activo(s) — borrarla los dejaría sin categoría. Desactívala en su lugar.`);
+    }
+    return tx.assetCategoryOption.delete({ where: { id: categoryId } });
+  });
+}
+
+async function assertCategoryInCompany(tx: any, categoryId: string, companyId: string) {
+  const c = await tx.assetCategoryOption.findFirst({
+    where: { id: categoryId, condominium: { companyId } },
+    select: { id: true },
+  });
+  if (!c) throw new Error('La categoría no existe.');
 }
 
 export async function listProviders(companyId: string, condominiumId: string) {

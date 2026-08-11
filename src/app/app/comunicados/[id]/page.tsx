@@ -9,6 +9,7 @@ import { StatusChip } from '@/components/ui/status-chip';
 import { CommAttachments } from '@/components/ui/comm-attachments';
 import { audienceLabel } from '@/lib/comm-audience';
 import { publishCommunicationAction } from '../actions';
+import { AddToCalendarForm } from '../add-to-calendar-form';
 
 const STATUS_LABEL: Record<string, string> = { borrador: 'Borrador', programado: 'Programado', enviado: 'Enviado' };
 
@@ -66,6 +67,20 @@ export default async function ComunicadoDetailPage({ params }: { params: { id: s
           </p>
         )}
       </div>
+
+      <AddToCalendarForm
+        communicationId={comm.id}
+        linkedEvent={
+          comm.calendarEvent
+            ? {
+                id: comm.calendarEvent.id,
+                eventDate: comm.calendarEvent.eventDate.toISOString(),
+                eventTime: comm.calendarEvent.eventTime,
+                location: comm.calendarEvent.location,
+              }
+            : null
+        }
+      />
     </div>
   );
 }

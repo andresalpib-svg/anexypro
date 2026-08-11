@@ -4,7 +4,7 @@ import { telefonoOpcional } from '@/lib/validations/comunes';
 export const assetSchema = z.object({
   condominiumId: z.string().uuid(),
   name: z.string().min(2, 'El nombre es muy corto').max(100),
-  category: z.enum(['elevador', 'bomba', 'generador', 'piscina', 'porton', 'techo', 'otro']),
+  categoryId: z.string().uuid().optional().or(z.literal('')),
   description: z.string().max(500).optional().or(z.literal('')),
   approxCost: z.coerce.number().min(0).optional(),
   location: z.string().max(100).optional().or(z.literal('')),
@@ -12,6 +12,12 @@ export const assetSchema = z.object({
 
 export const updateAssetSchema = assetSchema.omit({ condominiumId: true }).extend({
   assetId: z.string().uuid(),
+});
+
+export const assetCategorySchema = z.object({
+  condominiumId: z.string().uuid(),
+  categoryId: z.string().uuid().optional().or(z.literal('')),
+  name: z.string().min(2, 'Ponle un nombre a la categoría').max(60),
 });
 
 export const providerSchema = z.object({

@@ -32,7 +32,7 @@ async function main() {
   const { createReservation, decideReservation } = await import('../src/lib/services/reservations');
   const { createVisit, checkIn, checkOut } = await import('../src/lib/services/visits');
   const { createIncident, setIncidentStatus, receivePackage, deliverPackage } = await import('../src/lib/services/security');
-  const { createAsset, createProvider, createTicket, updateTicketStatus, completeTicket } = await import('../src/lib/services/maintenance');
+  const { createAsset, listAssetCategories, createProvider, createTicket, updateTicketStatus, completeTicket } = await import('../src/lib/services/maintenance');
   const { createProject, setProjectStatus, addMilestone, toggleMilestone, addExpense } = await import('../src/lib/services/projects');
   const { createCommunication, publishCommunication } = await import('../src/lib/services/communications');
   const { createContentItem } = await import('../src/lib/services/content');
@@ -209,10 +209,27 @@ async function main() {
   // ---------- Operativo ----------
   if ((await prisma.asset.count({ where: { condominiumId: condoId } })) === 0) {
     console.log('Creando activos, proveedores y tickets…');
-    const bomba = await createAsset(companyId, { condominiumId: condoId, name: 'Bomba de agua principal', category: 'bomba', description: 'Pedrollo 2HP, caseta norte', approxCost: 850000, location: 'Caseta de máquinas', photoUrl: demoAssetPhoto });
-    const porton = await createAsset(companyId, { condominiumId: condoId, name: 'Portón eléctrico acceso principal', category: 'porton', description: 'Motor CAME BX-74, instalado 2024', approxCost: 1200000 });
-    await createAsset(companyId, { condominiumId: condoId, name: 'Planta eléctrica de emergencia', category: 'generador', description: 'Generac 22kW diésel', approxCost: 9500000 });
-    await createAsset(companyId, { condominiumId: condoId, name: 'Sistema de piscina', category: 'piscina', description: 'Filtro de arena + clorinador salino', approxCost: 2300000 });
+    // Las categorías son propias del condominio (ver seed-asset-categories.ts) — se siembran aquí si el condo demo todavía no tiene.
+    if ((await prisma.assetCategoryOption.count({ where: { condominiumId: condoId } })) === 0) {
+      await prisma.assetCategoryOption.createMany({
+        data: [
+          { condominiumId: condoId, name: 'Elevador', sortOrder: 1 },
+          { condominiumId: condoId, name: 'Bomba', sortOrder: 2 },
+          { condominiumId: condoId, name: 'Generador', sortOrder: 3 },
+          { condominiumId: condoId, name: 'Piscina', sortOrder: 4 },
+          { condominiumId: condoId, name: 'Portón', sortOrder: 5 },
+          { condominiumId: condoId, name: 'Techo', sortOrder: 6 },
+          { condominiumId: condoId, name: 'Otro', sortOrder: 7 },
+        ],
+      });
+    }
+    const categorias = await listAssetCategories(companyId, condoId);
+    const categoriaId = (nombre: string) => categorias.find((c) => c.name === nombre)!.id;
+
+    const bomba = await createAsset(companyId, { condominiumId: condoId, name: 'Bomba de agua principal', categoryId: categoriaId('Bomba'), description: 'Pedrollo 2HP, caseta norte', approxCost: 850000, location: 'Caseta de máquinas', photoUrl: demoAssetPhoto });
+    const porton = await createAsset(companyId, { condominiumId: condoId, name: 'Portón eléctrico acceso principal', categoryId: categoriaId('Portón'), description: 'Motor CAME BX-74, instalado 2024', approxCost: 1200000 });
+    await createAsset(companyId, { condominiumId: condoId, name: 'Planta eléctrica de emergencia', categoryId: categoriaId('Generador'), description: 'Generac 22kW diésel', approxCost: 9500000 });
+    await createAsset(companyId, { condominiumId: condoId, name: 'Sistema de piscina', categoryId: categoriaId('Piscina'), description: 'Filtro de arena + clorinador salino', approxCost: 2300000 });
 
     const provAcuatec = await createProvider(companyId, { condominiumId: condoId, name: 'Acuatec S.A.', serviceType: 'Bombas y riego', phone: '2440-1122', email: 'servicio@acuatec.cr' });
     const provPortones = await createProvider(companyId, { condominiumId: condoId, name: 'Portones Automáticos CR', serviceType: 'Portones', phone: '2225-8844', email: 'soporte@portonescr.com' });

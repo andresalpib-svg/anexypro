@@ -4,8 +4,9 @@ import { useState, useRef, useEffect } from 'react';
 import { useFormState, useFormStatus } from 'react-dom';
 import { Plus } from 'lucide-react';
 import { createAssetAction, createProviderAction, type ActionState } from './actions';
+import { CategorySelect, type AssetCategoryOption } from './category-select';
 
-export function QuickAddAsset({ condominiumId }: { condominiumId: string }) {
+export function QuickAddAsset({ condominiumId, categories }: { condominiumId: string; categories: AssetCategoryOption[] }) {
   const [open, setOpen] = useState(false);
   const [state, formAction] = useFormState<ActionState, FormData>(createAssetAction, {});
   const formRef = useRef<HTMLFormElement>(null);
@@ -26,15 +27,8 @@ export function QuickAddAsset({ condominiumId }: { condominiumId: string }) {
       </div>
       <div>
         <label className="field-label">Categoría</label>
-        <select name="category" defaultValue="otro" className="field-input">
-          <option value="elevador">Elevador</option>
-          <option value="bomba">Bomba</option>
-          <option value="generador">Generador</option>
-          <option value="piscina">Piscina</option>
-          <option value="porton">Portón</option>
-          <option value="techo">Techo</option>
-          <option value="otro">Otro</option>
-        </select>
+        <CategorySelect condominiumId={condominiumId} categories={categories} defaultValue={categories.find((c) => c.name === 'Otro')?.id} />
+        {state.errors?.categoryId && <p className="mt-1 text-xs text-danger">{state.errors.categoryId[0]}</p>}
       </div>
       <div>
         <label className="field-label">Descripción</label>

@@ -205,6 +205,7 @@ model Condominium {
   packages             Package[]
   contentItems         ContentItem[]
   assets               Asset[]
+  assetCategoryOptions AssetCategoryOption[]
   providers            Provider[]
   maintenanceTickets   MaintenanceTicket[]
   projects             Project[]
@@ -1388,39 +1389,54 @@ model ContentItem {
 // MANTENIMIENTO INTELIGENTE (migración 16)
 // ============================================================
 
-enum AssetCategory {
-  elevador
-  bomba
-  generador
-  piscina
-  porton
-  techo
-  otro
-}
-
 enum AssetStatus {
   operativo
   en_mantenimiento
   fuera_servicio
 }
 
-model Asset {
-  id            String        @id @default(uuid())
-  condominiumId String        @map("condominium_id")
+// Categoría de activo, propia de cada condominio. Arranca con las
+// siete de partida (Elevador, Bomba, Generador, Piscina, Portón,
+// Techo, Otro) que siembra `seed-asset-categories.ts`, pero desde el
+// selector de "Categoría" al crear un activo se puede abrir "Editar
+// más opciones" y agregar, renombrar o desactivar las propias — mismo
+// patrón que `ViolationType` con el catálogo de incumplimientos.
+//
+// Una categoría con activos no se puede borrar —perdería la
+// referencia—; se desactiva y deja de ofrecerse en el selector.
+model AssetCategoryOption {
+  id            String   @id @default(uuid())
+  condominiumId String   @map("condominium_id")
   name          String
-  category      AssetCategory @default(otro)
-  description   String?
-  approxCost    Decimal?      @map("approx_cost") @db.Decimal(14, 2)
-  photoUrl      String?       @map("photo_url")
-  location      String?
-  purchaseDate  DateTime?     @map("purchase_date") @db.Date
-  warrantyUntil DateTime?     @map("warranty_until") @db.Date
-  manualUrl     String?       @map("manual_url")
-  status        AssetStatus   @default(operativo)
-  notes         String?
-  createdAt     DateTime      @default(now()) @map("created_at")
+  isActive      Boolean  @default(true) @map("is_active")
+  sortOrder     Int      @default(0) @map("sort_order")
+  createdAt     DateTime @default(now()) @map("created_at")
 
-  condominium Condominium         @relation(fields: [condominiumId], references: [id])
+  condominium Condominium @relation(fields: [condominiumId], references: [id])
+  assets      Asset[]
+
+  @@index([condominiumId])
+  @@map("asset_category_options")
+}
+
+model Asset {
+  id            String      @id @default(uuid())
+  condominiumId String      @map("condominium_id")
+  name          String
+  categoryId    String?     @map("category_id")
+  description   String?
+  approxCost    Decimal?    @map("approx_cost") @db.Decimal(14, 2)
+  photoUrl      String?     @map("photo_url")
+  location      String?
+  purchaseDate  DateTime?   @map("purchase_date") @db.Date
+  warrantyUntil DateTime?   @map("warranty_until") @db.Date
+  manualUrl     String?     @map("manual_url")
+  status        AssetStatus @default(operativo)
+  notes         String?
+  createdAt     DateTime    @default(now()) @map("created_at")
+
+  condominium Condominium          @relation(fields: [condominiumId], references: [id])
+  category    AssetCategoryOption? @relation(fields: [categoryId], references: [id])
   tickets     MaintenanceTicket[]
 
   @@index([condominiumId])

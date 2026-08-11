@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 /**
@@ -22,6 +23,13 @@ export function Modal({
   width?: string;
 }) {
   const boxRef = useRef<HTMLDivElement>(null);
+  // Portal a document.body: si no, el modal queda anidado en el DOM
+  // donde se le invoque —incluido un <form> del formulario que lo
+  // abre—, y un <form> dentro de otro <form> es HTML inválido: el
+  // navegador rompe el envío del formulario de afuera. Antes de montar
+  // no hay `document` (SSR), así que el primer render no porta nada.
+  const [montado, setMontado] = useState(false);
+  useEffect(() => setMontado(true), []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -37,9 +45,11 @@ export function Modal({
     };
   }, [onClose]);
 
+  if (!montado) return null;
+
   // El relleno del fondo es el margen de la ventana con la orilla de la
   // pantalla: sin él, en un teléfono el recuadro toca los bordes.
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto bg-deep/50 p-4 backdrop-blur-sm sm:p-6"
       onMouseDown={(e) => {
@@ -63,6 +73,7 @@ export function Modal({
         </header>
         <div className="max-h-[calc(100vh-8rem)] overflow-y-auto sm:max-h-[calc(100vh-10rem)]">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
