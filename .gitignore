@@ -40,6 +40,16 @@ Thumbs.db
 *.tsbuildinfo
 next-env.d.ts
 /public/uploads
-storage/
+
+# Archivos guardados por el proveedor local de almacenamiento.
+#
+# ANCLADO CON "/" A PROPÓSITO. Un patrón suelto excluye CUALQUIER
+# carpeta con ese nombre, a cualquier profundidad: con `storage/` a
+# secas se iba también `src/lib/storage/` —el repositorio de documentos
+# entero, siete archivos de código— y nunca llegó a entrar al
+# repositorio. El proyecto compilaba igual desde esta carpeta, pero
+# clonarlo daba "Module not found: Can't resolve '@/lib/storage'".
+# `.vercelignore` ya llevaba la misma corrección desde el 6/8.
+/storage
 .vercel
 .env*
