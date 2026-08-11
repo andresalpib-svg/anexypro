@@ -25,7 +25,7 @@ async function main() {
   const companyId = company.id;
   const actor = { userId: admin.id, userName: admin.fullName };
 
-  const { createCondominium, activateCondominium } = await import('../src/lib/services/condominiums');
+  const { createCondominium, activateCondominium, seedCondoCatalogs } = await import('../src/lib/services/condominiums');
   const { bulkCreateProperties, addPersonToProperty, addVehicle, addPet } = await import('../src/lib/services/properties');
   const { generateOrdinaryBilling, makePayment } = await import('../src/lib/services/finance');
   const { createAmenity } = await import('../src/lib/services/amenities');
@@ -209,20 +209,9 @@ async function main() {
   // ---------- Operativo ----------
   if ((await prisma.asset.count({ where: { condominiumId: condoId } })) === 0) {
     console.log('Creando activos, proveedores y tickets…');
-    // Las categorías son propias del condominio (ver seed-asset-categories.ts) — se siembran aquí si el condo demo todavía no tiene.
-    if ((await prisma.assetCategoryOption.count({ where: { condominiumId: condoId } })) === 0) {
-      await prisma.assetCategoryOption.createMany({
-        data: [
-          { condominiumId: condoId, name: 'Elevador', sortOrder: 1 },
-          { condominiumId: condoId, name: 'Bomba', sortOrder: 2 },
-          { condominiumId: condoId, name: 'Generador', sortOrder: 3 },
-          { condominiumId: condoId, name: 'Piscina', sortOrder: 4 },
-          { condominiumId: condoId, name: 'Portón', sortOrder: 5 },
-          { condominiumId: condoId, name: 'Techo', sortOrder: 6 },
-          { condominiumId: condoId, name: 'Otro', sortOrder: 7 },
-        ],
-      });
-    }
+    // `createCondominium` ya siembra los catálogos; esta llamada cubre
+    // el condominio demo creado antes de que eso existiera. Es idempotente.
+    await seedCondoCatalogs(companyId, condoId);
     const categorias = await listAssetCategories(companyId, condoId);
     const categoriaId = (nombre: string) => categorias.find((c) => c.name === nombre)!.id;
 

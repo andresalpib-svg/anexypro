@@ -1,6 +1,11 @@
 import { withTenantContext } from '@/lib/db';
 import { logActivity } from '@/lib/services/audit';
 import type { CondominiumInput } from '@/lib/validations/condominium';
+import {
+  TIPOS_INCUMPLIMIENTO_INICIALES,
+  CATEGORIAS_ACTIVO_INICIALES,
+  AJUSTES_INCUMPLIMIENTO_INICIALES,
+} from '@/lib/domain/catalogos-iniciales';
 
 export async function listCondominiums(companyId: string) {
   return withTenantContext(companyId, (tx) =>
@@ -146,7 +151,58 @@ export async function createCondominium(
     );
   }
 
+  // Catálogos de partida (incumplimientos y categorías de activos).
+  // Mismo criterio que el árbol de carpetas: fuera de la transacción y
+  // sin propagar el error, porque un catálogo que falta se vuelve a
+  // sembrar y no justifica perder el condominio.
+  try {
+    await seedCondoCatalogs(companyId, created.id);
+  } catch (e) {
+    console.error(
+      `[catálogos] No se pudieron sembrar los catálogos iniciales de "${created.name}". Se pueden sembrar con prisma/seed-violations.ts y prisma/seed-asset-categories.ts.`,
+      e
+    );
+  }
+
   return created;
+}
+
+/**
+ * Copia los catálogos de partida al condominio: los tipos de
+ * incumplimiento, sus ajustes de documento y las categorías de activos.
+ *
+ * Sin esto, un condominio recién creado abre Incumplimientos sin un
+ * solo botón y el selector de categoría de un activo vacío — que es
+ * exactamente lo que pasaba antes de existir esta función.
+ *
+ * Idempotente por catálogo: si el condominio ya tiene alguno, ese se
+ * salta. Así se puede volver a llamar sin pisar lo que la
+ * administración haya editado.
+ */
+export async function seedCondoCatalogs(companyId: string, condominiumId: string) {
+  return withTenantContext(companyId, async (tx) => {
+    const [tipos, categorias, ajustes] = await Promise.all([
+      tx.violationType.count({ where: { condominiumId } }),
+      tx.assetCategoryOption.count({ where: { condominiumId } }),
+      tx.violationSettings.count({ where: { condominiumId } }),
+    ]);
+
+    if (tipos === 0) {
+      await tx.violationType.createMany({
+        data: TIPOS_INCUMPLIMIENTO_INICIALES.map((t) => ({ condominiumId, ...t })),
+      });
+    }
+    if (categorias === 0) {
+      await tx.assetCategoryOption.createMany({
+        data: CATEGORIAS_ACTIVO_INICIALES.map((c) => ({ condominiumId, ...c })),
+      });
+    }
+    if (ajustes === 0) {
+      await tx.violationSettings.create({
+        data: { condominiumId, ...AJUSTES_INCUMPLIMIENTO_INICIALES },
+      });
+    }
+  });
 }
 
 export async function activateCondominium(companyId: string, id: string) {

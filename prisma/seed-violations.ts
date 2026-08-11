@@ -15,21 +15,12 @@
  * personalizó.
  */
 import { PrismaClient } from '@prisma/client';
+import {
+  TIPOS_INCUMPLIMIENTO_INICIALES as CATALOGO,
+  AJUSTES_INCUMPLIMIENTO_INICIALES,
+} from '../src/lib/domain/catalogos-iniciales';
 
 const prisma = new PrismaClient({ datasources: { db: { url: process.env.DIRECT_URL } } });
-
-const CATALOGO = [
-  { name: 'Ruidos', description: 'Ruido que altera la tranquilidad, en especial en horario nocturno.', regulationArticle: 'Reglamento interno, capítulo de convivencia', warningsRequired: 2, daysBetween: 15, fineAmount: 25000, immediateFine: false, sortOrder: 1 },
-  { name: 'Perro Suelto', description: 'Mascotas sueltas, sin correa o cuyos desechos no se recogen.', regulationArticle: 'Reglamento interno, capítulo de mascotas', warningsRequired: 2, daysBetween: 15, fineAmount: 20000, immediateFine: false, sortOrder: 2 },
-  { name: 'Vehículo mal estacionado', description: 'Vehículo en espacio ajeno, en zona de circulación o en área común.', regulationArticle: 'Reglamento interno, capítulo de parqueos', warningsRequired: 1, daysBetween: 10, fineAmount: 15000, immediateFine: false, sortOrder: 3 },
-  { name: 'Objetos en cochera', description: 'Objetos almacenados en la cochera que no corresponden o que obstruyen la circulación.', regulationArticle: 'Reglamento interno, capítulo de parqueos', warningsRequired: 2, daysBetween: 15, fineAmount: 15000, immediateFine: false, sortOrder: 4 },
-  { name: 'Uso indebido del parqueo de visitas', description: 'Parqueo de visitas ocupado por un residente o por más tiempo del permitido.', regulationArticle: 'Reglamento interno, capítulo de parqueos', warningsRequired: 1, daysBetween: 10, fineAmount: 15000, immediateFine: false, sortOrder: 5 },
-  { name: 'Mal uso de Casa Club', description: 'Incumplimiento de la normativa de reserva, horario o aforo de la Casa Club.', regulationArticle: 'Reglamento interno, capítulo de áreas comunes', warningsRequired: 2, daysBetween: 15, fineAmount: 20000, immediateFine: false, sortOrder: 6 },
-  { name: 'Mal uso de Gym', description: 'Incumplimiento de la normativa de horario, aforo o equipo del gimnasio.', regulationArticle: 'Reglamento interno, capítulo de áreas comunes', warningsRequired: 2, daysBetween: 15, fineAmount: 20000, immediateFine: false, sortOrder: 7 },
-  { name: 'Mal uso de piscina', description: 'Incumplimiento de la normativa de horario, aforo o normas de seguridad de la piscina.', regulationArticle: 'Reglamento interno, capítulo de áreas comunes', warningsRequired: 1, daysBetween: 10, fineAmount: 25000, immediateFine: false, sortOrder: 8 },
-  { name: 'Mal uso de la cancha', description: 'Incumplimiento de la normativa de reserva, horario o aforo de la cancha.', regulationArticle: 'Reglamento interno, capítulo de áreas comunes', warningsRequired: 2, daysBetween: 15, fineAmount: 20000, immediateFine: false, sortOrder: 9 },
-  { name: 'Basura visible', description: 'Residuos fuera del horario o del sitio dispuesto para su recolección.', regulationArticle: 'Reglamento interno, capítulo de aseo', warningsRequired: 2, daysBetween: 10, fineAmount: 15000, immediateFine: false, sortOrder: 10 },
-];
 
 async function main() {
   const objetivo = process.argv[2];
@@ -59,13 +50,7 @@ async function main() {
     const ajustes = await prisma.violationSettings.findUnique({ where: { condominiumId: condo.id } });
     if (!ajustes) {
       await prisma.violationSettings.create({
-        data: {
-          condominiumId: condo.id,
-          headerText: 'Administración del condominio',
-          footerText: 'Documento emitido electrónicamente por ANEXYpro.',
-          signerTitle: 'Administración',
-          responseDays: 8,
-        },
+        data: { condominiumId: condo.id, ...AJUSTES_INCUMPLIMIENTO_INICIALES },
       });
     }
 

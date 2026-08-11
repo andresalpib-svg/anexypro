@@ -14,18 +14,9 @@
  * catálogo. Es idempotente.
  */
 import { PrismaClient } from '@prisma/client';
+import { CATEGORIAS_ACTIVO_INICIALES as CATALOGO } from '../src/lib/domain/catalogos-iniciales';
 
 const prisma = new PrismaClient({ datasources: { db: { url: process.env.DIRECT_URL } } });
-
-const CATALOGO = [
-  { name: 'Elevador', sortOrder: 1 },
-  { name: 'Bomba', sortOrder: 2 },
-  { name: 'Generador', sortOrder: 3 },
-  { name: 'Piscina', sortOrder: 4 },
-  { name: 'Portón', sortOrder: 5 },
-  { name: 'Techo', sortOrder: 6 },
-  { name: 'Otro', sortOrder: 7 },
-];
 
 async function main() {
   const objetivo = process.argv[2];
