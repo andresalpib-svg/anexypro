@@ -18,9 +18,12 @@
  *
  * Tres caminos:
  *  - Base vacía            → no hace nada; `migrate deploy` la construye.
- *  - Esquema al día        → solo resuelve renombrados de carpeta.
- *  - Esquema incompleto o
- *    sin historia fiable   → `db push` + dar toda la historia por aplicada.
+ *  - Con historial         → solo resuelve renombrados de carpeta; lo que
+ *                            falte lo crea `migrate deploy` con sus
+ *                            migraciones, que sí trasladan los datos.
+ *  - Sin historial fiable  → `db push` + dar toda la historia por aplicada.
+ *                            Es la adopción de una base preexistente, y
+ *                            pasa UNA vez: después ya hay historial.
  *
  * Nunca toca datos: solo estructura y la bitácora de control de Prisma.
  */
@@ -127,29 +130,50 @@ async function main() {
       }
     }
 
-    // ---------- ¿Está el esquema completo? ----------
-    const existentes: any[] = await prisma.$queryRawUnsafe(
-      `SELECT table_name FROM information_schema.tables
-        WHERE table_schema = 'public' AND table_type = 'BASE TABLE'`
-    );
-    const enBase = new Set(existentes.map((t) => t.table_name));
-    const faltan = tablasDelModelo().filter((t) => !enBase.has(t));
+    // ---------- ¿Hay un historial de migraciones utilizable? ----------
+    //
+    // Esta pregunta va ANTES que "¿falta alguna tabla?" a propósito, y
+    // el orden importa: una tabla que falta NO significa que el esquema
+    // se haya desviado. Significa eso solo cuando no hay historial —el
+    // caso del 5 de agosto de 2026, una base hecha con `db push` y sin
+    // `_prisma_migrations`—. Con historial, una tabla que falta es lo
+    // normal: es la que va a crear una migración pendiente.
+    //
+    // Preguntarlo al revés hacía que CUALQUIER función nueva que
+    // agregue una tabla se tomara por una desviación y disparara
+    // `db push`, que no ejecuta las migraciones: aplica el esquema a la
+    // fuerza. Comprobado al desplegar `asset_category_options`, cuya
+    // migración traslada las categorías de los activos ANTES de quitar
+    // la columna vieja; `db push` se saltaba ese traslado, pedía borrar
+    // la columna con datos dentro y —bien— se negó. El despliegue falló
+    // en vez de perder las categorías de todos los activos.
+    const aplicadas: any[] = hayBitacora[0]?.hay
+      ? await prisma.$queryRawUnsafe(
+          `SELECT count(*)::int AS n FROM _prisma_migrations
+            WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL`
+        )
+      : [{ n: 0 }];
+    const historialUtil = (aplicadas[0]?.n ?? 0) > 0;
 
-    if (faltan.length > 0) {
+    if (!historialUtil) {
+      const existentes: any[] = await prisma.$queryRawUnsafe(
+        `SELECT table_name FROM information_schema.tables
+          WHERE table_schema = 'public' AND table_type = 'BASE TABLE'`
+      );
+      const enBase = new Set(existentes.map((t) => t.table_name));
+      const faltan = tablasDelModelo().filter((t) => !enBase.has(t));
       console.log(
-        `  al esquema le faltan ${faltan.length} tabla(s): ${faltan.slice(0, 6).join(', ')}${
-          faltan.length > 6 ? '…' : ''
-        }`
+        `  base sin historial de migraciones${
+          faltan.length > 0
+            ? ` y con ${faltan.length} tabla(s) por crear: ${faltan.slice(0, 6).join(', ')}${faltan.length > 6 ? '…' : ''}`
+            : ''
+        }.`
       );
       adoptarEsquema();
       return;
     }
 
-    if (!hayBitacora[0]?.hay) {
-      console.log('  el esquema está completo pero no hay historial de migraciones.');
-      adoptarEsquema();
-      return;
-    }
+    console.log(`  historial con ${aplicadas[0].n} migración(es) aplicada(s): las pendientes se aplican con migrate deploy.`);
 
     // ---------- Camino normal: solo renombrados ----------
     for (const { viejo, nuevo } of RENOMBRADAS) {
