@@ -29,6 +29,13 @@ Confirma que los fixes de seguridad de hoy no rompieron el flujo normal.
 > `late-interest.ts` con `timeout`/`maxWait` explícitos. `tsc`, 318 tests,
 > `db:verify` 11/11 y una prueba funcional real de lectura/escritura de
 > `.xlsx` (con acentos y ñ) — todo en verde antes de desplegar.
+>
+> **✅ Y ya está DESPLEGADO EN PRODUCCIÓN** (commit `81cf1a9`, `vercel deploy
+> --prod` → `readyState: READY`, alias `https://api.anexypro.com`).
+> Verificado en vivo contra la producción real: `/login` → 200,
+> `/api/auth/providers` responde con normalidad (confirma que `next-auth`
+> actualizado sigue sirviendo el flujo de credenciales), `/api/cron` sin
+> sesión sigue redirigiendo a login (307, no quedó abierto).
 
 ---
 
