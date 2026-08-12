@@ -51,6 +51,12 @@ const SIN_RLS_A_PROPOSITO = new Set([
   // /recuperar, /demo) y no guarda ningún dato de un tenant — misma
   // excepción consciente que `companies`/`users`.
   'rate_limit_hits',
+  // Historial de ciclo de vida de una empresa demo (creada, vencida,
+  // convertida...). Es información de PLATAFORMA que consulta el
+  // master, no de un condominio de un cliente — mismo criterio que
+  // `companies`, de donde cuelga (ver el modelo `DemoHistoryEntry` en
+  // schema.prisma).
+  'demo_history_entries',
   '_prisma_migrations',
 ]);
 
