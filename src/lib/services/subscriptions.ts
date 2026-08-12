@@ -284,9 +284,24 @@ export async function canCreateCondominium(
     select: { plan: { select: { name: true, maxCondominiums: true } } },
   });
   const max = e?.plan?.maxCondominiums ?? 0;
-  const used = await withTenantContext(companyId, (tx) =>
-    tx.condominium.count({ where: { deletedAt: null } })
-  ).catch(() => 0);
+  let used: number;
+  try {
+    used = await withTenantContext(companyId, (tx) => tx.condominium.count({ where: { deletedAt: null } }));
+  } catch (err) {
+    // Antes: `.catch(() => 0)`. Si el `count()` fallaba por un problema
+    // transitorio de la base, `used` quedaba en 0 y el tope del plan se
+    // aplicaba como si la empresa no tuviera ningún condominio — el
+    // límite quedaba sin efecto justo cuando la base tuvo un problema
+    // (bypass silencioso). Falla CERRADO: si no se puede confirmar el
+    // uso real, no se autoriza el alta.
+    console.error('canCreateCondominium: no se pudo contar condominios', err);
+    return {
+      ok: false,
+      used: max,
+      max,
+      reason: 'No se pudo verificar el cupo de condominios de tu plan. Intentá de nuevo en un momento.',
+    };
+  }
 
   if (max === 0) return { ok: true, used, max };
   if (used < max) return { ok: true, used, max };

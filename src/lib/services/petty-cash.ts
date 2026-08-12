@@ -16,7 +16,14 @@ export type PettyCashSummary = {
  */
 export async function getPettyCash(companyId: string, condominiumId: string) {
   return withTenantContext(companyId, async (tx) => {
-    const [allocations, expenses] = await Promise.all([
+    // Las dos listas completas SÍ se traen enteras a propósito: se
+    // usan también para el informe exportable de caja chica
+    // (`mantenimiento/informe-caja-chica`), que tiene que cuadrar con
+    // TODO el historial, no solo lo reciente. Lo que no conviene es
+    // sumarlas en JS para el resumen — ver los `aggregate` de abajo —
+    // porque eso crece sin límite con la antigüedad del condominio sin
+    // necesidad; el saldo sale igual de una agregación en Postgres.
+    const [allocations, expenses, assignedAgg, spentAgg] = await Promise.all([
       tx.pettyCashAllocation.findMany({
         where: { companyId, condominiumId },
         orderBy: [{ allocatedOn: 'desc' }, { createdAt: 'desc' }],
@@ -27,10 +34,12 @@ export async function getPettyCash(companyId: string, condominiumId: string) {
         orderBy: [{ spentOn: 'desc' }, { createdAt: 'desc' }],
         include: { createdBy: { select: { fullName: true } } },
       }),
+      tx.pettyCashAllocation.aggregate({ where: { companyId, condominiumId }, _sum: { amount: true } }),
+      tx.pettyCashExpense.aggregate({ where: { companyId, condominiumId }, _sum: { amount: true } }),
     ]);
 
-    const assigned = allocations.reduce((sum, a) => sum + Number(a.amount), 0);
-    const spent = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
+    const assigned = Number(assignedAgg._sum.amount ?? 0);
+    const spent = Number(spentAgg._sum.amount ?? 0);
     const summary: PettyCashSummary = { assigned, spent, balance: assigned - spent };
     return { allocations, expenses, summary };
   });

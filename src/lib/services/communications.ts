@@ -1,12 +1,25 @@
 import { withTenantContext } from '@/lib/db';
 import { logActivity } from '@/lib/services/audit';
 
+/**
+ * Tope del listado de comunicados de la pantalla de administración.
+ *
+ * Mismo problema que ya se corrigió en `listVisits` (ver el comentario
+ * en `visits.ts`): sin tope, un condominio con años de comunicados
+ * trae el historial completo en cada visita a la pantalla. Es un
+ * listado operativo (lo reciente), no un export contable — a
+ * diferencia de `listExpenses`, nada depende de que este venga
+ * completo.
+ */
+const MAX_COMUNICADOS = 200;
+
 export async function listCommunications(companyId: string, condominiumId: string) {
   return withTenantContext(companyId, (tx) =>
     tx.communication.findMany({
       where: { condominiumId },
       orderBy: { createdAt: 'desc' },
       include: { _count: { select: { recipients: true } }, targets: true },
+      take: MAX_COMUNICADOS,
     })
   );
 }

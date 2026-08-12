@@ -2331,6 +2331,11 @@ model DocumentRequest {
 
   @@index([condominiumId, status])
   @@index([propertyId, requestedAt(sort: Desc)])
+  // Una sola solicitud "solicitada" (pendiente) por filial+tipo de
+  // documento — índice único PARCIAL (fuera del DSL de Prisma, no
+  // soporta WHERE), ver migración 20260816_convenio_solicitud_unicos.
+  // Cierra la condición de carrera de `requestDocument` (evaluación de
+  // errores 2026-08-11, #17).
   @@map("document_requests")
 }
 
@@ -2897,6 +2902,10 @@ model PaymentPlan {
   property    Property    @relation(fields: [propertyId], references: [id])
 
   @@index([companyId, condominiumId])
+  // Un solo convenio "vigente" por filial — índice único PARCIAL (fuera
+  // del DSL de Prisma, no soporta WHERE), ver migración
+  // 20260816_convenio_solicitud_unicos. Cierra la condición de carrera
+  // de `createPaymentPlan` (evaluación de errores 2026-08-11, #8).
   @@index([propertyId, status])
   @@map("payment_plans")
 }

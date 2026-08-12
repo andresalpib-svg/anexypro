@@ -51,12 +51,30 @@ export async function getDelinquencyReport(companyId: string, condoIds?: string[
       },
       include: { condominium: { select: { name: true, currency: true } } },
     });
+    // `condoIds`, cuando viene, ya recorta `properties` arriba — pero
+    // estas dos consultas seguían trayendo TODOS los cargos/pagos
+    // pendientes de la EMPRESA entera sin importar el recorte, y el
+    // filtro final (`properties.filter(p => byProperty.has(p.id))`)
+    // solo descarta el resultado ya calculado. No es una fuga de datos
+    // (el resultado final queda igual de correcto), pero desperdicia
+    // trabajo que crece con la antigüedad de la empresa cuando un
+    // supervisor con pocos condominios asignados pide el reporte.
     const charges = await tx.charge.findMany({
-      where: { status: { in: ['pendiente', 'parcial'] }, dueDate: { lt: new Date() } },
+      where: {
+        status: { in: ['pendiente', 'parcial'] },
+        dueDate: { lt: new Date() },
+        ...(condoIds ? { condominiumId: { in: condoIds } } : {}),
+      },
       select: { id: true, propertyId: true, amount: true, dueDate: true },
     });
     const allocations = await tx.paymentAllocation.findMany({
-      where: { charge: { status: { in: ['pendiente', 'parcial'] } }, payment: { status: 'aplicado' } },
+      where: {
+        charge: {
+          status: { in: ['pendiente', 'parcial'] },
+          ...(condoIds ? { condominiumId: { in: condoIds } } : {}),
+        },
+        payment: { status: 'aplicado' },
+      },
       select: { chargeId: true, amount: true },
     });
     const paidByCharge = new Map<string, number>();

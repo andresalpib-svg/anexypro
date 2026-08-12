@@ -133,10 +133,19 @@ export async function getWaterBoard(
         where: { property: { condominiumId }, endDate: null, role: 'propietario' },
         select: { propertyId: true, person: { select: { fullName: true } } },
       }),
-      // Todas las lecturas hasta el período inclusive: la más reciente
-      // anterior al período es el arranque del medidor.
+      // Solo hace falta, por filial, la lectura del período pedido (si
+      // existe) y la inmediatamente anterior — ver el `for` de abajo,
+      // que se queda con la PRIMERA no-actual que encuentra (vienen
+      // ordenadas desc). Antes se traía TODO el historial desde
+      // siempre (`lte: period` sin piso) para llegar a esas dos; con
+      // lecturas mensuales, 24 meses de margen es de sobra para cubrir
+      // un mes sin lectura registrada, y acota el costo en vez de que
+      // crezca con los años del condominio.
       tx.waterReading.findMany({
-        where: { property: { condominiumId }, period: { lte: period } },
+        where: {
+          property: { condominiumId },
+          period: { lte: period, gte: new Date(Date.UTC(period.getUTCFullYear(), period.getUTCMonth() - 24, 1)) },
+        },
         orderBy: { period: 'desc' },
         include: { charge: { select: { amount: true, status: true } } },
       }),

@@ -150,13 +150,24 @@ export async function importBankTransactions(
     }));
 
     // Un candidato ya conciliado no puede usarse dos veces.
+    //
+    // Antes traía TODOS los `matchedId` de la cuenta sin límite —
+    // crece con cada transacción bancaria conciliada desde que existe
+    // la cuenta. Solo importan los que caen dentro de `candidates`
+    // (ya acotado a los 500 pagos/gastos más recientes de cada tipo,
+    // ver arriba): un `matchedId` fuera de ese conjunto no puede
+    // volver a coincidir con nada de todas formas, así que filtrar por
+    // `in: candidates` es tan correcto como traer todo, y acotado.
+    const candidateIds = candidates.map((c) => c.id);
     const alreadyUsed = new Set(
-      (
-        await tx.bankTransaction.findMany({
-          where: { bankAccountId, matchedId: { not: null } },
-          select: { matchedId: true },
-        })
-      ).map((t) => t.matchedId!)
+      candidateIds.length === 0
+        ? []
+        : (
+            await tx.bankTransaction.findMany({
+              where: { bankAccountId, matchedId: { in: candidateIds } },
+              select: { matchedId: true },
+            })
+          ).map((t) => t.matchedId!)
     );
 
     for (const id of newIds) {

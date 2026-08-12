@@ -7,6 +7,8 @@
  * mide por tramos y no por monto.
  */
 
+import { round2 } from './late-interest';
+
 export type AgingBucket = 'corriente' | 'd1_30' | 'd31_60' | 'd61_90' | 'd90_mas';
 
 export const BUCKET_LABEL: Record<AgingBucket, string> = {
@@ -95,13 +97,28 @@ export function buildAging(items: AgingInput[], today: Date): AgingSummary {
   const total = Object.values(totals).reduce((s, v) => s + v, 0);
   const overdue = total - totals.corriente;
 
+  // Redondeo consistente: antes solo el total agregado (de abajo) se
+  // redondeaba con `Math.round(...*100)/100` — el total POR FILA
+  // (`row.total`, acumulado con `+=` sobre `outstanding` sin redondear
+  // en ningún punto) y los totales por tramo quedaban con el ruido de
+  // punto flotante de sumar decimales (ej. `188.64000000000001`),
+  // visible en el Excel de cobranza aunque el total general se viera
+  // limpio.
+  const roundedTotals = emptyBuckets();
+  for (const bucket of BUCKET_ORDER) roundedTotals[bucket] = round2(totals[bucket]);
+  const byProperty = [...map.values()].map((p) => {
+    const buckets = emptyBuckets();
+    for (const bucket of BUCKET_ORDER) buckets[bucket] = round2(p.buckets[bucket]);
+    return { ...p, total: round2(p.total), buckets };
+  });
+
   return {
     // Los que más deben y hace más tiempo van primero: es el orden en
     // que hay que gestionarlos.
-    byProperty: [...map.values()].sort((a, b) => b.oldestDays - a.oldestDays || b.total - a.total),
-    totals,
-    total: Math.round(total * 100) / 100,
-    overdue: Math.round(overdue * 100) / 100,
+    byProperty: byProperty.sort((a, b) => b.oldestDays - a.oldestDays || b.total - a.total),
+    totals: roundedTotals,
+    total: round2(total),
+    overdue: round2(overdue),
     overdueRatio: total > 0 ? overdue / total : 0,
   };
 }

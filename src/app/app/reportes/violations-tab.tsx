@@ -18,8 +18,19 @@ export async function ViolationsTab({
   condominiumId: string;
   filtros: { estado?: string; tipo?: string; desde?: string; hasta?: string; conMulta?: string; reincidencias?: string };
 }) {
-  const desde = filtros.desde ? new Date(`${filtros.desde}T00:00:00`) : undefined;
-  const hasta = filtros.hasta ? new Date(`${filtros.hasta}T23:59:59`) : undefined;
+  // `openedAt` es un instante real (`DateTime`, no `@db.Date`) y quien
+  // llena el filtro piensa en su día calendario de Costa Rica, no en
+  // UTC. Sin offset explícito, `new Date(...)` se interpreta en la
+  // hora del SERVIDOR — en Vercel (UTC) eso filtra por día UTC, que
+  // recorta las últimas ~6 horas del día en hora de Costa Rica
+  // (UTC−6): un incumplimiento reportado a las 7 p.m. CR ya cae en el
+  // día UTC siguiente y desaparece del reporte de "hoy". Con `-06:00`
+  // explícito, el rango cubre el día real en Costa Rica sin importar
+  // en qué zona corra el servidor (mismo huso que ya usa este módulo
+  // para mostrar fechas, ver `timeZone: 'America/Costa_Rica'` en
+  // `violations.ts`/`violation-notice.ts`).
+  const desde = filtros.desde ? new Date(`${filtros.desde}T00:00:00-06:00`) : undefined;
+  const hasta = filtros.hasta ? new Date(`${filtros.hasta}T23:59:59-06:00`) : undefined;
 
   const [filas, panel] = await Promise.all([
     getViolationReport(companyId, {

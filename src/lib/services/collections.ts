@@ -83,8 +83,20 @@ export async function getCollectionsView(
         where: { condominiumId, status: 'vigente' },
         select: { propertyId: true },
       }),
+      // Solo hace falta la ÚLTIMA gestión por filial (ver el `for` de
+      // abajo, que se queda con la primera que encuentra por
+      // propiedad). Antes traía TODA la bitácora de cobranza del
+      // condominio sin límite — se acota a los últimos 18 meses: una
+      // gestión más vieja que eso ya no es relevante para decidir el
+      // "siguiente paso" sugerido, que es lo único que usa este dato
+      // (el expediente completo por filial, para auditoría, sigue
+      // disponible sin tope en `listActions`).
       tx.collectionAction.findMany({
-        where: { condominiumId, propertyId: { in: propertyIds } },
+        where: {
+          condominiumId,
+          propertyId: { in: propertyIds },
+          createdAt: { gte: new Date(today.getTime() - 18 * 30 * 24 * 60 * 60 * 1000) },
+        },
         orderBy: { createdAt: 'desc' },
         select: { propertyId: true, actionType: true, createdAt: true },
       }),

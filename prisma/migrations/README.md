@@ -99,6 +99,29 @@ Nota de plataforma: `/api/cron` declara `maxDuration = 300`. El plan
 Hobby de Vercel corta a los 60 segundos; hace falta plan Pro para que
 una corrida larga termine.
 
+## El nombre de una migración es solo una etiqueta, no cuándo se aplicó
+
+`prisma migrate deploy` aplica las migraciones EN ORDEN ALFABÉTICO de
+carpeta, así que el prefijo de fecha del nombre importa para el orden
+real. `20260811_asset_categorias` y `20260811_catalogo_incumplimientos_base`
+se nombraron con la fecha de la sesión de trabajo, pero se escribieron
+y aplicaron horas después que `20260812_…`/`20260813_…`/`20260814_…` —
+quedaron con un prefijo "de atrás" aunque corrieron después. Hoy no
+rompe nada (se probó desplegando desde una base vacía: el orden
+alfabético coincide con las dependencias reales), pero si algún día
+una migración nueva depende de columnas que solo existen desde una de
+las "20260812+" y se le pone un prefijo `20260811`, `migrate deploy`
+la correría ANTES de que esas columnas existan y fallaría.
+
+**No se renombran las carpetas ya aplicadas** — el nombre queda
+grabado tal cual en `_prisma_migrations` de cada base (local y
+producción); renombrar la carpeta sin tocar esa tabla desincroniza el
+historial y `prisma migrate deploy` deja de reconocerlas como
+aplicadas. Si alguna vez hace falta insertar una migración que
+depende de una del 12/13/14 de agosto, ponerle un prefijo
+`202608150000` o posterior (nunca reutilizar `20260811`) para que el
+orden alfabético coincida con el orden real de dependencia.
+
 ## Nota sobre las vistas y la capa de aplicación
 
 Cada vista SQL tiene su equivalente en `src/lib/services/*.ts` — por

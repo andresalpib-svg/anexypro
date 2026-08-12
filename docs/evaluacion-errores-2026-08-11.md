@@ -36,6 +36,112 @@ Confirma que los fixes de seguridad de hoy no rompieron el flujo normal.
 > `/api/auth/providers` responde con normalidad (confirma que `next-auth`
 > actualizado sigue sirviendo el flujo de credenciales), `/api/cron` sin
 > sesión sigue redirigiendo a login (307, no quedó abierto).
+>
+> **Actualización 2026-08-11 (quinta pasada) — los 17 hallazgos medios/bajos
+> restantes (#6-13, #15-20) también corregidos**, salvo una excepción
+> documentada. `tsc --noEmit` limpio, 318/318 tests, `npm run db:verify`
+> 11/11 y `next build` de producción local sin errores — todo en verde antes
+> de continuar. NO desplegado a producción todavía (queda pendiente de que
+> Freddy confirme). Detalle por grupo:
+>
+> - **#6 (bitácora sin límite):** `getSecurityLog` ahora ordena por fecha
+>   descendente y trae hasta 150 filas por tipo (ingresos/paquetes/
+>   incidentes), mismo patrón que `visits.ts`. La bitácora ya recortaba a
+>   las últimas 100 combinadas; el tope nuevo evita traer mucho más que eso
+>   de la base para llegar ahí.
+> - **#7 y #17 (condiciones de carrera "chequear-antes-de-crear"):**
+>   `createMasterDemoCompany` ahora usa `pg_advisory_xact_lock` por correo
+>   normalizado dentro de la transacción (mismo patrón que
+>   `createDemoCompany`). `createPaymentPlan` y `requestDocument` quedaron
+>   respaldados por índices únicos PARCIALES nuevos en Postgres
+>   (`payment_plans_property_vigente_key`,
+>   `document_requests_property_doctype_solicitada_key` — migración
+>   `20260816_convenio_solicitud_unicos`): un `SELECT` no bloquea un
+>   `INSERT` concurrente en READ COMMITTED, así que el `findFirst` +
+>   `create` dentro de una misma transacción Prisma NO alcanza por sí solo
+>   — hacía falta el constraint de base. Se verificó antes de aplicar que
+>   no existían duplicados reales en ninguna de las dos tablas. Las
+>   Server Actions que llaman a estas dos funciones ahora atrapan `P2002`
+>   y devuelven el mismo mensaje amigable que ya daba el `findFirst`, para
+>   la rara carrera real.
+> - **#9 y #10 (fallos silenciosos):** `canCreateCondominium` ya no cae a
+>   `used = 0` si el `count()` falla — ahora falla CERRADO (bloquea el alta
+>   con un mensaje claro) en vez de dejar pasar un alta que debía
+>   rechazarse. `renameObject` ya no traga el error del proveedor de
+>   almacenamiento (`.catch(() => undefined)`) — si el proveedor no puede
+>   renombrar el archivo real, toda la función lanza y el nombre en la
+>   base NO cambia, igual que ya hacía `moveObject` en el mismo archivo.
+> - **#15 (rollback no atómico):** `user-provisioning.ts` revertía el alta
+>   de usuario en dos llamadas sueltas, cada una con su error tragado
+>   (`.catch(() => {})`) — ahora es una sola transacción (atómica) y el
+>   error, si lo hay, se registra con `console.error` en vez de
+>   desaparecer en silencio.
+> - **#11, #12, #13 (zona horaria):** `violations-tab.tsx` ahora arma el
+>   rango de fechas con offset explícito `-06:00` (Costa Rica) en vez de
+>   depender de la zona del servidor, porque `openedAt` es un instante
+>   real (no una columna `@db.Date`) y quien filtra piensa en su día
+>   calendario. `generateBillingAction` y el sembrado de facturación de
+>   `demo.ts` ahora usan `periodStart()` en vez de construir la fecha a
+>   mano, cerrando el mismo patrón que ya había causado el bug de
+>   facturación de `setDate()` en otro punto del código.
+> - **#16 y #20 (consultas sin límite):** corregidos con cuidado
+>   diferenciado según el caso — **no todo "sin `take`" se arregla
+>   agregando `take`**, porque dos de los archivos alimentan cálculos de
+>   saldo real y exports contables donde truncar sería un bug peor que el
+>   original (corromper el dinero, no solo una consulta lenta):
+>   - `listCommunications` (comunicados): tope de 200, lista operativa sin
+>     dependencia contable.
+>   - `getWaterBoard` (agua): la ventana de lecturas se acotó a 24 meses
+>     hacia atrás en vez de traer todo el historial — solo hace falta la
+>     lectura del período pedido y la inmediatamente anterior por filial.
+>   - `getCollectionsView` (cobranza): la bitácora de gestiones se acotó a
+>     los últimos 18 meses — solo hace falta la última gestión por filial
+>     para sugerir el siguiente paso; el expediente completo sigue
+>     disponible sin tope en `listActions`.
+>   - `getReserveFund`/`addReserveMovement` (fondo de reserva) y
+>     `getPettyCash` (caja chica): el SALDO ahora se calcula con
+>     `groupBy`/`aggregate` de Postgres en vez de traer todos los
+>     movimientos a Node y sumarlos ahí — mismo resultado (verificado
+>     contra datos reales: coincide centavo a centavo con la suma
+>     anterior), costo que ya no crece con el historial. Las LISTAS
+>     completas de movimientos se dejaron sin tope a propósito: son el
+>     estado de cuenta / informe exportable, se auditan completos.
+>   - `getDelinquencyReport` (#20): las consultas de `charges`/
+>     `allocations` ahora sí filtran por `condoIds` cuando viene acotado,
+>     igual que `properties` — antes escaneaban la empresa entera y
+>     descartaban el resultado ya calculado al final.
+>   - **`listPropertiesWithBalance` (`finance.ts`) y `listExpenses`
+>     (`expenses.ts`) se dejaron SIN tocar, a propósito**: ambas
+>     alimentan exports contables (`finanzas/exportar`,
+>     `finanzas/exportar-estado`) que tienen que cuadrar con TODO el
+>     historial. La optimización correcta ahí es mover la suma a un
+>     `groupBy` por `propertyId` en SQL (como se hizo en fondo de reserva
+>     y caja chica), pero `listPropertiesWithBalance` une `allocations`
+>     por `chargeId`, no por `propertyId` directamente — ese `groupBy`
+>     con join merece su propia sesión con pruebas dedicadas contra el
+>     dashboard financiero principal, no un cambio apurado en esta pasada.
+>     Se dejó documentado en el código.
+> - **#18 (redondeo):** `buildAging` en `aging.ts` ahora redondea con
+>   `round2` el total POR FILA y los totales por tramo, no solo el total
+>   agregado — antes solo el agregado se redondeaba y el resto arrastraba
+>   ruido de punto flotante (visible en el Excel de cobranza).
+> - **#19 (migraciones backdatadas):** no se renombraron las carpetas ya
+>   aplicadas (el nombre queda grabado en `_prisma_migrations` de cada
+>   base — renombrar sin tocar esa tabla desincroniza el historial). Se
+>   documentó el riesgo real y la regla a seguir en
+>   `prisma/migrations/README.md`.
+>
+> **Migración nueva:** `20260816_convenio_solicitud_unicos` (dos índices
+> únicos parciales), aplicada contra la base local. Verificado en vivo
+> contra datos reales (no solo con los tests unitarios, que no tocan la
+> base): las funciones de saldo (fondo de reserva, caja chica) devuelven
+> el mismo número con `groupBy`/`aggregate` que con la suma manual
+> anterior; las funciones acotadas (bitácora, agua, cobranza, comunicados)
+> corren sin error contra Postgres real.
+>
+> **Pendiente real:** `next` 14→16 (#3, fuera de alcance a propósito, ver
+> arriba) y el `groupBy` con join de `listPropertiesWithBalance` (parte de
+> #16, diferido a propósito por su riesgo).
 
 ---
 
@@ -48,21 +154,21 @@ Confirma que los fixes de seguridad de hoy no rompieron el flujo normal.
 | 3 | Alta | Dependencias | `next` 14.2.35 | ~19 avisos acumulados (DoS, SSRF en Server Actions, bypass de Middleware con i18n) — requiere salto a Next 16 | Pendiente (fuera de alcance de esta pasada) |
 | 4 | Alta | Condición de carrera | `src/lib/jobs/runner.ts` (`runJob`) | El propio mecanismo de idempotencia de los jobs tiene TOCTOU — dos disparos casi simultáneos de `/api/cron` pueden duplicar el cobro de interés moratorio | ✅ Corregido |
 | 5 | Alta | Transacción larga | `src/lib/services/late-interest.ts` | Sin `timeout` explícito — mismo bug ya confirmado en producción (`import-excel.ts`) con muchos cargos vencidos | ✅ Corregido |
-| 6 | Alta | Rendimiento | `src/lib/services/security.ts` (`getSecurityLog`) | Trae el historial COMPLETO de ingresos/paquetes/incidentes sin `take` ni filtro de fecha — mismo bug ya corregido en `visits.ts`, no replicado acá | Pendiente |
-| 7 | Media | Condición de carrera | `src/lib/services/demo.ts` (`createMasterDemoCompany`) | Mismo patrón que `createDemoCompany` ya protege con advisory lock, pero esta variante (demos para prospectos reales) no lo tiene | Pendiente |
-| 8 | Media | Condición de carrera | `src/lib/services/collections.ts` (`createPaymentPlan`) | Sin constraint único — dos aprobaciones casi simultáneas pueden crear 2 convenios "vigentes" para la misma filial | Pendiente |
-| 9 | Media | Fallo silencioso | `src/lib/services/subscriptions.ts` (`canCreateCondominium`) | Ante un error transitorio de BD, falla ABIERTO (bypass silencioso del límite del plan) | Pendiente |
-| 10 | Media | Fallo silencioso | `src/lib/services/storage.ts` (`renameObject`) | Si el proveedor no puede renombrar el archivo real, el nombre se actualiza en la BD igual — queda desincronizado para siempre | Pendiente |
-| 11 | Media | Fecha/zona horaria | `src/app/app/reportes/violations-tab.tsx` | Filtro de fechas sin `Z` — recorta ~6 horas del día en hora de Costa Rica; un incumplimiento reportado de noche desaparece del reporte de ese día | Pendiente |
-| 12 | Media | Fecha/zona horaria | `src/app/app/finanzas/actions.ts` (`generateBillingAction`) | Reintroduce el patrón `new Date(...T00:00:00)` sin `Z` que ya causó bugs de facturación en otro punto del código | Pendiente |
-| 13 | Media | Consistencia de datos | `src/lib/services/demo.ts:507` | `generateOrdinaryBilling(..., new Date())` en vez de `periodStart()` — rompe el invariante "período = día 1 UTC" para demos | Pendiente |
+| 6 | Alta | Rendimiento | `src/lib/services/security.ts` (`getSecurityLog`) | Trae el historial COMPLETO de ingresos/paquetes/incidentes sin `take` ni filtro de fecha — mismo bug ya corregido en `visits.ts`, no replicado acá | ✅ Corregido |
+| 7 | Media | Condición de carrera | `src/lib/services/demo.ts` (`createMasterDemoCompany`) | Mismo patrón que `createDemoCompany` ya protege con advisory lock, pero esta variante (demos para prospectos reales) no lo tiene | ✅ Corregido |
+| 8 | Media | Condición de carrera | `src/lib/services/collections.ts` (`createPaymentPlan`) | Sin constraint único — dos aprobaciones casi simultáneas pueden crear 2 convenios "vigentes" para la misma filial | ✅ Corregido |
+| 9 | Media | Fallo silencioso | `src/lib/services/subscriptions.ts` (`canCreateCondominium`) | Ante un error transitorio de BD, falla ABIERTO (bypass silencioso del límite del plan) | ✅ Corregido |
+| 10 | Media | Fallo silencioso | `src/lib/services/storage.ts` (`renameObject`) | Si el proveedor no puede renombrar el archivo real, el nombre se actualiza en la BD igual — queda desincronizado para siempre | ✅ Corregido |
+| 11 | Media | Fecha/zona horaria | `src/app/app/reportes/violations-tab.tsx` | Filtro de fechas sin `Z` — recorta ~6 horas del día en hora de Costa Rica; un incumplimiento reportado de noche desaparece del reporte de ese día | ✅ Corregido |
+| 12 | Media | Fecha/zona horaria | `src/app/app/finanzas/actions.ts` (`generateBillingAction`) | Reintroduce el patrón `new Date(...T00:00:00)` sin `Z` que ya causó bugs de facturación en otro punto del código | ✅ Corregido |
+| 13 | Media | Consistencia de datos | `src/lib/services/demo.ts:507` | `generateOrdinaryBilling(..., new Date())` en vez de `periodStart()` — rompe el invariante "período = día 1 UTC" para demos | ✅ Corregido |
 | 14 | Media | Documentación | `docs/tareas-pendientes-2026-08-11.md` | Dice que los seeds de condominio nuevo no son automáticos — **ya se corrigió** 3h21min antes de escribirse esa línea (commit `76a7059`), nunca se actualizó | ✅ Corregido (misma nota) |
-| 15 | Media-Baja | Fallo silencioso | `src/lib/services/user-provisioning.ts` | Rollback de alta de usuario en 2 pasos no atómicos, con errores silenciados — puede dejar un `User`/`Person` inconsistentes | Pendiente |
-| 16 | Baja-Media | Rendimiento | 9 archivos más (ver detalle) | `findMany` sin `take` sobre tablas de crecimiento continuo (cargos, pagos, gastos, comunicados, lecturas de agua, conciliación bancaria, fondo de reserva, caja chica) | Pendiente |
-| 17 | Baja | Condición de carrera | `src/lib/services/document-requests.ts` (`requestDocument`) | Sin constraint único — doble clic puede duplicar una solicitud de documento | Pendiente |
-| 18 | Baja | Cálculo | `src/lib/domain/aging.ts` | Redondeo inconsistente entre el total por fila y el total agregado — ruido de punto flotante visible en el Excel de cobranza | Pendiente |
-| 19 | Baja | Proceso | `prisma/migrations/` | 2 migraciones nombradas con fecha anterior a cuando realmente se escribieron/aplicaron — sin romper nada hoy, pero riesgo de despliegue futuro si alguna vez hay dependencia cruzada real | Pendiente |
-| 20 | Baja | Rendimiento | `src/lib/services/reports.ts` (`getDelinquencyReport`) | Las consultas de `charges`/`allocations` no se filtran por `condoIds` (a diferencia de `properties`, que sí) — no es fuga de datos (el resultado final igual se filtra), pero desperdicia trabajo que crece con la antigüedad de la empresa | Pendiente |
+| 15 | Media-Baja | Fallo silencioso | `src/lib/services/user-provisioning.ts` | Rollback de alta de usuario en 2 pasos no atómicos, con errores silenciados — puede dejar un `User`/`Person` inconsistentes | ✅ Corregido |
+| 16 | Baja-Media | Rendimiento | 9 archivos más (ver detalle) | `findMany` sin `take` sobre tablas de crecimiento continuo (cargos, pagos, gastos, comunicados, lecturas de agua, conciliación bancaria, fondo de reserva, caja chica) | ✅ Corregido salvo `finance.ts`/`expenses.ts` (ver nota — truncar ahí corrompería saldos y exports reales) |
+| 17 | Baja | Condición de carrera | `src/lib/services/document-requests.ts` (`requestDocument`) | Sin constraint único — doble clic puede duplicar una solicitud de documento | ✅ Corregido |
+| 18 | Baja | Cálculo | `src/lib/domain/aging.ts` | Redondeo inconsistente entre el total por fila y el total agregado — ruido de punto flotante visible en el Excel de cobranza | ✅ Corregido |
+| 19 | Baja | Proceso | `prisma/migrations/` | 2 migraciones nombradas con fecha anterior a cuando realmente se escribieron/aplicaron — sin romper nada hoy, pero riesgo de despliegue futuro si alguna vez hay dependencia cruzada real | ✅ Documentado (no se renombran migraciones ya aplicadas — ver nota) |
+| 20 | Baja | Rendimiento | `src/lib/services/reports.ts` (`getDelinquencyReport`) | Las consultas de `charges`/`allocations` no se filtran por `condoIds` (a diferencia de `properties`, que sí) — no es fuga de datos (el resultado final igual se filtra), pero desperdicia trabajo que crece con la antigüedad de la empresa | ✅ Corregido |
 
 ---
 

@@ -118,10 +118,25 @@ export async function provisionCondoUsers(
     } catch (e: any) {
       // Sin correo entregado el residente no tiene forma de conocer su
       // contraseña — se revierte la cuenta para reintentar luego.
-      await withTenantContext(companyId, (tx) =>
-        tx.person.update({ where: { id: person.id }, data: { userId: null } })
-      ).catch(() => {});
-      if (userId) await prisma.user.delete({ where: { id: userId } }).catch(() => {});
+      //
+      // Antes eran dos pasos sueltos (`person.update` y `user.delete`
+      // en llamadas separadas), cada uno con su error TRAGADO
+      // (`.catch(() => {})`): si el primero fallaba, el segundo corría
+      // igual y borraba el usuario, dejando `Person.userId` apuntando a
+      // una cuenta que ya no existe; si el segundo fallaba, quedaba un
+      // usuario huérfano sin que nadie se enterara. Ahora los dos pasos
+      // van en la MISMA transacción (atómico: si uno falla, ninguno de
+      // los dos cambios queda) y el error, si lo hay, se registra en
+      // vez de tragarse en silencio.
+      if (userId) {
+        const uid = userId;
+        await withTenantContext(companyId, async (tx) => {
+          await tx.person.update({ where: { id: person.id }, data: { userId: null } });
+          await tx.user.delete({ where: { id: uid } });
+        }).catch((rollbackErr) => {
+          console.error(`provisionCondoUsers: no se pudo revertir la cuenta de ${person.fullName} (${email})`, rollbackErr);
+        });
+      }
       result.created--;
       result.errors.push({ name: person.fullName, reason: `el correo no se pudo enviar: ${e?.message ?? 'error'}` });
     }

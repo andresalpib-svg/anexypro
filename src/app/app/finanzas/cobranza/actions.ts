@@ -89,6 +89,14 @@ export async function createPlanAction(_prev: ActionState, formData: FormData): 
       documentName: file?.name,
     });
   } catch (e: any) {
+    // El `findFirst` de `createPaymentPlan` ya avisa con el mismo
+    // mensaje en el caso normal; esto solo dispara si dos aprobaciones
+    // casi simultáneas ganan la carrera al `findFirst` y chocan contra
+    // el índice único parcial de la base (`P2002`, ver migración
+    // 20260816_convenio_solicitud_unicos).
+    if (e?.code === 'P2002') {
+      return { formError: 'Esta filial ya tiene un convenio vigente.' };
+    }
     return { formError: e?.message ?? 'No se pudo crear el convenio.' };
   }
   revalidatePath('/app/finanzas/cobranza');

@@ -720,7 +720,13 @@ export async function uploadToFolder(
     const { buildProvider: construir } = await import('@/lib/storage');
     const settings = await getStorageSettings();
     const provider = construir(object.provider as StorageKind, settings.config);
-    await provider.renameFile(object.providerFileId, newName.trim()).catch(() => undefined);
+    // Antes el error de acá se tragaba (`.catch(() => undefined)`): si
+    // el proveedor no podía renombrar el archivo real, el `update` de
+    // abajo corría igual y el nombre en la base quedaba desincronizado
+    // del archivo real para siempre. Sin `.catch`, igual que
+    // `moveObject` (más abajo): si el proveedor falla, toda la función
+    // lanza y NINGUNO de los dos nombres cambia.
+    await provider.renameFile(object.providerFileId, newName.trim());
     return enEmpresa(actor.companyId, (tx) =>
       tx.storageObject.update({ where: { id: objectId }, data: { name: newName.trim() } })
     );

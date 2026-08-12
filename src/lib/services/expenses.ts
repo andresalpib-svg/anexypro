@@ -359,6 +359,13 @@ export async function payExpense(
   });
 }
 
+/**
+ * Sin `take`, a propósito (evaluación de errores 2026-08-11, #16): este
+ * mismo listado alimenta el export contable de Gastos
+ * (`finanzas/exportar`), que tiene que salir completo — un tope acá
+ * dejaría gastos viejos fuera del export sin ningún aviso, un bug
+ * peor que la consulta lenta que se buscaba evitar.
+ */
 export async function listExpenses(companyId: string, condominiumId: string) {
   return withTenantContext(companyId, (tx) =>
     tx.expense.findMany({

@@ -11,6 +11,7 @@ import { generarPassword } from '@/lib/services/platform';
 import { createCondominium, activateCondominium } from '@/lib/services/condominiums';
 import { bulkCreateProperties, addPersonToProperty } from '@/lib/services/properties';
 import { generateOrdinaryBilling, makePayment } from '@/lib/services/finance';
+import { periodStart } from '@/lib/services/water';
 import { createAmenity } from '@/lib/services/amenities';
 import { createReservation } from '@/lib/services/reservations';
 import { createVisit, checkIn } from '@/lib/services/visits';
@@ -354,6 +355,11 @@ export async function createMasterDemoCompany(
   // entre dos usuarios de la plataforma hace que el más nuevo encuentre
   // la cuenta del otro. Acá se evita de raíz en vez de mancharlo con un
   // sufijo: es el correo real de un prospecto, tiene que quedar legible.
+  //
+  // Chequeo rápido, NO autoritativo: evita el `bcrypt.hash` de más abajo
+  // cuando ya es obvio que el correo existe. El chequeo que decide de
+  // verdad está dentro de la transacción, bajo el candado — ver el
+  // comentario ahí.
   const yaExiste = await prisma.user.findFirst({
     where: { email: { equals: email, mode: 'insensitive' } },
     select: { id: true },
@@ -370,6 +376,24 @@ export async function createMasterDemoCompany(
   const passwordHash = await bcrypt.hash(crypto.randomBytes(24).toString('hex'), 12);
 
   const { companyId, userId, userPasswordHash } = await prisma.$transaction(async (tx) => {
+    // Candado de aplicación por correo: mismo problema TOCTOU que el
+    // cupo de /demo (ver el comentario en `createDemoCompany`). El
+    // chequeo de arriba (`yaExiste`) NO es atómico con el
+    // `user.create` de acá abajo — dos altas casi simultáneas con el
+    // mismo correo podían pasar el chequeo antes de que ninguna
+    // hubiera insertado, dejando dos usuarios con el mismo correo en
+    // dos empresas distintas (el login busca por correo SOLO, sin
+    // companyId — el resultado queda no determinista). La clave del
+    // candado incluye el correo normalizado para no bloquear altas de
+    // prospectos distintos entre sí.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`master-demo-email:${email}`}))`;
+
+    const yaExisteDeVerdad = await tx.user.findFirst({
+      where: { email: { equals: email, mode: 'insensitive' } },
+      select: { id: true },
+    });
+    if (yaExisteDeVerdad) throw new Error(`Ya existe un usuario con el correo ${email}.`);
+
     const company = await tx.company.create({
       data: {
         legalName: clientName,
@@ -504,7 +528,13 @@ async function seedDemoCondominium(
   }
 
   // ---------- Finanzas: cuota del mes + pagos (una unidad queda morosa) ----------
-  await generateOrdinaryBilling(companyId, condo.id, new Date());
+  // `period` es una columna `@db.Date`: el invariante del resto del
+  // sistema es "período = día 1 UTC" (ver el comentario en
+  // `generateOrdinaryBilling`). `new Date()` es el instante actual con
+  // hora — rompe ese invariante (día del mes y hora reales, no el 1).
+  // `periodStart()` ya lo resuelve bien en `finanzas/actions.ts`.
+  const ahora = new Date();
+  await generateOrdinaryBilling(companyId, condo.id, periodStart(ahora.getUTCFullYear(), ahora.getUTCMonth() + 1));
   const pay = (n: number, ref: string) =>
     makePayment(
       companyId,

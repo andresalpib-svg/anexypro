@@ -30,7 +30,15 @@ export async function generateBillingAction(_prev: ActionState, formData: FormDa
   if (!session) return SIN_PERMISO;
 
   try {
-    const period = new Date(`${parsed.data.period}-01T00:00:00`);
+    // `period` es una columna `@db.Date`: medianoche UTC del día 1 (ver
+    // el comentario en `generateOrdinaryBilling`). `new Date(...T00:00:00)`
+    // sin `Z` se interpreta en la hora LOCAL del servidor — el mismo
+    // patrón que ya causó el bug de facturación de `setDate()` (cuota
+    // de agosto saliendo como "julio" en un servidor en Costa Rica).
+    // `periodStart()` ya se usa dos líneas más abajo en este archivo
+    // (`registerWaterChargeAction`) para el mismo problema.
+    const [year, month] = parsed.data.period.split('-').map(Number);
+    const period = periodStart(year!, month!);
     const r = await generateOrdinaryBilling(session.user.companyId, parsed.data.condominiumId, period);
     if (!r.created) {
       return { formError: 'La cuota de ese período ya fue emitida. No se generó de nuevo.' };

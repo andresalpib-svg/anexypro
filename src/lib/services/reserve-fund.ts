@@ -27,16 +27,28 @@ export async function getReserveFund(companyId: string, condominiumId: string) {
   return withTenantContext(companyId, async (tx) => {
     const fund = await tx.reserveFund.findFirst({
       where: { condominiumId, isActive: true },
+      // El listado completo de movimientos SÍ se trae entero a
+      // propósito (es el estado de cuenta del fondo, igual que caja
+      // chica — un fondo de reserva se audita completo, no "los
+      // últimos N"). Lo que NO conviene es sumarlo en JS para el
+      // saldo — ver el `groupBy` de abajo — porque eso sí crece sin
+      // límite con la antigüedad del condominio sin necesidad.
       include: { movements: { orderBy: [{ movDate: 'desc' }, { createdAt: 'desc' }] } },
     });
     if (!fund) return null;
 
-    const contributed = fund.movements
-      .filter((m) => m.movType === 'aporte')
-      .reduce((s, m) => s + Number(m.amount), 0);
-    const used = fund.movements
-      .filter((m) => m.movType === 'uso')
-      .reduce((s, m) => s + Number(m.amount), 0);
+    // Saldo por `groupBy` en la base, no por `reduce` en Node sobre
+    // `fund.movements` completo: el resultado es idéntico (es la
+    // misma suma), pero el costo queda en una agregación de Postgres
+    // en vez de crecer con cada movimiento que se acumule con los
+    // años.
+    const sums = await tx.reserveFundMovement.groupBy({
+      by: ['movType'],
+      where: { fundId: fund.id },
+      _sum: { amount: true },
+    });
+    const contributed = Number(sums.find((s) => s.movType === 'aporte')?._sum.amount ?? 0);
+    const used = Number(sums.find((s) => s.movType === 'uso')?._sum.amount ?? 0);
     const balance = round2(contributed - used);
 
     // Cuántos meses de operación cubre: el mismo criterio del panel.
@@ -101,15 +113,18 @@ export async function addReserveMovement(
 ) {
   return withTenantContext(companyId, async (tx) => {
     if (input.movType === 'uso') {
-      // Un uso no puede dejar el fondo en negativo.
-      const movements = await tx.reserveFundMovement.findMany({
+      // Un uso no puede dejar el fondo en negativo. Mismo `groupBy` que
+      // `getReserveFund` en vez de traer TODOS los movimientos a Node
+      // para sumarlos — el saldo es el mismo, el costo no crece con el
+      // historial.
+      const sums = await tx.reserveFundMovement.groupBy({
+        by: ['movType'],
         where: { fundId: input.fundId },
-        select: { movType: true, amount: true },
+        _sum: { amount: true },
       });
-      const balance = movements.reduce(
-        (s, m) => s + (m.movType === 'aporte' ? Number(m.amount) : -Number(m.amount)),
-        0
-      );
+      const aportes = Number(sums.find((s) => s.movType === 'aporte')?._sum.amount ?? 0);
+      const usos = Number(sums.find((s) => s.movType === 'uso')?._sum.amount ?? 0);
+      const balance = aportes - usos;
       if (input.amount > balance) {
         throw new Error(
           `El uso (₡${input.amount.toLocaleString('es-CR')}) supera el saldo del fondo (₡${round2(balance).toLocaleString('es-CR')}).`

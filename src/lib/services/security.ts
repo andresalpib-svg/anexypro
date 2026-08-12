@@ -49,6 +49,18 @@ export async function deliverPackage(companyId: string, packageId: string, userI
 
 export type SecurityLogEntry = { occurredAt: Date; kind: 'ingreso' | 'salida' | 'paquete' | 'incidente'; summary: string };
 
+/**
+ * Tope por tipo que se trae para la bitácora de seguridad.
+ *
+ * Mismo problema que ya se corrigió en `listVisits` (ver comentario en
+ * `visits.ts`): sin tope, un condominio con años de historial trae los
+ * ingresos/paquetes/incidentes completos en cada consulta, cuando la
+ * bitácora solo muestra las últimas 100 entradas combinadas (ver el
+ * `.slice(0, 100)` al final). Se ordena por fecha descendente para que el
+ * tope recorte lo viejo, no lo reciente.
+ */
+const MAX_POR_TIPO = 150;
+
 /** Bitácora unificada — equivalente en la app a v_security_log (prisma/sql/01_views_functions_triggers.sql). */
 export async function getSecurityLog(companyId: string, condominiumId: string): Promise<SecurityLogEntry[]> {
   return withTenantContext(companyId, async (tx) => {
@@ -56,9 +68,11 @@ export async function getSecurityLog(companyId: string, condominiumId: string): 
       tx.visitCheckin.findMany({
         where: { authorization: { condominiumId } },
         include: { authorization: { select: { visitorName: true, visitType: true } } },
+        orderBy: { checkinAt: 'desc' },
+        take: MAX_POR_TIPO,
       }),
-      tx.package.findMany({ where: { condominiumId } }),
-      tx.incident.findMany({ where: { condominiumId } }),
+      tx.package.findMany({ where: { condominiumId }, orderBy: { receivedAt: 'desc' }, take: MAX_POR_TIPO }),
+      tx.incident.findMany({ where: { condominiumId }, orderBy: { createdAt: 'desc' }, take: MAX_POR_TIPO }),
     ]);
 
     const entries: SecurityLogEntry[] = [];

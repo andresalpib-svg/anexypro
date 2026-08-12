@@ -447,6 +447,22 @@ export async function getCondoFinanceSummary(companyId: string, condominiumId: s
  * en lote (no N+1): una consulta de cargos + una de aplicaciones para
  * TODO el condominio, agregadas en memoria — no una por unidad.
  */
+/**
+ * `charges`/`allocations` de acá abajo NO llevan `take`, a propósito:
+ * es el saldo real de cada filial (evaluación de errores 2026-08-11,
+ * #16), y este mismo resultado alimenta dos exports contables
+ * (`finanzas/exportar`, `finanzas/exportar-estado`) que tienen que
+ * cuadrar con TODO el historial de cargos, no solo lo reciente. Un
+ * `take` acá sería el mismo tipo de bug que "arregla" el síntoma
+ * (consulta más liviana) rompiendo el fondo (saldo mal calculado para
+ * cualquier filial con más cargos que el tope). La reducción a saldo
+ * por filial SÍ se podría mover a SQL (`groupBy` por `propertyId`),
+ * como se hizo en `reserve-fund.ts`/`petty-cash.ts` — no se hizo acá
+ * en esta pasada porque `allocations` se une por `chargeId`, no por
+ * `propertyId` directamente, y ese `groupBy` con join merece su propia
+ * sesión con pruebas dedicadas, no un cambio apurado al dashboard
+ * financiero principal.
+ */
 export async function listPropertiesWithBalance(companyId: string, condominiumId: string) {
   return withTenantContext(companyId, async (tx) => {
     const [properties, settings, charges, allocations, plans, owners, manualSuspensions] = await Promise.all([
