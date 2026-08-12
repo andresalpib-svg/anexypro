@@ -9,6 +9,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { SinCondominio } from '@/components/ui/sin-condominio';
 import { CondoSelect } from '../../propiedades/condo-select';
 import { FinanceTabs } from '../finance-tabs';
+import { DescargarReporte } from '../descargar-reporte';
 import { BudgetBoard, type BudgetRowView } from './budget-board';
 import { ReservePanel, type FundView, type MovementView } from './reserve-panel';
 
@@ -47,8 +48,9 @@ export default async function PresupuestoPage({
         subtitle="Presupuesto anual y su ejecución real"
       />
       <FinanceTabs />
-      <div className="mb-4 mt-4">
+      <div className="mb-4 mt-4 flex flex-wrap items-center gap-3">
         <CondoSelect condos={condos} selected={condoId} />
+        <DescargarReporte tab="presupuesto" condoId={condoId} />
       </div>
 
       <BudgetBoard

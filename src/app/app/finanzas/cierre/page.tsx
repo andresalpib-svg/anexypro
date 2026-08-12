@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { SinCondominio } from '@/components/ui/sin-condominio';
 import { CondoSelect } from '../../propiedades/condo-select';
 import { FinanceTabs } from '../finance-tabs';
+import { DescargarReporte } from '../descargar-reporte';
 import { CloseBoard, type CheckView, type PeriodView } from './close-board';
 
 export default async function CierrePage({
@@ -46,8 +47,9 @@ export default async function CierrePage({
     <div>
       <PageHeader title="Finanzas y Contabilidad" subtitle="Cierre mensual — congela los estados financieros" />
       <FinanceTabs />
-      <div className="mb-4 mt-4">
+      <div className="mb-4 mt-4 flex flex-wrap items-center gap-3">
         <CondoSelect condos={condos} selected={condoId} />
+        <DescargarReporte tab="cierre" condoId={condoId} />
       </div>
 
       <CloseBoard

@@ -209,6 +209,39 @@ export async function condoOfProject(companyId: string, projectId: string): Prom
   return project.condominiumId;
 }
 
+/** Condominio de una solicitud de emisión de documento (certificación/estado de cuenta). */
+export async function condoOfDocumentRequest(companyId: string, requestId: string): Promise<string> {
+  const request = await withTenantContext(companyId, (tx) =>
+    tx.documentRequest.findFirstOrThrow({
+      where: { id: requestId, condominium: { companyId } },
+      select: { condominiumId: true },
+    })
+  );
+  return request.condominiumId;
+}
+
+/** Condominio de un expediente de incumplimiento. */
+export async function condoOfViolationCase(companyId: string, caseId: string): Promise<string> {
+  const violationCase = await withTenantContext(companyId, (tx) =>
+    tx.violationCase.findFirstOrThrow({
+      where: { id: caseId, condominium: { companyId } },
+      select: { condominiumId: true },
+    })
+  );
+  return violationCase.condominiumId;
+}
+
+/** Condominio de un gasto (por su `expenseId`). */
+export async function condoOfExpense(companyId: string, expenseId: string): Promise<string> {
+  const expense = await withTenantContext(companyId, (tx) =>
+    tx.expense.findFirstOrThrow({
+      where: { id: expenseId, condominium: { companyId } },
+      select: { condominiumId: true },
+    })
+  );
+  return expense.condominiumId;
+}
+
 export async function condoOfDocument(companyId: string, documentId: string): Promise<string> {
   const doc = await withTenantContext(companyId, (tx) =>
     tx.document.findFirstOrThrow({

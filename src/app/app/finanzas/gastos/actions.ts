@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { canAccessCondo } from '@/lib/services/condominiums';
+import { condoOfExpense } from '@/lib/services/entity-scope';
 import {
   createExpense,
   approveExpense,
@@ -26,6 +27,9 @@ const expenseSchema = z.object({
   supplierId: z.string().uuid().optional().or(z.literal('')),
   projectId: z.string().uuid().optional().or(z.literal('')),
   category: z.string().min(1, 'Elegí una categoría'),
+  // Línea presupuestaria: código de cuenta de gasto. Opcional — vacía,
+  // la cuenta se deduce de la categoría como siempre.
+  budgetAccountCode: z.string().max(10).optional().or(z.literal('')),
   description: z.string().min(3, 'Describí el gasto').max(300),
   invoiceNumber: z.string().max(60).optional().or(z.literal('')),
   issueDate: z.string().min(10, 'Indicá la fecha de la factura'),
@@ -95,6 +99,7 @@ export async function createExpenseAction(_prev: ActionState, formData: FormData
         supplierId: parsed.data.supplierId || undefined,
         projectId: parsed.data.projectId || undefined,
         category: parsed.data.category,
+        budgetAccountCode: parsed.data.budgetAccountCode || undefined,
         description: parsed.data.description,
         invoiceNumber: parsed.data.invoiceNumber || undefined,
         issueDate: asDate(parsed.data.issueDate),
@@ -160,6 +165,20 @@ export async function payExpenseAction(_prev: ActionState, formData: FormData): 
 
   const session = await guard(parsed.data.condominiumId);
   if (!session || session.user.role === 'contador') return { formError: 'Sin permiso.' };
+
+  // `guard()` solo comprobó el condominio DECLARADO en el formulario;
+  // hay que comprobar también que el gasto que se va a pagar sea de
+  // ESE condominio — si no, un supervisor con acceso al condominio A
+  // podría pagar un gasto real del condominio B con solo mandar el
+  // `expenseId` ajeno mientras declara `condominiumId=A`.
+  try {
+    const condoReal = await condoOfExpense(session.user.companyId, parsed.data.expenseId);
+    if (condoReal !== parsed.data.condominiumId) {
+      return { formError: 'El gasto no pertenece a ese condominio.' };
+    }
+  } catch {
+    return { formError: 'El gasto no existe.' };
+  }
 
   try {
     await payExpense(

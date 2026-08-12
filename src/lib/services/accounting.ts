@@ -274,3 +274,54 @@ export async function getEstadoResultados(companyId: string, condominiumId: stri
     `
   );
 }
+
+// ---------- Estados financieros con corte de fecha (EEFF del mes) ----------
+//
+// Las vistas v_balance_general y v_estado_resultados acumulan TODO el
+// historial; para un estado financiero "al cierre de julio" hay que
+// acotar v_libro_mayor por entry_date. Misma fuente, mismo criterio:
+// si un movimiento no generó asiento, no existe para estos estados.
+
+/** Balance de situación al corte indicado (incluido). */
+export async function getBalanceGeneralAlCorte(
+  companyId: string,
+  condominiumId: string,
+  cutoff: Date
+) {
+  return withTenantContext(
+    companyId,
+    (tx) => tx.$queryRaw<BalanceRow[]>`
+      SELECT code, name, type, sub, SUM(debit) - SUM(credit) AS balance
+        FROM v_libro_mayor
+       WHERE condominium_id = ${condominiumId}
+         AND type IN ('activo', 'pasivo', 'patrimonio')
+         AND entry_date <= ${cutoff}
+       GROUP BY code, name, type, sub
+      HAVING SUM(debit) - SUM(credit) <> 0
+       ORDER BY code
+    `
+  );
+}
+
+/** Estado de resultados de un rango de fechas (ambos extremos incluidos). */
+export async function getEstadoResultadosRango(
+  companyId: string,
+  condominiumId: string,
+  from: Date,
+  to: Date
+) {
+  return withTenantContext(
+    companyId,
+    (tx) => tx.$queryRaw<ResultadosRow[]>`
+      SELECT code, name, type, is_operating,
+             CASE WHEN type = 'ingreso' THEN SUM(credit) - SUM(debit) ELSE SUM(debit) - SUM(credit) END AS balance
+        FROM v_libro_mayor
+       WHERE condominium_id = ${condominiumId}
+         AND type IN ('ingreso', 'gasto')
+         AND entry_date >= ${from} AND entry_date <= ${to}
+       GROUP BY code, name, type, is_operating
+      HAVING CASE WHEN type = 'ingreso' THEN SUM(credit) - SUM(debit) ELSE SUM(debit) - SUM(credit) END <> 0
+       ORDER BY code
+    `
+  );
+}

@@ -17,6 +17,19 @@ export type ImportResult = {
 const VALID_ROLES = new Set(['propietario', 'residente', 'inquilino', 'familiar', 'empleado']);
 const VALID_TYPES = new Set(['casa', 'apartamento', 'local', 'lote', 'parqueo', 'bodega']);
 
+/**
+ * Tope de filas por carga.
+ *
+ * Cada fila dispara hasta 6-8 consultas/escrituras (filial, persona,
+ * membresía, vehículo, convivientes, visitas), todo dentro de UNA
+ * transacción larga (`timeout: 180_000` más abajo). Sin límite, un
+ * archivo de decenas de miles de filas mantiene bloqueada una conexión
+ * de Postgres varios minutos — repetirlo en paralelo agota el pool de
+ * conexiones para toda la plataforma, no solo para esta empresa. Un
+ * condominio real no tiene miles de filiales en una sola carga.
+ */
+const MAX_FILAS = 1000;
+
 /** "Correo Electrónico " → "correo electronico" */
 function normalize(s: string): string {
   return s
@@ -102,6 +115,11 @@ export async function importResidentsExcel(
   if (!sheetName) throw new Error('El archivo de Excel no tiene hojas.');
   const rows: Record<string, unknown>[] = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]!, { defval: '' });
   if (rows.length === 0) throw new Error('La hoja de Excel está vacía.');
+  if (rows.length > MAX_FILAS) {
+    throw new Error(
+      `El archivo tiene ${rows.length} filas; el máximo por carga es ${MAX_FILAS}. Dividilo en archivos más chicos e importalos por separado.`
+    );
+  }
 
   const firstRow = rows[0]!;
   const columnMap: Record<string, string> = {};

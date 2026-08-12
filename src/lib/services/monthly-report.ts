@@ -148,14 +148,19 @@ export type MonthlyRunSummary = { condominiums: number; generated: number; error
  * en BORRADOR dirigido a la junta directiva. Nunca lo envía solo: el
  * administrador lo revisa y decide.
  */
-export async function generateMonthlyReports(reference: Date): Promise<MonthlyRunSummary> {
+export async function generateMonthlyReports(
+  reference: Date,
+  opts?: { companyId?: string }
+): Promise<MonthlyRunSummary> {
   // Corre desde el programador, sin sesión: empresa por empresa.
   const condos = (
-    await forEachCompany((tx) =>
-      tx.condominium.findMany({
-        where: { deletedAt: null },
-        select: { id: true, companyId: true, name: true },
-      })
+    await forEachCompany(
+      (tx) =>
+        tx.condominium.findMany({
+          where: { deletedAt: null },
+          select: { id: true, companyId: true, name: true },
+        }),
+      { includeDemo: false, companyId: opts?.companyId }
     )
   ).flatMap((x) => x.result);
 

@@ -46,6 +46,11 @@ const SIN_RLS_A_PROPOSITO = new Set([
   'job_runs',
   'fx_rates', // tipos de cambio del BCCR: referencia, sin empresa
   'storage_settings', // una única fila global (id = "global")
+  // Freno de tasa por IP (auditoría de seguridad 2026-08-11): se
+  // consulta ANTES de saber a qué empresa pertenece nadie (login,
+  // /recuperar, /demo) y no guarda ningún dato de un tenant — misma
+  // excepción consciente que `companies`/`users`.
+  'rate_limit_hits',
   '_prisma_migrations',
 ]);
 

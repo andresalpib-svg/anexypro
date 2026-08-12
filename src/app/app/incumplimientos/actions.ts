@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { requirePanel, allowsCondo, SIN_PERMISO } from '@/lib/guard';
 import { pickFile, IMAGE_EXT, fileKind } from '@/lib/upload';
 import { saveToRepository, decodeUploadName } from '@/lib/services/file-refs';
-import { condoOfProperty } from '@/lib/services/entity-scope';
+import { condoOfProperty, condoOfViolationCase } from '@/lib/services/entity-scope';
 import {
   searchProperties,
   getPropertyBriefing,
@@ -143,6 +143,18 @@ export async function closeCaseAction(caseId: string, motivo: string): Promise<{
   const session = await requirePanel({ module: MODULO });
   if (!session) return { ok: false, error: SIN_PERMISO };
   if (!motivo.trim()) return { ok: false, error: 'Indica el motivo del cierre.' };
+  // A diferencia de `briefingAction`/`previewAction`/`issueViolationAction`
+  // (mismo archivo), esta acción no resolvía el condominio real del
+  // expediente: un supervisor podía cerrar el caso de un condominio
+  // que no tiene asignado con solo conocer el `caseId`.
+  try {
+    const condoReal = await condoOfViolationCase(session.user.companyId, caseId);
+    if (!(await allowsCondo(session, condoReal))) {
+      return { ok: false, error: SIN_PERMISO };
+    }
+  } catch {
+    return { ok: false, error: 'El expediente no existe.' };
+  }
   try {
     await closeCase(session.user.companyId, caseId, motivo, {
       userId: session.user.id,

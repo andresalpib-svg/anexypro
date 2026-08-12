@@ -96,18 +96,23 @@ export type RecurringRunSummary = { evaluated: number; created: number; skipped:
  * antelación. Idempotente: si el gasto de ese vencimiento ya existe,
  * no lo repite.
  */
-export async function generateRecurringExpenses(today: Date): Promise<RecurringRunSummary> {
+export async function generateRecurringExpenses(
+  today: Date,
+  opts?: { companyId?: string }
+): Promise<RecurringRunSummary> {
   // Corre desde el programador, sin sesión: empresa por empresa.
   const items = (
-    await forEachCompany((tx) =>
-      tx.recurringExpense.findMany({
-        where: {
-          isActive: true,
-          startDate: { lte: today },
-          OR: [{ endDate: null }, { endDate: { gte: today } }],
-        },
-        include: { condominium: { select: { companyId: true } } },
-      })
+    await forEachCompany(
+      (tx) =>
+        tx.recurringExpense.findMany({
+          where: {
+            isActive: true,
+            startDate: { lte: today },
+            OR: [{ endDate: null }, { endDate: { gte: today } }],
+          },
+          include: { condominium: { select: { companyId: true } } },
+        }),
+      { companyId: opts?.companyId }
     )
   ).flatMap((x) => x.result);
 
@@ -230,13 +235,18 @@ export type ContractRunSummary = { evaluated: number; porVencer: number; vencido
  * Actualiza el estado de los contratos según su fecha.
  * `por_vencer` se activa cuando entra en la ventana de aviso.
  */
-export async function refreshContractStatuses(today: Date): Promise<ContractRunSummary> {
+export async function refreshContractStatuses(
+  today: Date,
+  opts?: { companyId?: string }
+): Promise<ContractRunSummary> {
   const contracts = (
-    await forEachCompany((tx) =>
-      tx.contract.findMany({
-        where: { status: { in: ['vigente', 'por_vencer'] } },
-        select: { id: true, endDate: true, noticeDays: true, status: true, companyId: true },
-      })
+    await forEachCompany(
+      (tx) =>
+        tx.contract.findMany({
+          where: { status: { in: ['vigente', 'por_vencer'] } },
+          select: { id: true, endDate: true, noticeDays: true, status: true, companyId: true },
+        }),
+      { companyId: opts?.companyId }
     )
   ).flatMap((x) => x.result);
 

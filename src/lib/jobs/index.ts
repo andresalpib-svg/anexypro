@@ -1,4 +1,4 @@
-import { forEachCompany, withTenantContext } from '@/lib/db';
+import { prisma, forEachCompany, withTenantContext } from '@/lib/db';
 import { registerJob, listJobs, runJob, runAllJobs } from '@/lib/jobs/runner';
 import { applyLateInterestEverywhere } from '@/lib/services/late-interest';
 import { generateOrdinaryBilling } from '@/lib/services/finance';
@@ -22,8 +22,8 @@ registerJob({
   name: 'interes-moratorio',
   description: 'Calcula el interés de los cargos vencidos en los condominios que lo tengan activado',
   runKey: (now) => `interes:${isoDay(now)}`,
-  run: async (now) => {
-    const r = await applyLateInterestEverywhere(now);
+  run: async (now, opts) => {
+    const r = await applyLateInterestEverywhere(now, opts);
     return {
       summary:
         r.condominiums === 0
@@ -47,18 +47,22 @@ registerJob({
   name: 'facturacion-automatica',
   description: 'Emite la cuota ordinaria del mes en los condominios cuyo día de facturación sea hoy',
   runKey: (now) => `facturacion:${isoDay(now)}`,
-  run: async (now) => {
+  run: async (now, opts) => {
     const day = now.getDate();
     // El programador corre sin sesión: recorre empresa por empresa, con
     // el contexto de cada una, en vez de consultar por encima de todas.
-    const porEmpresa = await forEachCompany((tx) =>
-      tx.condominium.findMany({
-        where: {
-          deletedAt: null,
-          financialSettings: { autoBilling: true, autoBillingDay: day },
-        },
-        select: { id: true, companyId: true, name: true },
-      })
+    // `opts.companyId` acota a una sola empresa cuando quien dispara es
+    // un `admin_owner` de sesión, no el programador ni master.
+    const porEmpresa = await forEachCompany(
+      (tx) =>
+        tx.condominium.findMany({
+          where: {
+            deletedAt: null,
+            financialSettings: { autoBilling: true, autoBillingDay: day },
+          },
+          select: { id: true, companyId: true, name: true },
+        }),
+      { includeDemo: false, companyId: opts?.companyId }
     );
     const condos = porEmpresa.flatMap((x) => x.result);
 
@@ -122,8 +126,8 @@ registerJob({
   name: 'gastos-recurrentes',
   description: 'Crea en borrador los gastos recurrentes próximos a vencer',
   runKey: (now) => `recurrentes:${isoDay(now)}`,
-  run: async (now) => {
-    const r = await generateRecurringExpenses(now);
+  run: async (now, opts) => {
+    const r = await generateRecurringExpenses(now, opts);
     return {
       summary:
         r.evaluated === 0
@@ -139,8 +143,8 @@ registerJob({
   name: 'contratos',
   description: 'Actualiza el estado de los contratos y marca los próximos a vencer',
   runKey: (now) => `contratos:${isoDay(now)}`,
-  run: async (now) => {
-    const r = await refreshContractStatuses(now);
+  run: async (now, opts) => {
+    const r = await refreshContractStatuses(now, opts);
     return {
       summary:
         r.evaluated === 0
@@ -162,8 +166,8 @@ registerJob({
   name: 'cobranza',
   description: 'Registra la gestión de cobro que corresponde a cada filial morosa',
   runKey: (now) => `cobranza:${isoDay(now)}`,
-  run: async (now) => {
-    const r = await runCollectionLadder(now);
+  run: async (now, opts) => {
+    const r = await runCollectionLadder(now, opts);
     return {
       summary:
         r.evaluated === 0
@@ -186,12 +190,12 @@ registerJob({
   name: 'informe-mensual',
   description: 'Genera el informe financiero del mes anterior para cada condominio',
   runKey: (now) => `informe:${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
-  run: async (now) => {
+  run: async (now, opts) => {
     // Solo corre el día 1; el resto de los días no hace nada.
     if (now.getDate() !== 1) {
       return { summary: 'El informe mensual se genera el día 1 de cada mes.' };
     }
-    const r = await generateMonthlyReports(now);
+    const r = await generateMonthlyReports(now, opts);
     return {
       summary:
         `${r.generated} informe(s) generado(s) de ${r.condominiums} condominio(s)` +
@@ -212,8 +216,8 @@ registerJob({
   name: 'seguimiento-incumplimientos',
   description: 'Avisa de los expedientes de incumplimiento que ya pueden escalar a la siguiente acción',
   runKey: (now) => `incumplimientos:${isoDay(now)}`,
-  run: async (now) => {
-    const r = await createFollowUpTasks(now);
+  run: async (now, opts) => {
+    const r = await createFollowUpTasks(now, opts);
     return {
       summary:
         r.due === 0
@@ -221,6 +225,89 @@ registerJob({
           : `${r.due} expediente(s) por escalar · ${r.created} tarea(s) creada(s) · ${r.skipped} ya tenían aviso`,
       details: r as unknown as Record<string, unknown>,
     };
+  },
+});
+
+/**
+ * Empresas demo vencidas — diario.
+ *
+ * BLOQUEA (nunca borra) las empresas creadas desde /demo cuyo
+ * `demoExpiresAt` ya pasó — el mismo campo `blockedAt`/`blockReason`
+ * que usa cualquier empresa en mora real, así que no hace falta
+ * pantalla nueva: el admin_owner demo ve el aviso de suspensión de
+ * siempre. `companies` no lleva Row-Level Security (el login la
+ * necesita antes de saber de qué empresa es nadie), así que se
+ * consulta directo.
+ *
+ * Corre una vez al día dentro del mismo cron: una empresa demo puede
+ * quedar vencida-pero-sin-bloquear hasta la corrida siguiente (máximo
+ * ~24 h), que es el trade-off que se aceptó por no sumar un segundo
+ * cron de Vercel.
+ */
+registerJob({
+  name: 'demo-vencidos',
+  description: 'Bloquea las empresas demo cuyo acceso ya venció',
+  // Recorre TODAS las empresas demo de la plataforma sin distinción —
+  // no hay forma de acotarlo a "mi empresa", así que un admin_owner de
+  // sesión no puede dispararlo en absoluto (ver runner.ts / route.ts).
+  scope: 'plataforma',
+  runKey: (now) => `demo-vencidos:${isoDay(now)}`,
+  run: async (now) => {
+    const vencidas = await prisma.company.findMany({
+      where: {
+        isDemo: true,
+        blockedAt: null,
+        demoExpiresAt: { lt: now },
+        // Defensivo: una demo ya convertida no debería auto-bloquearse
+        // por vencimiento. En la práctica `convertDemoToFormal`
+        // (PASO 6, services/demo.ts) ya pone `isDemo:false` — así que
+        // esta fila deja de aparecer en el `where` de arriba de todos
+        // modos — pero este chequeo por `demoStatus` queda como
+        // segunda red, sin costo, por si algún día algo toca
+        // `demoStatus` sin tocar `isDemo`.
+        //
+        // OJO: `demoStatus: { not: 'DEMO_CONVERTIDO' }` a secas EXCLUYE
+        // también las filas con `demoStatus: null` (comprobado en vivo:
+        // Prisma lo traduce a `<> 'DEMO_CONVERTIDO'`, y en SQL esa
+        // comparación contra NULL da UNKNOWN, no verdadero) — habría
+        // dejado de vencer TODAS las demos creadas antes de que este
+        // campo existiera. El OR explícito cubre null Y "distinto de".
+        OR: [{ demoStatus: null }, { demoStatus: { not: 'DEMO_CONVERTIDO' } }],
+      },
+      select: { id: true, legalName: true },
+    });
+    if (vencidas.length === 0) {
+      return { summary: 'Ninguna empresa demo venció desde la última corrida.' };
+    }
+    await prisma.company.updateMany({
+      where: { id: { in: vencidas.map((c) => c.id) } },
+      data: { blockedAt: now, blockReason: 'Demo expirada. Solicitá una nueva en /demo.', demoStatus: 'DEMO_VENCIDO' },
+    });
+    await prisma.demoHistoryEntry.createMany({
+      data: vencidas.map((c) => ({ companyId: c.id, event: 'vencida', occurredAt: now })),
+    });
+    // Auditoría: mismo mecanismo (`audit_log`, módulo "Suscripción")
+    // que usa `blockCompany` cuando el MASTER bloquea una empresa a
+    // mano (`services/subscriptions.ts`) — acá el "actor" es el
+    // programador, no una persona, así que `userId` queda en null y el
+    // nombre lo dice explícito. `audit_log` lleva RLS: un `create` por
+    // empresa, cada uno con su contexto — no hay forma de hacerlo en un
+    // solo `createMany` sin salirse del aislamiento.
+    for (const c of vencidas) {
+      await withTenantContext(c.id, (tx) =>
+        tx.auditLog.create({
+          data: {
+            companyId: c.id,
+            userId: null,
+            userName: 'Sistema (job demo-vencidos)',
+            module: 'Suscripción',
+            action: 'Acceso bloqueado por vencimiento de demo',
+            target: `Venció ${now.toISOString()}`,
+          },
+        })
+      ).catch(() => undefined);
+    }
+    return { summary: `${vencidas.length} empresa(s) demo bloqueada(s) por vencimiento.` };
   },
 });
 
@@ -246,6 +333,9 @@ registerJob({
 registerJob({
   name: JOB_REVISION,
   description: 'Comprueba que las credenciales y los servicios externos sigan respondiendo',
+  // Verifica servicios compartidos de toda la plataforma (correo,
+  // IA, etc.), no algo por empresa — reservado a master/CRON_SECRET.
+  scope: 'plataforma',
   runKey: (now) => `salud:${isoDay(now)}`,
   run: async () => {
     const { comprobarSistema, comoTexto } = await import('@/lib/services/system-health');

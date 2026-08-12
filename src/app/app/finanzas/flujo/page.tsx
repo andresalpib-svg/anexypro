@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { SinCondominio } from '@/components/ui/sin-condominio';
 import { CondoSelect } from '../../propiedades/condo-select';
 import { FinanceTabs } from '../finance-tabs';
+import { DescargarReporte } from '../descargar-reporte';
 import { CashFlowChart } from './cash-flow-chart';
 
 export default async function FlujoPage({ searchParams }: { searchParams: { condoId?: string } }) {
@@ -44,8 +45,9 @@ export default async function FlujoPage({ searchParams }: { searchParams: { cond
         subtitle="Flujo de caja real y proyección de los próximos meses"
       />
       <FinanceTabs />
-      <div className="mb-4 mt-4">
+      <div className="mb-4 mt-4 flex flex-wrap items-center gap-3">
         <CondoSelect condos={condos} selected={condoId} />
+        <DescargarReporte tab="flujo" condoId={condoId} />
       </div>
 
       <div className="grid grid-cols-4 gap-4 max-lg:grid-cols-2">

@@ -22,7 +22,10 @@ export type FollowUpSummary = {
   skipped: number;
 };
 
-export async function createFollowUpTasks(now: Date = new Date()): Promise<FollowUpSummary> {
+export async function createFollowUpTasks(
+  now: Date = new Date(),
+  opts?: { companyId?: string }
+): Promise<FollowUpSummary> {
   const limite = new Date(now.getTime() + AVISO_PREVIO_DIAS * 86_400_000);
   const resumen: FollowUpSummary = { condominiums: 0, due: 0, created: 0, skipped: 0 };
 
@@ -39,7 +42,7 @@ export async function createFollowUpTasks(now: Date = new Date()): Promise<Follo
       },
     });
     return { companyId, casos };
-  });
+  }, { companyId: opts?.companyId });
 
   for (const { result } of porEmpresa) {
     const { companyId, casos } = result;

@@ -36,7 +36,8 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    ".next-prod/types/**/*.ts"
+    ".next-prod/types/**/*.ts",
+    ".next-video/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

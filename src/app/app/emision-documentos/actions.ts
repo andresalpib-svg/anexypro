@@ -3,6 +3,8 @@
 import { revalidatePath } from 'next/cache';
 import { auth } from '@/lib/auth';
 import { can } from '@/lib/rbac';
+import { allowsCondo } from '@/lib/guard';
+import { condoOfDocumentRequest } from '@/lib/services/entity-scope';
 import { approveRequest, rejectRequest, saveTemplate } from '@/lib/services/document-requests';
 import { pickFile, IMAGE_EXT } from '@/lib/upload';
 import { saveToRepository } from '@/lib/services/file-refs';
@@ -12,6 +14,10 @@ export type ActionState = { errors?: Record<string, string[]>; formError?: strin
 /**
  * La emisión la aprueba la administración o la supervisión — mismo
  * permiso que el módulo de Documentos.
+ *
+ * NO comprueba el condominio: eso lo hace cada acción, porque cuál
+ * es el condominio depende de la entidad (`requestId` o
+ * `condominiumId` del formulario) y no de un parámetro fijo.
  */
 async function guard() {
   const session = await auth();
@@ -27,6 +33,14 @@ export async function approveRequestAction(_prev: ActionState, formData: FormDat
   const bodyText = String(formData.get('bodyText') ?? '');
 
   try {
+    // El condominio se resuelve DESDE la solicitud, nunca de un campo
+    // del formulario: así un supervisor no puede aprobar/emitir el
+    // documento de un condominio que no tiene asignado con solo
+    // conocer el `requestId` de otra filial.
+    const condoId = await condoOfDocumentRequest(session.user.companyId, requestId);
+    if (!(await allowsCondo(session, condoId))) {
+      return { formError: 'No tienes acceso a ese condominio.' };
+    }
     await approveRequest(session.user.companyId, requestId, {
       userId: session.user.id,
       userName: session.user.name ?? session.user.email ?? 'Administración',
@@ -44,6 +58,10 @@ export async function rejectRequestAction(requestId: string, reason: string): Pr
   if (!session) return { ok: false, error: 'No tienes permiso para esta acción.' };
   if (!reason.trim()) return { ok: false, error: 'Indica el motivo del rechazo.' };
   try {
+    const condoId = await condoOfDocumentRequest(session.user.companyId, requestId);
+    if (!(await allowsCondo(session, condoId))) {
+      return { ok: false, error: 'No tienes acceso a ese condominio.' };
+    }
     await rejectRequest(session.user.companyId, requestId, reason.trim(), {
       userId: session.user.id,
       userName: session.user.name ?? 'Administración',
@@ -62,6 +80,12 @@ export async function saveTemplateAction(_prev: ActionState, formData: FormData)
   const condominiumId = String(formData.get('condominiumId') ?? '');
   const docType = String(formData.get('docType') ?? '');
   if (!condominiumId || !docType) return { formError: 'Faltan datos de la plantilla.' };
+  // El condominio SÍ viene del formulario acá (no hay otra entidad de
+  // la que resolverlo: la plantilla puede no existir todavía), así
+  // que hay que comprobarlo contra los condominios asignados.
+  if (!(await allowsCondo(session, condominiumId))) {
+    return { formError: 'No tienes acceso a ese condominio.' };
+  }
 
   try {
     const logoFile = pickFile(formData, 'logo');

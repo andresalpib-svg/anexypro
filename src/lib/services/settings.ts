@@ -4,6 +4,9 @@ import bcrypt from 'bcryptjs';
 
 export const PERMISSION_AREAS = [
   { key: 'finanzas', label: 'Finanzas' },
+  // Permiso granular, no un área de módulo: registrar lecturas de agua
+  // va con Finanzas; cambiar el MODO y la TARIFA se activa aparte.
+  { key: 'agua_config', label: 'Configurar cobro de agua' },
   { key: 'comunicados', label: 'Comunicados' },
   { key: 'seguridad', label: 'Seguridad' },
   { key: 'incumplimientos', label: 'Gestión de Incumplimientos' },

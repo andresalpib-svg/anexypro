@@ -1,16 +1,24 @@
-import { Wallet, Building2, CheckCircle2, AlertTriangle, Lock } from 'lucide-react';
+import { Wallet, AlertTriangle, Lock } from 'lucide-react';
 import { auth } from '@/lib/auth';
-import { can } from '@/lib/rbac';
+import { can, canConfigureWater } from '@/lib/rbac';
 import { listCondominiumsForSession } from '@/lib/services/condominiums';
 import { listPropertiesWithBalance, getCondoFinanceSummary } from '@/lib/services/finance';
+import { getWaterBoard, periodStart } from '@/lib/services/water';
 import { PageHeader } from '@/components/ui/page-header';
 import { SinCondominio } from '@/components/ui/sin-condominio';
 import { CondoSelect } from '../propiedades/condo-select';
 import { FinanceTabs } from './finance-tabs';
+import { DescargarReporte } from './descargar-reporte';
 import { GenerateBillingForm } from './generate-billing-form';
 import { PropertyBalanceRow } from './property-balance-row';
+import { FinanceStatusCards, type UnitStatusRow } from './status-cards';
+import { WaterBilling } from './water-billing';
 
-export default async function FinanzasPage({ searchParams }: { searchParams: { condoId?: string } }) {
+export default async function FinanzasPage({
+  searchParams,
+}: {
+  searchParams: { condoId?: string; aguaMes?: string };
+}) {
   const session = await auth();
 
   if (!can(session, 'finanzas')) {
@@ -36,9 +44,20 @@ export default async function FinanzasPage({ searchParams }: { searchParams: { c
   }
 
   const condo = condos.find((c) => c.id === condoId)!;
-  const [properties, summary] = await Promise.all([
+
+  // Período del cobro de agua: por defecto el mes ANTERIOR — la
+  // lectura del medidor se toma cuando el mes ya cerró.
+  const hoy = new Date();
+  const mesAnterior = new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth() - 1, 1));
+  const aguaMes = /^\d{4}-\d{2}$/.test(searchParams.aguaMes ?? '')
+    ? searchParams.aguaMes!
+    : `${mesAnterior.getUTCFullYear()}-${String(mesAnterior.getUTCMonth() + 1).padStart(2, '0')}`;
+  const [aguaYear, aguaMonth] = aguaMes.split('-').map(Number);
+
+  const [properties, summary, water] = await Promise.all([
     listPropertiesWithBalance(session!.user.companyId, condoId!),
     getCondoFinanceSummary(session!.user.companyId, condoId!),
+    getWaterBoard(session!.user.companyId, condoId!, periodStart(aguaYear!, aguaMonth!)),
   ]);
 
   return (
@@ -46,7 +65,10 @@ export default async function FinanzasPage({ searchParams }: { searchParams: { c
       <PageHeader title="Finanzas y Contabilidad" subtitle="Cuotas, cargos, pagos y morosidad — y su reflejo contable automático" />
       <FinanceTabs />
 
-      <CondoSelect condos={condos} selected={condoId!} />
+      <div className="flex flex-wrap items-center gap-3">
+        <CondoSelect condos={condos} selected={condoId!} />
+        <DescargarReporte tab="cuotas" condoId={condoId!} />
+      </div>
 
       {condo.status !== 'activo' && (
         <div className="card mt-4 flex items-center gap-3 border-warn/30 bg-warn-bg/40 p-4 text-sm">
@@ -58,11 +80,20 @@ export default async function FinanzasPage({ searchParams }: { searchParams: { c
         </div>
       )}
 
-      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Kpi icon={Building2} color="bg-royal" label="Unidades" value={Number(summary.total_units)} />
-        <Kpi icon={CheckCircle2} color="bg-ok" label="Al día" value={Number(summary.units_current)} />
-        <Kpi icon={AlertTriangle} color="bg-danger" label="En morosidad" value={Number(summary.units_delinquent)} />
-      </div>
+      {/*
+        Al día / morosidad se listan con el MISMO criterio del KPI
+        (v_condo_finance_kpis: saldo <= 0 es al día) — mismos datos ya
+        cargados para la tabla, así el conteo y el detalle nunca
+        difieren.
+      */}
+      <FinanceStatusCards
+        condominiumId={condoId!}
+        currency={condo.currency}
+        canManage={session!.user.role === 'admin_owner'}
+        totalUnits={Number(summary.total_units)}
+        alDia={properties.filter((p) => p.balance <= 0).map(toStatusRow)}
+        morosos={properties.filter((p) => p.balance > 0).map(toStatusRow)}
+      />
 
       <div className="card mt-4 p-5">
         <p className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-muted">
@@ -75,6 +106,15 @@ export default async function FinanzasPage({ searchParams }: { searchParams: { c
         </p>
         <GenerateBillingForm condominiumId={condoId!} />
       </div>
+
+      <WaterBilling
+        condominiumId={condoId!}
+        currency={condo.currency}
+        period={aguaMes}
+        config={{ mode: water.mode, flatFee: water.flatFee, tiers: water.tiers }}
+        rows={water.rows}
+        canConfigure={canConfigureWater(session)}
+      />
 
       <div className="card mt-4 overflow-x-auto">
         <table className="w-full text-sm">
@@ -106,24 +146,24 @@ export default async function FinanzasPage({ searchParams }: { searchParams: { c
   );
 }
 
-function Kpi({
-  icon: Icon,
-  color,
-  label,
-  value,
-}: {
-  icon: typeof Wallet;
-  color: string;
-  label: string;
-  value: number;
-}) {
-  return (
-    <div className="card p-5">
-      <span className={`inline-flex h-11 w-11 items-center justify-center rounded-xl text-white ${color}`}>
-        <Icon size={20} />
-      </span>
-      <p className="mt-3 font-sans text-2xl font-extrabold text-ink">{value}</p>
-      <p className="text-sm font-medium text-muted">{label}</p>
-    </div>
-  );
+function toStatusRow(p: {
+  id: string;
+  code: string;
+  ownerName: string | null;
+  balance: number;
+  monthsOverdue: number;
+  hasPaymentPlan: boolean;
+  suspended: boolean;
+  manualSuspension: boolean;
+}): UnitStatusRow {
+  return {
+    propertyId: p.id,
+    code: p.code,
+    ownerName: p.ownerName,
+    balance: p.balance,
+    monthsOverdue: p.monthsOverdue,
+    hasPaymentPlan: p.hasPaymentPlan,
+    suspended: p.suspended,
+    manualSuspension: p.manualSuspension,
+  };
 }

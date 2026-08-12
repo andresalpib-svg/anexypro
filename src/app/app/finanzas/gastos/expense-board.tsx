@@ -22,6 +22,9 @@ export type ExpenseRow = {
   id: string;
   number: number;
   category: string;
+  /** Cuenta de gasto a la que quedó imputado = línea presupuestaria. */
+  accountCode: string;
+  accountName: string | null;
   description: string;
   invoiceNumber: string | null;
   supplierName: string | null;
@@ -39,6 +42,7 @@ export type ExpenseRow = {
 export type SupplierOpt = { id: string; name: string; defaultCategory: string | null };
 export type ProjectOpt = { id: string; name: string; status: string };
 export type BankOpt = { id: string; name: string };
+export type BudgetOpt = { code: string; name: string; hasBudget: boolean };
 
 const STATUS_VARIANT: Record<string, 'neutral' | 'warn' | 'royal' | 'ok' | 'danger'> = {
   borrador: 'neutral',
@@ -88,6 +92,7 @@ function NewExpenseModal({
   suppliers,
   projects,
   categories,
+  budgetOptions,
   onDone,
 }: {
   condominiumId: string;
@@ -95,6 +100,7 @@ function NewExpenseModal({
   suppliers: SupplierOpt[];
   projects: ProjectOpt[];
   categories: { value: string; label: string }[];
+  budgetOptions: BudgetOpt[];
   onDone: () => void;
 }) {
   const [state, formAction] = useFormState<ActionState, FormData>(createExpenseAction, {});
@@ -266,6 +272,24 @@ function NewExpenseModal({
                 </select>
               </div>
               {/*
+                Línea presupuestaria: asigna el gasto a un rubro del
+                presupuesto (una cuenta de gasto del plan). Opcional —
+                vacía, el sistema deduce la cuenta de la categoría,
+                como siempre.
+              */}
+              <div className="min-w-48 flex-1">
+                <label className="field-label">Línea presupuestaria</label>
+                <select name="budgetAccountCode" defaultValue="" className="field-input">
+                  <option value="">Automática — según la categoría</option>
+                  {budgetOptions.map((o) => (
+                    <option key={o.code} value={o.code}>
+                      {o.code} — {o.name}
+                      {o.hasBudget ? ' · con presupuesto' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {/*
                 Imputar el gasto a un proyecto es lo que alimenta la
                 ejecución de su kanban. Opcional: la mayoría de los
                 gastos son de operación.
@@ -349,7 +373,7 @@ function NewExpenseModal({
             Cancelar
           </button>
           <p className="ml-auto text-[.7rem] text-muted">
-            La cuenta contable se asigna sola según la categoría.
+            Sin línea presupuestaria, la cuenta contable se asigna sola según la categoría.
           </p>
         </div>
       </form>
@@ -497,6 +521,7 @@ export function ExpenseBoard({
   projects,
   banks,
   categories,
+  budgetOptions,
   canApprove,
   canRegister,
 }: {
@@ -507,6 +532,7 @@ export function ExpenseBoard({
   projects: ProjectOpt[];
   banks: BankOpt[];
   categories: { value: string; label: string }[];
+  budgetOptions: BudgetOpt[];
   canApprove: boolean;
   canRegister: boolean;
 }) {
@@ -640,6 +666,10 @@ export function ExpenseBoard({
                     </td>
                     <td className="px-4 py-3 text-muted">
                       {categories.find((c) => c.value === e.category)?.label ?? e.category}
+                      <p className="text-[.7rem] text-muted/80">
+                        Línea {e.accountCode}
+                        {e.accountName ? ` · ${e.accountName}` : ''}
+                      </p>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <p className="font-sans font-bold text-ink">{fmt(e.total)}</p>
@@ -725,6 +755,7 @@ export function ExpenseBoard({
           suppliers={suppliers}
           projects={projects}
           categories={categories}
+          budgetOptions={budgetOptions}
           onDone={() => setShowNew(false)}
         />
       )}

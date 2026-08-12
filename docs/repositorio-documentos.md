@@ -267,3 +267,191 @@ evidencias viejas (idempotente, `--dry` disponible).
 - `.demo-tools/verify-drive-repo.mjs` — verificación de punta a punta con
   navegador real: emite una notificación con evidencia, comprueba las
   carpetas nuevas y que el residente abra sus documentos con 200.
+
+## PASO 9 — Eliminación física de los archivos de una cuenta DEMO (2026-08-11)
+
+Cuando una demo llega a su **día 18** (inicio + 15 días de prueba + 3 de
+gracia, `demoLifecycleDates` en `domain/demo-lifecycle.ts`), sus archivos
+de Drive se pueden borrar de verdad — no a la papelera. `purgeDemoDriveFiles`
+(`src/lib/services/demo-cleanup.ts`) hace ese borrado; la decisión de negocio
+que dice si es seguro hacerlo vive, aparte, en `src/lib/domain/demo-cleanup.ts`
+(funciones puras, 28 pruebas en `__tests__/demo-cleanup.test.ts`) — mismo
+patrón que `domain/demo-lifecycle.ts` + `services/demo.ts`.
+
+**TODAVÍA NO SE DISPARA SOLA.** A propósito: no está registrada en
+`src/lib/jobs/index.ts`, así que el programador diario (`/api/cron`) nunca
+la llama. Hoy se invoca solo a mano — desde `scripts/purgar-demo.ts` (con
+`--dry` para solo diagnosticar, `--force` para saltar la fecha del día 18 en
+pruebas) o desde el botón "Purgar archivos de Drive" / "Reintentar limpieza"
+de `/master/usuarios-demo` (`purgar-demo-button.tsx` → `purgarDemoAction` →
+`guardMaster()`).
+
+### Identificación — nunca por nombre
+
+1. El tenant/demo id ya es `Company.id` (PASO 8 no inventó uno nuevo).
+2. La carpeta real sale de `Company.demoDriveFolderId` — el id REAL de
+   Drive, no un nombre.
+3. Se comprueba, con una fila real de `StorageFolder`, que esa carpeta es
+   de esta empresa y cuelga del contenedor "DEMOS" (nunca de
+   "Condominios"). Si algo no cuadra, se detiene sin borrar nada.
+4. El árbol completo (subcarpetas y archivos) se recorre por
+   `parentId`/`folderId` reales dentro de la base, con Row-Level Security
+   aplicado — una fila de otra empresa no puede aparecer ahí, lo garantiza
+   Postgres, no una condición del código.
+5. Antes de cada borrado se le vuelve a preguntar al PROVEEDOR (no solo a
+   la base) de quién es el recurso — `StorageProvider.inspectOwnership`
+   (padres reales, `shared`) — y además se comprueba, empresa por empresa
+   (`forEachCompany`), que ningún otro tenant tenga una fila con el MISMO
+   id de Drive.
+
+Si algo no se puede confirmar con absoluta seguridad, **no se borra**: el
+elemento queda como `omitido` (o `error`), la demo pasa a
+`DEMO_CLEANUP_FAILED` y el incidente completo (con motivo) queda anotado en
+`DemoHistoryEntry`. Nunca se elimina una carpeta en cascada: cada carpeta se
+borra recién cuando el proveedor la reporta REALMENTE vacía en ese instante
+(`listChildren` en vivo, no solo lo que dice la base).
+
+### Primitivos nuevos del `StorageProvider`
+
+`deleteFile` (papelera) se conserva tal cual para el borrado normal de un
+documento — un acta o un contrato borrados sin querer deben poder
+recuperarse. La limpieza de una demo usa primitivos NUEVOS y distintos,
+IDEMPOTENTES (un id que ya no existe no es un error):
+
+- `listChildren(parentId)` — subcarpetas Y archivos, separados y paginados.
+- `inspectOwnership(id)` — padres reales + `shared`, para el paso 5 de
+  arriba.
+- `deleteFilePermanently(id)` / `deleteFolderPermanently(id)` — `DELETE`
+  real en Drive (no `PATCH trashed:true`); en el proveedor local,
+  `unlink`/`rmdir` (`rmdir` sin recursividad: falla si no está vacía, red de
+  seguridad extra y gratis).
+
+### Idempotente, reintentable, auditable
+
+- **Idempotente**: una demo `DEMO_ELIMINADO` no se vuelve a tocar. Un
+  elemento que el proveedor ya no tiene cuenta como éxito, no como fallo.
+- **Reintentable**: cada elemento borrado (o ya inexistente) se quita de la
+  base al instante, así que reintentar sobre una limpieza que falló a
+  medias solo reprocesa lo que de verdad sigue pendiente.
+- **Auditable**: cada corrida (éxito, fallo o no-op) queda en
+  `DemoHistoryEntry` con la fecha, el detalle y quién la disparó, y
+  `Company.demoStatus`/`demoDeletedAt` reflejan el resultado final. El
+  resumen que se guarda trae exactamente lo pedido: archivos encontrados,
+  eliminados, carpetas eliminadas, y el detalle de cada fallo.
+
+Verificado de punta a punta contra el proveedor `local` (nunca contra el
+Drive real de producción): demo creada → archivo subido → purgada (31
+carpetas + 1 archivo borrados en el orden correcto, hojas antes que la
+raíz) → reintento idempotente ("ya fue purgada, no se tocó nada") → 0
+filas y 0 archivos físicos restantes. Contra la base real también se probó
+el camino de incidente: una demo con una carpeta huérfana en la base pero
+sin `demoDriveFolderId` se detiene sola con `DEMO_CLEANUP_FAILED` en vez de
+adivinar.
+
+## PASO 10 — Conversión de DEMO a cuenta formal, conservando Drive (2026-08-11)
+
+`convertDemoToFormal` (`services/demo.ts`) convierte **en la misma fila de
+`Company`** — nunca crea una empresa nueva. Como el tenant/demo id YA ES
+`Company.id` (PASO 8) y `StorageFolder`/`StorageObject` solo se relacionan
+por `companyId`/`condominiumId` (nunca por `isDemo`), la conversión no
+necesita tocar el proveedor de almacenamiento **en absoluto**: cero
+llamadas a Drive, cero descargas, cero resubidas, cero filas nuevas. Los
+tres campos `demoDriveFolder*` de `Company` (id real, nombre, fecha de
+creación) tampoco se tocan — quedan como estaban, ahora como registro
+histórico de dónde vive la carpeta.
+
+Lo que "cancela cualquier eliminación programada" son DOS capas
+independientes: `demoExpiresAt`/`demoDeleteScheduledAt` pasan a `null`
+(así que `demo-vencidos` nunca la vuelve a marcar), y
+`evaluatePurgeEligibility` (`domain/demo-cleanup.ts`, PASO 9) rechaza de
+entrada cualquier intento de purga sobre `demoStatus === 'DEMO_CONVERTIDO'`
+— aunque alguien llamara a `purgeDemoDriveFiles` a mano sobre una cuenta ya
+convertida, el borrado no procede.
+
+**Registrado** en `DemoHistoryEntry` (evento `convertida_formal`) y en
+`AuditLog`, los 6 datos pedidos en un solo detalle legible: fecha/hora
+(`occurredAt`), usuario master (`actorUserId` + nombre), cuenta DEMO
+original y cuenta formal resultante (el MISMO `companyId`, dicho
+explícito — no hay dos cuentas), carpeta de Drive conservada (id + nombre,
+o "sin carpeta creada todavía" si la demo nunca llegó a subir nada), y
+plan contratado. `ConvertirDemoResultado.carpetaDriveConservada` también
+lo devuelve a la pantalla, que lo muestra en el modal de confirmación.
+
+### Prueba completa realizada
+
+Contra el proveedor `local` (mismo código de `services/storage.ts` que usa
+Drive — la interfaz es idéntica; no se tocó el Drive real de producción):
+
+1. Demo creada (`createDemoCompany`).
+2. Imagen (PNG) subida a Multimedia/Fotografías.
+3. PDF subido a Administración/Actas.
+4. Documento (.docx) subido a Contratos/Proveedores.
+5. Convertida a cuenta formal (`convertDemoToFormal`, plan real, master real).
+6. Verificado por base de datos: `isDemo=false`, `demoStatus=DEMO_CONVERTIDO`,
+   `demoExpiresAt`/`demoDeleteScheduledAt=null`, `demoDriveFolderId`
+   **exactamente igual** antes y después, mismo `companyId`, **misma**
+   cantidad de carpetas (31) y archivos (3) en la base — sin duplicar,
+   mismos `id` de fila y `providerFileId` — y los 3 archivos con el
+   **mismo sha256** leídos de nuevo del disco tras la conversión.
+7. Con sesión real de navegador, login como el MISMO usuario `admin_owner`
+   de la demo (ahora de la cuenta formal) contra `/app/repositorio`.
+8. Los 3 archivos, abiertos por la ruta real de descarga
+   (`/api/documentos/[token]`, con permisos reverificados en el momento):
+   **200**, `content-type` correcto (`application/pdf`, `image/png`,
+   `application/vnd...wordprocessingml.document`) y bytes **idénticos** a
+   los subidos — la conversión no perdió ni corrompió nada.
+
+## PASO 11 — Historial comercial permanente de una demo (2026-08-11)
+
+Los 15 campos pedidos ya vivían, en su mayoría, en `Company` — lo nuevo
+son tres columnas (`demoConvertedById`, `demoConvertedPlanName`,
+`demoCommercialNotes`) y una corrección real de un hueco que ya existía.
+
+**Bug corregido**: `listDemoCompanies`/`getDemoDetail` filtraban por
+`Company.isDemo`. Como `convertDemoToFormal` pone `isDemo: false` en el
+momento exacto de convertir, una cuenta convertida **desaparecía** del
+panel `/master/usuarios-demo` justo cuando su historial comercial tenía
+que seguir disponible — lo contrario de lo que pide PASO 11. Ahora
+filtran por `demoStatus: { not: null }`, que se fija al crear la demo y
+NUNCA vuelve a `null` (ni al convertir, ni al purgar) — es el criterio
+correcto para "toda empresa que alguna vez fue una demo".
+
+`DemoSummary` (`services/demo.ts`) trae ahora los 15 campos exactos:
+cliente/prospecto, correo, teléfono, condominio, fecha de creación, de
+inicio, de vencimiento, de eliminación, quién creó, estado final, si fue
+convertida, fecha de conversión, quién convirtió, plan adquirido (foto
+fija tomada UNA vez al convertir — si después cambia el plan vigente,
+este campo no se entera) y observaciones comerciales (el único campo
+editable después de escrito, vía `updateDemoCommercialNotes` — botón
+"Guardar notas" en el panel). Ninguno de los 15 es un archivo ni un dato
+operativo del condominio: es una ficha comercial, no un respaldo.
+
+Sobrevive a todo porque la fila de `Company` **nunca se borra
+físicamente** en ningún punto del sistema — ni `purgeDemoDriveFiles`
+(PASO 9, solo borra `storage_folders`/`storage_objects`) ni
+`convertDemoToFormal` (PASO 10, reutiliza la misma fila) tocan
+`companies` con un `delete`.
+
+**Auditoría de las 8 acciones pedidas**, todas como filas de
+`DemoHistoryEntry` (evento + detalle + fecha + quién): `creada` (crear),
+`reactivada` (reactivar), `vencida` (vencer, job `demo-vencidos`),
+`convertida_formal` (convertir), `limpieza_iniciada` (NUEVO — al pasar la
+elegibilidad, antes de tocar nada), `archivos_eliminados` (NUEVO — al
+terminar de borrar, solo si de verdad se borró algo en esa corrida),
+`eliminada` (completar limpieza) y `limpieza_fallida` (fallar limpieza).
+
+**UI**: botón "Ver historial" en cada tarjeta de `/master/usuarios-demo`
+— sin excepción, ni para una demo ya `DEMO_ELIMINADO` ni para una
+`DEMO_CONVERTIDO` (es un historial, no una acción del ciclo de vida).
+Muestra los 15 campos, la libreta de notas editable, y la línea de
+tiempo completa con el nombre de quien disparó cada evento.
+
+### Verificado
+
+Contra la base real: una purga de punta a punta mostró la secuencia
+`creada → limpieza_iniciada → archivos_eliminados → eliminada` en orden.
+Una conversión nueva completó `demoConvertedById`/`demoConvertedPlanName`
+correctamente. El panel mostró 3 tarjetas "Convertida" donde antes
+mostraba 1 (las 2 reales que el filtro por `isDemo` escondía). Guardar
+observaciones comerciales persistió en la base y sobrevivió a recargar
+la página.

@@ -1,4 +1,4 @@
-import { Sparkles, Lock } from 'lucide-react';
+import { Sparkles, Lock, FileText } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { resolveCondoId } from '@/lib/active-condo';
 import { can } from '@/lib/rbac';
@@ -9,6 +9,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { SinCondominio } from '@/components/ui/sin-condominio';
 import { CondoSelect } from '../propiedades/condo-select';
 import { FinanceTabs } from '../finanzas/finance-tabs';
+import { DescargarReporte } from '../finanzas/descargar-reporte';
 import { ReportTabs } from './report-tabs';
 
 const ACCOUNT_TYPE_LABEL: Record<string, string> = {
@@ -65,8 +66,16 @@ export default async function ContabilidadPage({
         </span>
       </div>
 
-      <div className="mt-4">
+      <div className="mt-4 flex flex-wrap items-center gap-3">
         <CondoSelect condos={condos} selected={condoId} />
+        <DescargarReporte tab="contabilidad" condoId={condoId} />
+        <a
+          href={`/app/contabilidad/eeff?condoId=${condoId}`}
+          download
+          className="btn-ghost inline-flex flex-none items-center gap-1.5 py-2 text-xs"
+        >
+          <FileText size={13} /> Descargar EEFF del mes anterior (PDF)
+        </a>
       </div>
 
       <ReportTabs condoId={condoId} tab={tab} />

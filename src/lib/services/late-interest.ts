@@ -173,15 +173,26 @@ export async function applyLateInterestForCondo(
   });
 }
 
-/** Recorre todos los condominios con cobro de interés activado. */
-export async function applyLateInterestEverywhere(today: Date): Promise<InterestRunSummary> {
+/**
+ * Recorre todos los condominios con cobro de interés activado.
+ *
+ * `opts.companyId` restringe la corrida a una sola empresa — lo usa
+ * `/api/cron` cuando quien dispara el proceso es un `admin_owner` de
+ * sesión, para que no pueda cobrar interés en empresas ajenas.
+ */
+export async function applyLateInterestEverywhere(
+  today: Date,
+  opts?: { companyId?: string }
+): Promise<InterestRunSummary> {
   // Corre desde el programador, sin sesión: empresa por empresa.
   const condos = (
-    await forEachCompany((tx) =>
-      tx.condominium.findMany({
-        where: { deletedAt: null, financialSettings: { autoInterest: true } },
-        select: { id: true, companyId: true, name: true },
-      })
+    await forEachCompany(
+      (tx) =>
+        tx.condominium.findMany({
+          where: { deletedAt: null, financialSettings: { autoInterest: true } },
+          select: { id: true, companyId: true, name: true },
+        }),
+      { includeDemo: false, companyId: opts?.companyId }
     )
   ).flatMap((x) => x.result);
 

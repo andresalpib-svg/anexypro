@@ -31,7 +31,15 @@ export type JobDefinition = {
    * NO se ejecutan dos veces. Casi siempre es la fecha del día.
    */
   runKey: (now: Date) => string;
-  run: (now: Date) => Promise<JobResult>;
+  run: (now: Date, opts?: { companyId?: string }) => Promise<JobResult>;
+  /**
+   * `'plataforma'` marca los procesos que no se pueden acotar a una
+   * sola empresa (por ejemplo, vencimiento de demos, salud del
+   * sistema). `/api/cron` los reserva para `CRON_SECRET` o `master`:
+   * un `admin_owner` de sesión nunca puede dispararlos, ni siquiera
+   * sobre su propia empresa. Por omisión, `'empresa'`.
+   */
+  scope?: 'empresa' | 'plataforma';
 };
 
 const registry = new Map<string, JobDefinition>();
@@ -54,12 +62,34 @@ export type ExecutionOutcome =
  *
  * `force` salta la verificación de duplicado — útil para reprocesar a
  * mano, nunca para el disparador automático.
+ *
+ * `opts.companyId` acota la corrida a una sola empresa (lo usa
+ * `/api/cron` para un `admin_owner` de sesión). Un job marcado
+ * `scope: 'plataforma'` rechaza esa restricción — no tiene sentido
+ * "correrlo para una empresa" — así que se responde con error en vez
+ * de correrlo sin acotar, que sería la fuga que se quiere cerrar.
+ * La clave de corrida incluye la empresa cuando está acotada, para que
+ * una corrida individual no marque como "ya hecho" el día completo y
+ * bloquee la corrida real de la plataforma (o al revés).
  */
-export async function runJob(name: string, now = new Date(), force = false): Promise<ExecutionOutcome> {
+export async function runJob(
+  name: string,
+  now = new Date(),
+  force = false,
+  opts?: { companyId?: string }
+): Promise<ExecutionOutcome> {
   const job = registry.get(name);
   if (!job) return { job: name, status: 'error', summary: `El proceso "${name}" no existe.` };
 
-  const runKey = job.runKey(now);
+  if (opts?.companyId && job.scope === 'plataforma') {
+    return {
+      job: name,
+      status: 'error',
+      summary: 'Este proceso es de toda la plataforma: solo el programador o un usuario master pueden ejecutarlo.',
+    };
+  }
+
+  const runKey = opts?.companyId ? `${job.runKey(now)}:${opts.companyId}` : job.runKey(now);
 
   if (!force) {
     const previous = await prisma.jobRun.findUnique({
@@ -87,7 +117,7 @@ export async function runJob(name: string, now = new Date(), force = false): Pro
   });
 
   try {
-    const result = await job.run(now);
+    const result = await job.run(now, opts);
     await prisma.jobRun.update({
       where: { id: run.id },
       data: { status: 'ok', endedAt: new Date(), summary: result.summary },
@@ -103,13 +133,24 @@ export async function runJob(name: string, now = new Date(), force = false): Pro
   }
 }
 
-/** Ejecuta todos los procesos registrados, uno tras otro. */
-export async function runAllJobs(now = new Date()): Promise<ExecutionOutcome[]> {
+/**
+ * Ejecuta todos los procesos registrados, uno tras otro.
+ *
+ * Con `opts.companyId` (un `admin_owner` de sesión, acotado a su
+ * empresa), los procesos de alcance `'plataforma'` se saltan por
+ * completo —ni se intentan ni cuentan como error— en vez de fallar
+ * ruidosamente uno por uno.
+ */
+export async function runAllJobs(now = new Date(), opts?: { companyId?: string }): Promise<ExecutionOutcome[]> {
   const out: ExecutionOutcome[] = [];
   for (const job of registry.values()) {
+    if (opts?.companyId && job.scope === 'plataforma') {
+      out.push({ job: job.name, status: 'omitido', summary: 'Proceso de plataforma: reservado a master.' });
+      continue;
+    }
     // En serie a propósito: los jobs tocan las mismas tablas y
     // ejecutarlos en paralelo solo agregaría contención.
-    out.push(await runJob(job.name, now));
+    out.push(await runJob(job.name, now, false, opts));
   }
   return out;
 }

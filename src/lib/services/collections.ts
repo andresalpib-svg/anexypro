@@ -178,6 +178,18 @@ export async function listActions(companyId: string, propertyId: string) {
   );
 }
 
+/** Últimas gestiones de todo el condominio — alimenta el reporte de Cobranza. */
+export async function listRecentActions(companyId: string, condominiumId: string, take = 300) {
+  return withTenantContext(companyId, (tx) =>
+    tx.collectionAction.findMany({
+      where: { condominiumId },
+      orderBy: { createdAt: 'desc' },
+      take,
+      include: { property: { select: { code: true } } },
+    })
+  );
+}
+
 // ---------- Convenios de pago ----------
 
 export async function listPaymentPlans(companyId: string, condominiumId: string) {
@@ -252,15 +264,20 @@ export type CollectionRunSummary = {
  * avisos a quien está cumpliendo un arreglo firmado es la forma más
  * rápida de que lo abandone.
  */
-export async function runCollectionLadder(today: Date): Promise<CollectionRunSummary> {
+export async function runCollectionLadder(
+  today: Date,
+  opts?: { companyId?: string }
+): Promise<CollectionRunSummary> {
   // Corre desde el programador, sin sesión: recorre empresa por
   // empresa con el contexto de cada una.
   const condos = (
-    await forEachCompany((tx) =>
-      tx.condominium.findMany({
-        where: { deletedAt: null },
-        select: { id: true, companyId: true },
-      })
+    await forEachCompany(
+      (tx) =>
+        tx.condominium.findMany({
+          where: { deletedAt: null },
+          select: { id: true, companyId: true },
+        }),
+      { includeDemo: false, companyId: opts?.companyId }
     )
   ).flatMap((x) => x.result);
 

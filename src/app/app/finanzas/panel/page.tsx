@@ -12,6 +12,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { SinCondominio } from '@/components/ui/sin-condominio';
 import { CondoSelect } from '../../propiedades/condo-select';
 import { FinanceTabs } from '../finance-tabs';
+import { DescargarReporte } from '../descargar-reporte';
 import { CashFlowChart } from '../flujo/cash-flow-chart';
 
 const ALERT_STYLE = {
@@ -69,8 +70,9 @@ export default async function PanelFinancieroPage({ searchParams }: { searchPara
         subtitle={`Panel financiero de ${condo?.name ?? 'tu condominio'}`}
       />
       <FinanceTabs />
-      <div className="mb-4 mt-4">
+      <div className="mb-4 mt-4 flex flex-wrap items-center gap-3">
         <CondoSelect condos={condos} selected={condoId} />
+        <DescargarReporte tab="panel" condoId={condoId} />
       </div>
 
       {/* ---------- Alertas: lo que exige acción va primero ---------- */}

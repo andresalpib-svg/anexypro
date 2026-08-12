@@ -8,7 +8,9 @@ import {
   logCollectionAction,
   createPaymentPlan,
   setPlanStatus,
+  listActions,
 } from '@/lib/services/collections';
+import { condoOfProperty } from '@/lib/services/entity-scope';
 import { pickFile } from '@/lib/upload';
 import { saveToRepository } from '@/lib/services/file-refs';
 
@@ -83,6 +85,9 @@ export async function createPlanAction(_prev: ActionState, formData: FormData): 
     return { formError: e?.message ?? 'No se pudo crear el convenio.' };
   }
   revalidatePath('/app/finanzas/cobranza');
+  // El arreglo de pago también se registra desde el recuadro de
+  // morosidad de Cuotas y pagos.
+  revalidatePath('/app/finanzas');
   return { success: true };
 }
 
@@ -100,4 +105,45 @@ export async function setPlanStatusAction(
   }
   revalidatePath('/app/finanzas/cobranza');
   return { ok: true };
+}
+
+export type ActionHistoryItem = {
+  id: string;
+  actionType: string;
+  channel: string | null;
+  notes: string | null;
+  debtAmount: number | null;
+  daysOverdue: number | null;
+  automated: boolean;
+  createdAt: string;
+};
+
+/**
+ * Histórico de gestión de cobranza de UNA filial — alimenta la ventana
+ * de detalle. La filial se comprueba contra la base, no contra el
+ * cliente: sin esto se podría leer la bitácora de otro condominio.
+ */
+export async function listActionsAction(
+  condominiumId: string,
+  propertyId: string
+): Promise<{ ok: boolean; error?: string; items?: ActionHistoryItem[] }> {
+  const session = await guard(condominiumId);
+  if (!session) return { ok: false, error: 'Sin permiso.' };
+  const realCondo = await condoOfProperty(session.user.companyId, propertyId);
+  if (realCondo !== condominiumId) return { ok: false, error: 'Sin permiso.' };
+
+  const items = await listActions(session.user.companyId, propertyId);
+  return {
+    ok: true,
+    items: items.map((a) => ({
+      id: a.id,
+      actionType: a.actionType,
+      channel: a.channel,
+      notes: a.notes,
+      debtAmount: a.debtAmount === null ? null : Number(a.debtAmount),
+      daysOverdue: a.daysOverdue,
+      automated: a.automated,
+      createdAt: a.createdAt.toISOString(),
+    })),
+  };
 }

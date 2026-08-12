@@ -9,6 +9,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { SinCondominio } from '@/components/ui/sin-condominio';
 import { CondoSelect } from '../../propiedades/condo-select';
 import { FinanceTabs } from '../finance-tabs';
+import { DescargarReporte } from '../descargar-reporte';
 import {
   RecurringBoard,
   type RecurringRow,
@@ -45,8 +46,9 @@ export default async function RecurrentesPage({ searchParams }: { searchParams: 
         subtitle="Gastos que se repiten y contratos con proveedores"
       />
       <FinanceTabs />
-      <div className="mb-4 mt-4">
+      <div className="mb-4 mt-4 flex flex-wrap items-center gap-3">
         <CondoSelect condos={condos} selected={condoId} />
+        <DescargarReporte tab="recurrentes" condoId={condoId} />
       </div>
 
       <RecurringBoard

@@ -3,13 +3,14 @@ import { auth } from '@/lib/auth';
 import { can } from '@/lib/rbac';
 import { resolveCondoId } from '@/lib/active-condo';
 import { listCondominiumsForSession, getCondominium } from '@/lib/services/condominiums';
-import { listExpenses, listSuppliers, CATEGORY_LABEL } from '@/lib/services/expenses';
+import { listExpenses, listSuppliers, listBudgetLineOptions, CATEGORY_LABEL } from '@/lib/services/expenses';
 import { listBankAccounts } from '@/lib/services/bank-accounts';
 import { listProjects } from '@/lib/services/projects';
 import { PageHeader } from '@/components/ui/page-header';
 import { SinCondominio } from '@/components/ui/sin-condominio';
 import { CondoSelect } from '../../propiedades/condo-select';
 import { FinanceTabs } from '../finance-tabs';
+import { DescargarReporte } from '../descargar-reporte';
 import { ExpenseBoard, type ExpenseRow, type SupplierOpt, type BankOpt, type ProjectOpt } from './expense-board';
 
 export default async function GastosPage({ searchParams }: { searchParams: { condoId?: string } }) {
@@ -27,13 +28,17 @@ export default async function GastosPage({ searchParams }: { searchParams: { con
   const condoId = resolveCondoId(searchParams.condoId, condos);
   if (!condoId) return <SinCondominio companyId={session!.user.companyId} role={session!.user.role} />;
 
-  const [expenses, suppliers, banks, condo, projects] = await Promise.all([
+  const [expenses, suppliers, banks, condo, projects, budgetOptions] = await Promise.all([
     listExpenses(session!.user.companyId, condoId),
     listSuppliers(session!.user.companyId),
     listBankAccounts(session!.user.companyId, condoId),
     getCondominium(session!.user.companyId, condoId),
     listProjects(session!.user.companyId, condoId),
+    listBudgetLineOptions(session!.user.companyId, condoId),
   ]);
+
+  // Para rotular la línea presupuestaria de cada gasto en la tabla.
+  const accountName = new Map(budgetOptions.map((o) => [o.code, o.name]));
 
   const role = session!.user.role;
 
@@ -50,8 +55,9 @@ export default async function GastosPage({ searchParams }: { searchParams: { con
         subtitle="Gastos, proveedores y cuentas por pagar del condominio"
       />
       <FinanceTabs />
-      <div className="mb-4 mt-4">
+      <div className="mb-4 mt-4 flex flex-wrap items-center gap-3">
         <CondoSelect condos={condos} selected={condoId} />
+        <DescargarReporte tab="gastos" condoId={condoId} />
       </div>
 
       <ExpenseBoard
@@ -69,12 +75,15 @@ export default async function GastosPage({ searchParams }: { searchParams: { con
         )}
         banks={banks.map((b): BankOpt => ({ id: b.id, name: `${b.bankName} — ${b.name}` }))}
         projects={proyectosImputables}
+        budgetOptions={budgetOptions}
         expenses={expenses.map((e): ExpenseRow => {
           const paid = e.payments.reduce((s, p) => s + Number(p.amount), 0);
           return {
             id: e.id,
             number: e.expenseNumber,
             category: e.category,
+            accountCode: e.accountCode,
+            accountName: accountName.get(e.accountCode) ?? null,
             description: e.description,
             invoiceNumber: e.invoiceNumber,
             supplierName: e.supplier ? (e.supplier.tradeName ?? e.supplier.legalName) : null,

@@ -2,11 +2,18 @@
 
 import { useState, useEffect, useTransition } from 'react';
 import { useFormState, useFormStatus } from 'react-dom';
-import { Handshake, Send, FileText, Plus, CheckCircle2, XCircle } from 'lucide-react';
+import { Handshake, Send, FileText, Plus, CheckCircle2, XCircle, Search, History } from 'lucide-react';
 import { toast } from 'sonner';
 import { StatusChip } from '@/components/ui/status-chip';
 import { Modal } from '@/components/ui/modal';
-import { logActionAction, createPlanAction, setPlanStatusAction, type ActionState } from './actions';
+import {
+  logActionAction,
+  createPlanAction,
+  setPlanStatusAction,
+  listActionsAction,
+  type ActionState,
+  type ActionHistoryItem,
+} from './actions';
 import { enTransicion } from '@/lib/accion-segura';
 import { hoyISO as hoy } from '@/lib/fecha-local';
 
@@ -187,12 +194,20 @@ export function CollectionsBoard({
 }) {
   const [showPlan, setShowPlan] = useState(false);
   const [preset, setPreset] = useState<DebtorView | undefined>();
+  const [historyFor, setHistoryFor] = useState<DebtorView | null>(null);
+  const [query, setQuery] = useState('');
   const [pending, startTransition] = useTransition();
 
   const fmt = (n: number) =>
     new Intl.NumberFormat('es-CR', { style: 'currency', currency, maximumFractionDigits: 0 }).format(n);
 
   const pct = (v: number) => (aging.total > 0 ? (v / aging.total) * 100 : 0);
+
+  // Búsqueda por número de filial (y de paso por propietario).
+  const q = query.trim().toLowerCase();
+  const visibleDebtors = q
+    ? debtors.filter((d) => d.code.toLowerCase().includes(q) || (d.ownerName ?? '').toLowerCase().includes(q))
+    : debtors;
 
   return (
     <div>
@@ -256,10 +271,19 @@ export function CollectionsBoard({
 
       {/* Deudores */}
       <div className="card mt-4 overflow-hidden">
-        <div className="flex items-center gap-2 border-b border-line px-4 py-3">
+        <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
           <p className="flex-1 text-xs font-bold uppercase tracking-wide text-muted">
-            Filiales en mora ({debtors.length})
+            Filiales en mora ({visibleDebtors.length}{q ? ` de ${debtors.length}` : ''})
           </p>
+          <div className="relative">
+            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Buscar filial…"
+              className="field-input w-44 py-1.5 pl-8 text-xs"
+            />
+          </div>
           {canManage && (
             <button
               type="button"
@@ -286,19 +310,29 @@ export function CollectionsBoard({
             </tr>
           </thead>
           <tbody>
-            {debtors.length === 0 ? (
+            {visibleDebtors.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-4 py-12 text-center text-muted">
                   <CheckCircle2 className="mx-auto mb-2 text-ok" size={22} />
-                  Ninguna filial en mora. Todo al día.
+                  {debtors.length === 0
+                    ? 'Ninguna filial en mora. Todo al día.'
+                    : 'Ninguna filial coincide con la búsqueda.'}
                 </td>
               </tr>
             ) : (
-              debtors.map((d) => (
+              visibleDebtors.map((d) => (
                 <tr key={d.propertyId} className="border-b border-line last:border-0">
                   <td className="px-4 py-3">
-                    <p className="font-medium text-ink">{d.code}</p>
-                    {d.ownerName && <p className="text-xs text-muted">{d.ownerName}</p>}
+                    {/* Seleccionar la filial abre su histórico de gestión. */}
+                    <button
+                      type="button"
+                      onClick={() => setHistoryFor(d)}
+                      title="Ver histórico de gestión de cobranza"
+                      className="text-left"
+                    >
+                      <p className="font-medium text-royal hover:underline">{d.code}</p>
+                      {d.ownerName && <p className="text-xs text-muted">{d.ownerName}</p>}
+                    </button>
                   </td>
                   <td className="px-4 py-3 text-right font-sans font-bold text-ink">{fmt(d.total)}</td>
                   <td
@@ -445,6 +479,161 @@ export function CollectionsBoard({
           }}
         />
       )}
+
+      {historyFor && (
+        <HistoryModal
+          condominiumId={condominiumId}
+          debtor={historyFor}
+          currency={currency}
+          canManage={canManage}
+          onDone={() => setHistoryFor(null)}
+        />
+      )}
     </div>
+  );
+}
+
+/**
+ * Histórico de gestión de cobranza de una filial + registro de nuevos
+ * comentarios. Se carga al abrir (no viaja con la página: son hasta 30
+ * gestiones por filial que casi nunca se consultan).
+ */
+function HistoryModal({
+  condominiumId,
+  debtor,
+  currency,
+  canManage,
+  onDone,
+}: {
+  condominiumId: string;
+  debtor: DebtorView;
+  currency: string;
+  canManage: boolean;
+  onDone: () => void;
+}) {
+  const [items, setItems] = useState<ActionHistoryItem[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [actionType, setActionType] = useState('nota');
+  const [notes, setNotes] = useState('');
+  const [saving, startSaving] = useTransition();
+
+  const fmt = (n: number) =>
+    new Intl.NumberFormat('es-CR', { style: 'currency', currency, maximumFractionDigits: 0 }).format(n);
+
+  const load = async () => {
+    const r = await listActionsAction(condominiumId, debtor.propertyId);
+    if (r.ok && r.items) setItems(r.items);
+    else setError(r.error ?? 'No se pudo cargar el histórico.');
+  };
+
+  useEffect(() => {
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [condominiumId, debtor.propertyId]);
+
+  const agregar = () => {
+    const text = notes.trim();
+    if (!text) {
+      toast.error('Escribí el comentario antes de guardarlo.');
+      return;
+    }
+    enTransicion(startSaving, async () => {
+      const r = await logActionAction({
+        condominiumId,
+        propertyId: debtor.propertyId,
+        actionType,
+        channel: 'manual',
+        notes: text,
+        debtAmount: debtor.total,
+        daysOverdue: debtor.oldestDays,
+      });
+      if (r.ok) {
+        toast.success('Gestión registrada en el expediente.');
+        setNotes('');
+        setItems(null);
+        await load();
+      } else {
+        toast.error(r.error);
+      }
+    });
+  };
+
+  return (
+    <Modal
+      title={`Gestión de cobranza — ${debtor.code}`}
+      subtitle={`${debtor.ownerName ?? 'Sin propietario registrado'} · debe ${fmt(debtor.total)} · ${debtor.oldestDays} días de atraso`}
+      onClose={onDone}
+      width="max-w-2xl"
+    >
+      <div className="p-5">
+        {canManage && (
+          <div className="mb-4 rounded-xl border border-line bg-canvas p-3">
+            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted">Agregar comentario</p>
+            <div className="flex flex-wrap items-start gap-2">
+              <select value={actionType} onChange={(e) => setActionType(e.target.value)} className="field-input w-auto text-xs">
+                {Object.entries(ACTION_LABEL).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={2}
+                placeholder="Ej: Se conversó con el propietario; se compromete a pagar el 15."
+                className="field-input min-w-56 flex-1 text-xs"
+              />
+              <button type="button" disabled={saving} onClick={agregar} className="btn-primary py-2 text-xs">
+                {saving ? 'Guardando…' : 'Guardar'}
+              </button>
+            </div>
+            <p className="mt-2 text-[.68rem] text-muted">
+              Cada anotación queda en la bitácora con fecha, deuda y días de atraso al momento — es la
+              prueba de gestión si el caso llega a cobro judicial.
+            </p>
+          </div>
+        )}
+
+        {error ? (
+          <p className="py-8 text-center text-sm text-danger">{error}</p>
+        ) : items === null ? (
+          <p className="py-8 text-center text-sm text-muted">Cargando histórico…</p>
+        ) : items.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted">
+            <History size={20} className="mx-auto mb-2" />
+            Sin gestiones registradas para esta filial todavía.
+          </p>
+        ) : (
+          <ul className="divide-y divide-line">
+            {items.map((a) => (
+              <li key={a.id} className="py-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-semibold text-ink">{ACTION_LABEL[a.actionType] ?? a.actionType}</span>
+                  <StatusChip variant={a.automated ? 'neutral' : 'royal'}>
+                    {a.automated ? 'Automática' : 'Manual'}
+                  </StatusChip>
+                  <span className="ml-auto text-xs text-muted">
+                    {new Date(a.createdAt).toLocaleString('es-CR', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                </div>
+                {a.notes && <p className="mt-1 text-sm text-ink">{a.notes}</p>}
+                <p className="mt-0.5 text-[.7rem] text-muted">
+                  {a.debtAmount !== null && `Deuda al momento: ${fmt(a.debtAmount)}`}
+                  {a.daysOverdue !== null && ` · ${a.daysOverdue} días de atraso`}
+                  {a.channel && ` · canal: ${a.channel}`}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </Modal>
   );
 }

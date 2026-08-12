@@ -9,8 +9,10 @@ import type { Session } from 'next-auth';
 
 const auth = vi.fn();
 const listCondominiumsForSession = vi.fn();
+const findUniqueCompany = vi.fn();
 
 vi.mock('@/lib/auth', () => ({ auth: () => auth() }));
+vi.mock('@/lib/db', () => ({ prisma: { company: { findUnique: (args: any) => findUniqueCompany(args) } } }));
 vi.mock('@/lib/services/condominiums', () => ({
   listCondominiumsForSession: (s: any) => listCondominiumsForSession(s),
   canAccessCondo: async (s: any, id: string) => {
@@ -41,6 +43,10 @@ beforeEach(() => {
   auth.mockReset();
   listCondominiumsForSession.mockReset();
   listCondominiumsForSession.mockResolvedValue([{ id: 'condo-propio' }]);
+  findUniqueCompany.mockReset();
+  // Por omisión, una empresa real y sin bloquear — así el resto de las
+  // pruebas (que no les interesa la demo) no tiene que configurar esto.
+  findUniqueCompany.mockResolvedValue({ isDemo: false, blockedAt: null });
 });
 
 describe('requirePanel()', () => {
@@ -86,6 +92,30 @@ describe('requirePanel()', () => {
     expect(await requirePanel({ module: '/app/propiedades' })).toBeNull();
     expect(await requirePanel({ module: '/app/visitas' })).toBeNull();
   });
+
+  // PASO 4: una demo vencida no puede "realizar operaciones" — no
+  // basta con que el layout mande a la pantalla de bloqueo, porque una
+  // Server Action disparada desde una pestaña ya abierta no pasa por
+  // el layout.
+  describe('empresa DEMO vencida', () => {
+    it('rechaza cualquier acción cuando la demo está bloqueada', async () => {
+      findUniqueCompany.mockResolvedValue({ isDemo: true, blockedAt: new Date('2026-08-01') });
+      auth.mockResolvedValue(session({ role: 'admin_owner' }));
+      expect(await requirePanel()).toBeNull();
+    });
+
+    it('deja pasar una demo TODAVÍA activa (sin blockedAt)', async () => {
+      findUniqueCompany.mockResolvedValue({ isDemo: true, blockedAt: null });
+      auth.mockResolvedValue(session({ role: 'admin_owner' }));
+      expect(await requirePanel()).not.toBeNull();
+    });
+
+    it('una empresa REAL bloqueada (mora) NO se corta acá — eso lo sigue decidiendo el layout', async () => {
+      findUniqueCompany.mockResolvedValue({ isDemo: false, blockedAt: new Date('2026-08-01') });
+      auth.mockResolvedValue(session({ role: 'admin_owner' }));
+      expect(await requirePanel()).not.toBeNull();
+    });
+  });
 });
 
 describe('requireOwner()', () => {
@@ -107,5 +137,11 @@ describe('requireSecurity()', () => {
     expect(await requireSecurity()).toBeNull();
     auth.mockResolvedValue(session({ role: 'seguridad' }));
     expect(await requireSecurity()).not.toBeNull();
+  });
+
+  it('rechaza a la caseta de una demo vencida (a diferencia de una empresa real en mora)', async () => {
+    findUniqueCompany.mockResolvedValue({ isDemo: true, blockedAt: new Date('2026-08-01') });
+    auth.mockResolvedValue(session({ role: 'seguridad' }));
+    expect(await requireSecurity()).toBeNull();
   });
 });

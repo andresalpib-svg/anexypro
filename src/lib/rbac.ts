@@ -57,6 +57,24 @@ export function can(session: Session | null, area: PermissionArea): boolean {
   return false;
 }
 
+/**
+ * Configurar el cobro de agua (modo y tarifas) — permiso GRANULAR
+ * dentro de Finanzas, no un área de módulo: el supervisor puede
+ * registrar lecturas con solo tener Finanzas, pero cambiar la tarifa
+ * se controla aparte desde la grilla de permisos de Configuración.
+ * Misma semántica que el resto de la grilla: permitido salvo que el
+ * administrador lo desactive (`agua_config: false`). El contador nunca
+ * configura — es un rol externo de consulta financiera.
+ */
+export function canConfigureWater(session: Session | null): boolean {
+  if (!session?.user) return false;
+  if (session.user.role === 'admin_owner') return true;
+  if (session.user.role === 'admin_staff') {
+    return session.user.staffPermissions?.agua_config !== false;
+  }
+  return false;
+}
+
 /** Junta Directiva: ¿esta persona tiene el área otorgada? */
 export function boardCan(session: Session | null, area: keyof typeof BOARD_AREAS): boolean {
   if (!session?.user?.isBoardMember) return false;

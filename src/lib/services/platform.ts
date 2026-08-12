@@ -93,6 +93,13 @@ export async function createCompanyWithAdmin(
     // criterio que el administrador: una empresa sin plan contable no
     // puede emitir un solo cargo —el motor de partida doble busca la
     // cuenta 1101 y aborta—, así que no debe poder existir a medias.
+    //
+    // `chart_of_accounts` lleva Row-Level Security: sin fijar el
+    // contexto de empresa, `current_setting('app.current_company_id')`
+    // no devuelve vacío, LANZA ("unrecognized configuration
+    // parameter") — esta transacción no pasa por `withTenantContext`
+    // porque todavía no existía `company.id` cuando empezó.
+    await tx.$executeRawUnsafe(`SELECT set_config('app.current_company_id', $1, true)`, company.id);
     await ensureChartOfAccounts(tx, company.id);
     return { company, user };
   });

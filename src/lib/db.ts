@@ -82,9 +82,34 @@ export async function withTenantContext<T>(
  * de frente.
  */
 export async function forEachCompany<T>(
-  fn: (tx: Prisma.TransactionClient, companyId: string) => Promise<T>
+  fn: (tx: Prisma.TransactionClient, companyId: string) => Promise<T>,
+  opts?: {
+    /**
+     * `false` excluye a las empresas demo (`Company.isDemo`) de la
+     * corrida — lo usan los procesos financieros automáticos
+     * (facturación, interés moratorio, cobranza, informe mensual) para
+     * que una empresa de /demo nunca reciba efectos "reales" de esos
+     * jobs. Por omisión `true`: el panel master y los conteos de
+     * plataforma sí quieren ver las empresas demo.
+     */
+    includeDemo?: boolean;
+    /**
+     * Restringe la corrida a UNA sola empresa. Lo usa `/api/cron`
+     * cuando quien dispara el proceso es un `admin_owner` autenticado
+     * (no el secreto del programador ni `master`): ese usuario no debe
+     * poder disparar procesos financieros de otras empresas de la
+     * plataforma con solo cambiar el parámetro `job` de la URL.
+     */
+    companyId?: string;
+  }
 ): Promise<{ companyId: string; result: T }[]> {
-  const companies = await prisma.company.findMany({ select: { id: true } });
+  const companies = await prisma.company.findMany({
+    where: {
+      ...(opts?.includeDemo === false ? { isDemo: false } : undefined),
+      ...(opts?.companyId ? { id: opts.companyId } : undefined),
+    },
+    select: { id: true },
+  });
   const out: { companyId: string; result: T }[] = [];
   for (const c of companies) {
     out.push({ companyId: c.id, result: await withTenantContext(c.id, (tx) => fn(tx, c.id)) });

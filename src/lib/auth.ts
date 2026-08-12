@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { prisma, withTenantContext } from '@/lib/db';
 import { authConfig } from '@/lib/auth.config';
+import { clientIp, isRateLimited, registerHit } from '@/lib/rate-limit';
 
 // Mismo esquema de roles que el prototipo: admin_owner, admin_staff,
 // seguridad, condomino. NO hay selector de "tipo de usuario" en el
@@ -38,6 +39,24 @@ const MAX_INTENTOS = 8;
 const VENTANA_MINUTOS = 15;
 
 /**
+ * Freno por IP, aparte del freno por cuenta de arriba.
+ *
+ * El freno por cuenta (`demasiadosIntentos`) no detecta "password
+ * spraying": una misma contraseña probada contra miles de cuentas
+ * distintas nunca llega a los 8 intentos en NINGUNA cuenta individual.
+ * Este freno cuenta los intentos fallidos por IP, sin importar contra
+ * qué cuenta — así si son muchas cuentas distintas desde la misma IP,
+ * igual se activa.
+ *
+ * El máximo es más alto que el de cuenta a propósito: una IP puede ser
+ * la salida compartida de una oficina de administración con varios
+ * usuarios reales equivocándose de contraseña por su cuenta.
+ */
+const IP_MAX_INTENTOS = 20;
+const IP_VENTANA_MINUTOS = 15;
+const ipBucket = (ip: string) => `login-fail:${ip}`;
+
+/**
  * Cada cuánto se releen rol, permisos y estado desde la base. Acota a
  * dos minutos la ventana en la que un usuario bloqueado sigue dentro,
  * sin pagar una consulta en cada navegación.
@@ -65,7 +84,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Credentials({
       credentials: { email: {}, password: {} },
-      async authorize(raw) {
+      async authorize(raw, request) {
+        const ip = clientIp(request.headers);
+
+        // Freno por IP, antes de tocar la base o calcular el bcrypt: si
+        // ya hay demasiados intentos fallidos desde esta IP (contra
+        // cualquier cuenta — así es como se frena el "password
+        // spraying" que el freno por cuenta no ve), se corta acá. No
+        // reintroduce el hueco de enumeración por tiempo: el bloqueo no
+        // depende de qué correo se probó, así que no delata nada sobre
+        // una cuenta en particular. Si no se pudo determinar la IP, se
+        // deja pasar (mejor no frenar que frenar a todo el mundo por
+        // igual con un encabezado ausente).
+        if (ip && (await isRateLimited(ipBucket(ip), { max: IP_MAX_INTENTOS, windowMs: IP_VENTANA_MINUTOS * 60_000 }))) {
+          return null;
+        }
+
         const parsed = credentialsSchema.safeParse(raw);
         if (!parsed.success) return null;
         const { email, password } = parsed.data;
@@ -76,22 +110,39 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // misma consulta hace que Postgres evalúe la política sin
         // contexto de empresa y falle. Primero el usuario, y con su
         // empresa ya en la mano, su ficha de persona.
+        // `company` va en el mismo `include`: `companies` tampoco lleva
+        // RLS (como `users`), así que unirlas acá no dispara el mismo
+        // problema que traer `persons` en esta consulta (ver comentario
+        // de más abajo).
         const user = await prisma.user.findFirst({
           where: { email: { equals: email, mode: 'insensitive' }, status: 'activo' },
+          include: { company: { select: { isDemo: true, blockedAt: true } } },
         });
 
         // Se compara SIEMPRE, exista el usuario o no: si se retornara
         // antes, la respuesta inmediata delataría qué correos existen.
         const valid = await bcrypt.compare(password, user?.passwordHash ?? HASH_SENUELO);
-        if (!user) return null;
+        if (!user) {
+          if (ip) await registerHit(ipBucket(ip));
+          return null;
+        }
 
         // Freno a la fuerza bruta. Va después de comparar para que el
         // tiempo de respuesta no cambie al activarse.
         if (await demasiadosIntentos(user.companyId, user.id)) return null;
 
+        // PASO 4 — empresa DEMO vencida: no entra, ni con la contraseña
+        // correcta. El mensaje que ya usa el formulario de login cubre
+        // este caso a propósito ("si tu acceso fue suspendido, contacta
+        // a la administración"), así que no hace falta un texto nuevo.
+        // Limitado a `isDemo`: una empresa REAL en mora sigue entrando
+        // y viendo `/app/suscripcion` — eso no lo tocó este paso.
+        if (user.company?.isDemo && user.company.blockedAt) return null;
+
         if (!valid) {
+          if (ip) await registerHit(ipBucket(ip));
           await withTenantContext(user.companyId, (tx) =>
-            tx.authLog.create({ data: { userId: user.id, eventType: 'login_failed' } })
+            tx.authLog.create({ data: { userId: user.id, eventType: 'login_failed', ip } })
           );
           return null;
         }
@@ -101,7 +152,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // Ya se conoce la empresa: la ficha de persona y las bitácoras
         // se leen y escriben con su contexto.
         const person = await withTenantContext(user.companyId, async (tx) => {
-          await tx.authLog.create({ data: { userId: user.id, eventType: 'login_success' } });
+          await tx.authLog.create({ data: { userId: user.id, eventType: 'login_success', ip } });
           await tx.auditLog.create({
             data: { companyId: user.companyId, userId: user.id, userName: user.fullName, module: 'Autenticación', action: 'Inicio de sesión' },
           });

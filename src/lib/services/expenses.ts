@@ -66,6 +66,14 @@ export type ExpenseInput = {
   /** Proyecto al que se imputa, si el gasto es de uno. */
   projectId?: string;
   category: string;
+  /**
+   * Línea presupuestaria elegida a mano: código de una cuenta de gasto
+   * del plan de cuentas. Si viene, manda sobre la cuenta que deduce la
+   * categoría — así el gasto ejecuta el rubro del presupuesto que el
+   * administrador quiso, no el genérico de la categoría. Opcional: sin
+   * ella todo sigue funcionando como siempre.
+   */
+  budgetAccountCode?: string;
   description: string;
   invoiceNumber?: string;
   issueDate: Date;
@@ -129,6 +137,19 @@ export async function createExpense(
       if (!project) throw new Error('Ese proyecto no pertenece a este condominio.');
     }
 
+    // La línea presupuestaria se comprueba contra el plan de cuentas
+    // REAL de la empresa (solo cuentas de gasto): un código inexistente
+    // haría fallar el asiento contable después.
+    let accountCode = CATEGORY_ACCOUNT[input.category] ?? CATEGORY_ACCOUNT.otro!;
+    if (input.budgetAccountCode) {
+      const account = await tx.chartOfAccount.findFirst({
+        where: { companyId, code: input.budgetAccountCode, type: 'gasto' },
+        select: { code: true },
+      });
+      if (!account) throw new Error('Esa línea presupuestaria no existe en el plan de cuentas.');
+      accountCode = account.code;
+    }
+
     const expense = await tx.expense.create({
       data: {
         companyId,
@@ -137,7 +158,7 @@ export async function createExpense(
         projectId: input.projectId || null,
         expenseNumber: await nextExpenseNumber(tx, input.condominiumId),
         category: input.category as any,
-        accountCode: CATEGORY_ACCOUNT[input.category] ?? CATEGORY_ACCOUNT.otro!,
+        accountCode,
         description: input.description,
         invoiceNumber: input.invoiceNumber || null,
         issueDate: input.issueDate,
@@ -351,6 +372,35 @@ export async function listExpenses(companyId: string, condominiumId: string) {
       },
     })
   );
+}
+
+export type BudgetLineOption = { code: string; name: string; hasBudget: boolean };
+
+/**
+ * Líneas presupuestarias elegibles al registrar un gasto: las cuentas
+ * de gasto del plan de cuentas, marcando cuáles tienen monto en el
+ * presupuesto del año en curso (las demás también se ofrecen — imputar
+ * a un rubro sin presupuesto es válido y el comparativo lo mostrará).
+ */
+export async function listBudgetLineOptions(
+  companyId: string,
+  condominiumId: string
+): Promise<BudgetLineOption[]> {
+  return withTenantContext(companyId, async (tx) => {
+    const [accounts, lines] = await Promise.all([
+      tx.chartOfAccount.findMany({
+        where: { companyId, type: 'gasto' },
+        select: { id: true, code: true, name: true },
+        orderBy: { code: 'asc' },
+      }),
+      tx.budgetLine.findMany({
+        where: { condominiumId, period: String(new Date().getUTCFullYear()) },
+        select: { accountId: true },
+      }),
+    ]);
+    const withBudget = new Set(lines.map((l) => l.accountId));
+    return accounts.map((a) => ({ code: a.code, name: a.name, hasBudget: withBudget.has(a.id) }));
+  });
 }
 
 export async function listSuppliers(companyId: string) {

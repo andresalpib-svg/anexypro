@@ -45,7 +45,17 @@ export async function getPropertySuspension(companyId: string, propertyId: strin
     const settings = await tx.condominiumFinancialSettings.findUnique({
       where: { condominiumId: property.condominiumId },
     });
-    if (!settings) return { monthsOverdue: 0, hasPaymentPlan: false, suspended: false };
+    // Una suspensión MANUAL (decisión expresa de la administración,
+    // registrada en property_service_suspensions con endedAt nulo)
+    // suspende aunque no haya configuración financiera y aunque exista
+    // convenio: la levanta la administración, no una regla.
+    const manual = await tx.propertyServiceSuspension.findFirst({
+      where: { propertyId, endedAt: null },
+      select: { id: true },
+    });
+    if (!settings) {
+      return { monthsOverdue: 0, hasPaymentPlan: false, suspended: Boolean(manual), manualSuspension: Boolean(manual) };
+    }
 
     const [overdueOrdinaryCharges, plan] = await Promise.all([
       tx.charge.count({
@@ -69,8 +79,108 @@ export async function getPropertySuspension(companyId: string, propertyId: strin
       monthsOverdue: overdueOrdinaryCharges,
       hasPaymentPlan,
       suspended:
-        !hasPaymentPlan && settings.suspensionEnabled && overdueOrdinaryCharges >= settings.suspensionMonths,
+        Boolean(manual) ||
+        (!hasPaymentPlan && settings.suspensionEnabled && overdueOrdinaryCharges >= settings.suspensionMonths),
+      manualSuspension: Boolean(manual),
     };
+  });
+}
+
+/**
+ * Suspensión MANUAL de servicios de una filial. La tabla
+ * property_service_suspensions estaba en el schema sin uso; hoy solo
+ * escribe aquí — una fila con endedAt nulo significa "suspendida por
+ * decisión de la administración" y pesa más que el convenio o la regla
+ * automática, porque la levanta una persona, no un cálculo.
+ */
+export async function suspendPropertyServices(
+  companyId: string,
+  user: { id: string; name: string },
+  input: { condominiumId: string; propertyId: string }
+) {
+  return withTenantContext(companyId, async (tx) => {
+    // La filial se comprueba contra la BASE, no contra el formulario.
+    const property = await tx.property.findFirst({
+      where: { id: input.propertyId, condominiumId: input.condominiumId },
+      select: { id: true, code: true },
+    });
+    if (!property) throw new Error('Esa filial no pertenece a este condominio.');
+
+    const open = await tx.propertyServiceSuspension.findFirst({
+      where: { propertyId: property.id, endedAt: null },
+      select: { id: true },
+    });
+    if (open) throw new Error('Esta filial ya tiene los servicios suspendidos.');
+
+    const overdue = await tx.charge.count({
+      where: {
+        propertyId: property.id,
+        chargeType: 'cuota_ordinaria',
+        status: { in: ['pendiente', 'parcial'] },
+        dueDate: { lt: new Date() },
+      },
+    });
+
+    const suspension = await tx.propertyServiceSuspension.create({
+      data: { propertyId: property.id, monthsOverdue: overdue },
+    });
+    await tx.propertyEvent.create({
+      data: {
+        propertyId: property.id,
+        eventType: 'suspension_activada',
+        description: `Servicios suspendidos por la administración (${overdue} cuota(s) ordinaria(s) vencida(s)).`,
+      },
+    });
+    await logActivity(tx, companyId, {
+      userId: user.id,
+      userName: user.name,
+      module: 'Finanzas',
+      action: 'Servicios suspendidos',
+      target: property.code,
+    });
+    return suspension;
+  });
+}
+
+/** Levanta la suspensión manual vigente de una filial. */
+export async function liftPropertySuspension(
+  companyId: string,
+  user: { id: string; name: string },
+  input: { condominiumId: string; propertyId: string; reason?: string }
+) {
+  return withTenantContext(companyId, async (tx) => {
+    const property = await tx.property.findFirst({
+      where: { id: input.propertyId, condominiumId: input.condominiumId },
+      select: { id: true, code: true },
+    });
+    if (!property) throw new Error('Esa filial no pertenece a este condominio.');
+
+    const open = await tx.propertyServiceSuspension.findFirst({
+      where: { propertyId: property.id, endedAt: null },
+      select: { id: true },
+    });
+    if (!open) throw new Error('Esta filial no tiene una suspensión manual vigente.');
+
+    await tx.propertyServiceSuspension.update({
+      where: { id: open.id },
+      data: { endedAt: new Date(), endedReason: input.reason || 'Levantada por la administración' },
+    });
+    await tx.propertyEvent.create({
+      data: {
+        propertyId: property.id,
+        eventType: 'suspension_levantada',
+        description: input.reason
+          ? `Suspensión de servicios levantada: ${input.reason}`
+          : 'Suspensión de servicios levantada por la administración.',
+      },
+    });
+    await logActivity(tx, companyId, {
+      userId: user.id,
+      userName: user.name,
+      module: 'Finanzas',
+      action: 'Suspensión levantada',
+      target: property.code,
+    });
   });
 }
 
@@ -339,7 +449,7 @@ export async function getCondoFinanceSummary(companyId: string, condominiumId: s
  */
 export async function listPropertiesWithBalance(companyId: string, condominiumId: string) {
   return withTenantContext(companyId, async (tx) => {
-    const [properties, settings, charges, allocations, plans] = await Promise.all([
+    const [properties, settings, charges, allocations, plans, owners, manualSuspensions] = await Promise.all([
       tx.property.findMany({ where: { condominiumId, status: 'activa' }, orderBy: { code: 'asc' } }),
       tx.condominiumFinancialSettings.findUnique({ where: { condominiumId } }),
       tx.charge.findMany({
@@ -353,8 +463,25 @@ export async function listPropertiesWithBalance(companyId: string, condominiumId
       // Mismo criterio que getPropertySuspension: un convenio vigente
       // no suspende. Se trae en lote para no consultar por unidad.
       tx.paymentPlan.findMany({ where: { condominiumId, status: 'vigente' }, select: { propertyId: true } }),
+      // Propietario vigente de cada filial, para el detalle de al
+      // día / morosidad. En lote, no por unidad.
+      tx.propertyMember.findMany({
+        where: { property: { condominiumId }, endDate: null, role: 'propietario' },
+        select: { propertyId: true, person: { select: { fullName: true } } },
+      }),
+      // Suspensión manual vigente (ver suspendPropertyServices).
+      tx.propertyServiceSuspension.findMany({
+        where: { endedAt: null, property: { condominiumId } },
+        select: { propertyId: true },
+      }),
     ]);
     const withPlan = new Set(plans.map((p) => p.propertyId));
+    const manuallySuspended = new Set(manualSuspensions.map((s) => s.propertyId));
+    const ownerByProperty = new Map<string, string>();
+    for (const o of owners) {
+      const prev = ownerByProperty.get(o.propertyId);
+      ownerByProperty.set(o.propertyId, prev ? `${prev} · ${o.person.fullName}` : o.person.fullName);
+    }
 
     const paidByCharge = new Map<string, number>();
     for (const a of allocations) {
@@ -381,9 +508,19 @@ export async function listPropertiesWithBalance(companyId: string, condominiumId
           c.dueDate < now
       ).length;
       const hasPaymentPlan = withPlan.has(p.id);
+      const manualSuspension = manuallySuspended.has(p.id);
       const suspended =
-        !hasPaymentPlan && !!settings?.suspensionEnabled && overdueOrdinary >= (settings?.suspensionMonths ?? 3);
-      return { ...p, balance, suspended, hasPaymentPlan, monthsOverdue: overdueOrdinary };
+        manualSuspension ||
+        (!hasPaymentPlan && !!settings?.suspensionEnabled && overdueOrdinary >= (settings?.suspensionMonths ?? 3));
+      return {
+        ...p,
+        balance,
+        suspended,
+        manualSuspension,
+        hasPaymentPlan,
+        monthsOverdue: overdueOrdinary,
+        ownerName: ownerByProperty.get(p.id) ?? null,
+      };
     });
   });
 }
