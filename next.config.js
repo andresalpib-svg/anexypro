@@ -73,34 +73,24 @@ const nextConfig = {
   },
 
   /**
-   * Headers de seguridad, en todas las rutas.
+   * Headers de seguridad estáticos, en todas las rutas.
    *
    * Antes no había ninguno (auditoría de seguridad 2026-08-11, hallazgo
-   * #18): sin `frame-ancestors`/`X-Frame-Options`, ANEXYpro se podía
-   * embeber en un `<iframe>` de un sitio ajeno — clickjacking sobre,
-   * por ejemplo, la aprobación de un gasto o un cambio de
-   * configuración.
+   * #18): sin `X-Frame-Options`, ANEXYpro se podía embeber en un
+   * `<iframe>` de un sitio ajeno — clickjacking sobre, por ejemplo, la
+   * aprobación de un gasto o un cambio de configuración.
    *
-   * DELIBERADAMENTE NO se agrega una Content-Security-Policy completa
-   * (script-src/style-src): la aplicación usa `style={{...}}` inline en
-   * decenas de componentes (color de marca del condominio, barras de
-   * progreso, etc.) y bloquear estilos inline sin una revisión
-   * pantalla por pantalla podría romper la interfaz en producción sin
-   * forma de probarlo todo de antemano. `frame-ancestors 'none'` no
-   * tiene ese riesgo: solo impide que OTRA página nos incruste, no
-   * cambia nada de cómo se renderiza esta.
+   * El `Content-Security-Policy` (con `frame-ancestors 'none'` incluido)
+   * NO vive acá: se genera en `src/middleware.ts`, con un nonce distinto
+   * en cada petición para `script-src` — un valor fijo en esta config no
+   * podría llevar nonce. `X-Frame-Options` se deja igual como respaldo
+   * para un navegador viejo que no entienda `frame-ancestors` en la CSP.
    */
   async headers() {
     return [
       {
         source: '/:path*',
         headers: [
-          // Redundante con X-Frame-Options a propósito: es el
-          // reemplazo moderno (soporta más casos, como subdominios
-          // específicos si algún día hicieran falta) pero un navegador
-          // viejo que no entienda `frame-ancestors` en la CSP todavía
-          // respeta el header clásico.
-          { key: 'Content-Security-Policy', value: "frame-ancestors 'none'" },
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },

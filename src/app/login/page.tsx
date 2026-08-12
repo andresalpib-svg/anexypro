@@ -4,6 +4,19 @@ import { SplashScreen } from '@/components/ui/splash-screen';
 import { LoginForm } from './login-form';
 
 /**
+ * Dinámica a la fuerza: la CSP con nonce por petición
+ * (src/middleware.ts, auditoría de seguridad 2026-08-11, hallazgo
+ * #18) necesita que el HTML se genere en cada petición, con el nonce
+ * de ESA petición incrustado en los scripts. Una página estática se
+ * renderiza UNA vez en el build y se sirve cacheada siempre igual —
+ * el nonce del build nunca coincide con el de la petición real, y el
+ * navegador bloquea todos los scripts (se reprodujo en local: la
+ * página cargaba en blanco, sin hidratar). Esta era una de las 3
+ * únicas rutas estáticas de toda la aplicación.
+ */
+export const dynamic = 'force-dynamic';
+
+/**
  * El formulario lee la URL (`callbackUrl`, `expirada`) con
  * `useSearchParams`, que obliga a envolverlo en un límite de
  * suspensión: sin él, la compilación de producción falla al

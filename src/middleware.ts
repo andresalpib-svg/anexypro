@@ -26,6 +26,57 @@ function esPublica(pathname: string): boolean {
   );
 }
 
+/**
+ * CSP con nonce por petición (auditoría de seguridad 2026-08-11,
+ * hallazgo #18 — opción B del informe, elegida sobre C).
+ *
+ * `script-src` con nonce + `strict-dynamic` cierra el vector de XSS
+ * que de verdad importa: un script inyectado por un atacante no lleva
+ * el nonce de esta petición, así que el navegador nunca lo ejecuta —
+ * tenga o no una URL propia. No hay ningún script de terceros en el
+ * proyecto (sin Analytics, sin Sentry, nada — comprobado antes de
+ * escribir esto) y tampoco ningún `dangerouslySetInnerHTML` con
+ * `<script>` a mano, así que no hay nada que se pueda romper por este
+ * lado. `style-src` se deja con `'unsafe-inline'` A PROPÓSITO: la
+ * interfaz usa `style={{...}}` en ~18 archivos (colores de marca del
+ * condominio, barras de progreso) y bloquearlo exige revisar cada uno
+ * a mano — se deja para una pasada aparte, ver el informe.
+ *
+ * Se genera ACÁ, no en `next.config.js`: el nonce tiene que cambiar en
+ * cada petición — un valor fijo en la config no protegería nada.
+ */
+function construirCsp(nonce: string): string {
+  return [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' blob: data:",
+    "font-src 'self' data:",
+    "connect-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    'upgrade-insecure-requests',
+  ].join('; ');
+}
+
+/**
+ * Headers de la PETICIÓN (no de la respuesta) con el nonce y el CSP ya
+ * puestos. Next.js lee el `Content-Security-Policy` de la petición
+ * entrante para aplicar el nonce automáticamente a sus propios scripts
+ * de arranque (hidratación, runtime de webpack) — es el mecanismo
+ * documentado de Next, no un header cualquiera: sin esto, esos
+ * scripts —que no son nuestros, los genera el framework— quedarían
+ * bloqueados por la propia política y la aplicación no arrancaría.
+ */
+function headersConNonce(req: NextRequest, nonce: string, csp: string): Headers {
+  const h = new Headers(req.headers);
+  h.set('x-nonce', nonce);
+  h.set('Content-Security-Policy', csp);
+  return h;
+}
+
 // Tres portales, igual que el prototipo: /app (Administradora),
 // /seguridad (Portal de Seguridad), /portal (Ecosistema Condómino).
 // El middleware solo verifica sesión + que el rol coincida con el
@@ -35,21 +86,40 @@ const conSesion = auth((req) => {
   const { pathname } = req.nextUrl;
   const session = req.auth;
 
+  const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
+  const csp = construirCsp(nonce);
+  const requestHeaders = headersConNonce(req, nonce, csp);
+
+  // Toda respuesta que sigue a la petición (nunca los redirect, que no
+  // renderizan nada en este ciclo) lleva el CSP con el nonce de esta
+  // petición, tanto en la petición reenviada (para que Next se aplique
+  // el nonce a sí mismo) como en la respuesta (para que el navegador
+  // la haga cumplir).
+  const siguiente = () => {
+    const res = NextResponse.next({ request: { headers: requestHeaders } });
+    res.headers.set('Content-Security-Policy', csp);
+    return res;
+  };
+  const redirigir = (url: URL) => {
+    const res = NextResponse.redirect(url);
+    res.headers.set('Content-Security-Policy', csp);
+    return res;
+  };
+
   // La ruta se propaga como header de request para que los layouts
   // (server components) puedan aplicar reglas por módulo — headers()
   // no expone el pathname por sí solo.
   const withPath = () => {
-    const h = new Headers(req.headers);
-    h.set('x-pathname', pathname);
-    return NextResponse.next({ request: { headers: h } });
+    requestHeaders.set('x-pathname', pathname);
+    return siguiente();
   };
 
-  if (esPublica(pathname)) return NextResponse.next();
+  if (esPublica(pathname)) return siguiente();
 
   if (!session?.user) {
     const url = new URL('/login', req.url);
     url.searchParams.set('callbackUrl', pathname);
-    return NextResponse.redirect(url);
+    return redirigir(url);
   }
 
   const role = session.user.role;
@@ -58,16 +128,16 @@ const conSesion = auth((req) => {
   const en = (base: string) => pathname === base || pathname.startsWith(`${base}/`);
 
   if (en('/master') && role !== 'master') {
-    return NextResponse.redirect(new URL('/', req.url));
+    return redirigir(new URL('/', req.url));
   }
   if (en('/app') && !['admin_owner', 'admin_staff', 'contador'].includes(role)) {
-    return NextResponse.redirect(new URL('/', req.url));
+    return redirigir(new URL('/', req.url));
   }
   if (en('/seguridad') && role !== 'seguridad') {
-    return NextResponse.redirect(new URL('/', req.url));
+    return redirigir(new URL('/', req.url));
   }
   if (en('/portal') && role !== 'condomino') {
-    return NextResponse.redirect(new URL('/', req.url));
+    return redirigir(new URL('/', req.url));
   }
 
   return withPath();
@@ -102,10 +172,19 @@ export default async function middleware(req: NextRequest, ctx: any) {
       tieneAuthUrl: Boolean(process.env.AUTH_URL ?? process.env.NEXTAUTH_URL),
     });
 
-    if (esPublica(pathname)) return NextResponse.next();
+    const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
+    const csp = construirCsp(nonce);
+
+    if (esPublica(pathname)) {
+      const res = NextResponse.next({ request: { headers: headersConNonce(req, nonce, csp) } });
+      res.headers.set('Content-Security-Policy', csp);
+      return res;
+    }
     const url = new URL('/login', req.url);
     url.searchParams.set('callbackUrl', pathname);
-    return NextResponse.redirect(url);
+    const res = NextResponse.redirect(url);
+    res.headers.set('Content-Security-Policy', csp);
+    return res;
   }
 }
 

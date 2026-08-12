@@ -122,10 +122,37 @@ módulos lo hace bien; los hallazgos de abajo son los puntos donde no.
 > **Con esto, los 23 hallazgos de la auditoría están corregidos y en
 > producción.** Lo único que queda fuera del alcance de esta auditoría
 > formal: CAPTCHA real en login/`/demo` (el freno por IP baja el techo del
-> ataque pero no lo elimina si el atacante rota de IP) y una CSP completa
-> de `script-src`/`style-src` (requiere revisar pantalla por pantalla el
-> uso extensivo de `style={{...}}` inline antes de poder restringirlo sin
-> riesgo).
+> ataque pero no lo elimina si el atacante rota de IP).
+>
+> **Actualización 2026-08-11 (cuarta pasada) — `script-src` con nonce (opción B del menú
+> de CSP).** Se implementó `src/middleware.ts` genera un nonce distinto
+> en cada petición y arma el `Content-Security-Policy` completo
+> (`script-src 'self' 'nonce-...' 'strict-dynamic'`, `style-src 'self'
+> 'unsafe-inline'` sin tocar) — se movió de `next.config.js` (estático)
+> a `middleware.ts` porque el nonce tiene que cambiar por petición. La
+> CSP estática en `next.config.js` se redujo a los headers que sí
+> pueden ser fijos (`X-Frame-Options`, `X-Content-Type-Options`,
+> `Referrer-Policy`, HSTS).
+>
+> **Encontrado y corregido durante la verificación, antes de desplegar:**
+> Next.js aplica el nonce automáticamente a sus propios scripts de
+> arranque, pero SOLO en páginas renderizadas por petición — en las
+> páginas ESTÁTICAS (prerenderizadas una vez en el build y servidas
+> cacheadas) el nonce del HTML cacheado nunca coincide con el de la CSP
+> de la petición real, y el navegador bloquea todos los scripts (se
+> reprodujo en un build de producción local: la página cargaba en
+> blanco, sin hidratar — 12 violaciones de CSP en consola). De las
+> ~80 rutas de la aplicación, exactamente 3 eran estáticas:
+> `/login`, `/recuperar` y `/demo` — justo las 3 páginas públicas de
+> entrada. Se les agregó `export const dynamic = 'force-dynamic'`
+> (comentado en cada archivo) y se reverificó: build de producción
+> local (`.next-prod`) con 0 rutas estáticas, y las 3 páginas
+> confirmadas hidratando correctamente en el navegador integrado —
+> `/login` con una prueba funcional real (clic en "mostrar contraseña"
+> cambia el `type` del input de `password` a `text`, algo que solo
+> puede pasar si React se hidrató), `/recuperar` y `/demo` con
+> `hasReactHandlers: true` verificado por JS. Desplegado a producción,
+> `tsc`/318 tests/`next build` en verde antes del deploy.
 
 ---
 
