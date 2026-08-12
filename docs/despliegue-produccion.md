@@ -75,6 +75,31 @@ registra el motivo y manda al acceso. Antes propagaba la excepción y
 Vercel devolvía 500 en todas las rutas, incluida `/login`: la
 aplicación quedaba sin forma de entrar a arreglarla.
 
+**El middleware se estaba comiendo el cron (2026-08-12).** `vercel.json`
+tenía su `crons` y `CRON_SECRET` estaba cargado en Vercel, pero el
+programador **nunca había corrido ni una vez**. El motivo: el matcher del
+middleware incluye `/api/cron`, y como esa ruta se autoriza con la
+cabecera `Authorization: Bearer <CRON_SECRET>` y no con cookie de sesión,
+el portero la mandaba a `/login` con un **307**. Vercel disparaba el cron
+todos los días a las 14:00 UTC, recibía un redirect perfectamente válido,
+lo daba por bueno — y el manejador de la ruta no llegaba a ejecutarse
+jamás. Ningún proceso automático corría (intereses moratorios,
+facturación de la cuota, gastos recurrentes, avisos de contratos,
+cobranza, informe mensual, revisión del sistema) y **no había error en
+ningún lado**: la bitácora vacía se ve igual que un cron todavía sin
+programar. Ahora `seAutorizaSola('/api/cron')` la deja pasar; la
+autorización real (secreto en tiempo constante o sesión
+master/admin_owner) sigue estando dentro de la ruta, que responde 401 por
+su cuenta — que además es lo correcto para una API. Comprobación rápida
+sobre cualquier despliegue:
+
+```
+curl -s -o /dev/null -w "%{http_code}\n" https://api.anexypro.com/api/cron
+```
+
+**401 es lo correcto** (la ruta contestó). **307 significa que el cron
+está muerto otra vez.**
+
 **La base de producción se creó sin migraciones**, con `db push` desde
 una versión vieja del modelo: le faltaban 33 tablas. `desplegar-bd.ts`
 lo detecta, la pone al día y normaliza el historial. `db push` corre

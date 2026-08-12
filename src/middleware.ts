@@ -27,6 +27,31 @@ function esPublica(pathname: string): boolean {
 }
 
 /**
+ * Rutas que NO se autorizan con la sesión del navegador y por eso no
+ * pueden pasar por el portero de este middleware.
+ *
+ * Hoy es una sola: `/api/cron`. La llama el programador del hosting con
+ * `Authorization: Bearer <CRON_SECRET>`, sin cookie de sesión — y el
+ * middleware, que solo sabe de sesiones, la mandaba a /login con un 307.
+ * El resultado era el peor posible: Vercel disparaba el cron todos los
+ * días, recibía un redirect perfectamente válido y lo daba por bueno,
+ * mientras el manejador de la ruta NUNCA llegaba a ejecutarse. Ningún
+ * proceso automático corría —intereses moratorios, facturación de la
+ * cuota, gastos recurrentes, avisos de contratos, cobranza, informe
+ * mensual, revisión del sistema— y no había error en ningún lado que lo
+ * delatara: la bitácora de corridas quedaba vacía, que es exactamente lo
+ * que se ve cuando el cron todavía no se ha programado.
+ *
+ * Dejarla pasar NO la abre: `/api/cron` hace su propia autorización
+ * (secreto en tiempo constante, o sesión master/admin_owner) y responde
+ * 401 por su cuenta. Un 401 es además lo correcto para una API —el
+ * redirect a /login nunca lo fue.
+ */
+function seAutorizaSola(pathname: string): boolean {
+  return pathname === '/api/cron';
+}
+
+/**
  * CSP con nonce por petición (auditoría de seguridad 2026-08-11,
  * hallazgo #18 — opción B del informe, elegida sobre C).
  *
@@ -114,7 +139,7 @@ const conSesion = auth((req) => {
     return siguiente();
   };
 
-  if (esPublica(pathname)) return siguiente();
+  if (esPublica(pathname) || seAutorizaSola(pathname)) return siguiente();
 
   if (!session?.user) {
     const url = new URL('/login', req.url);
@@ -175,7 +200,11 @@ export default async function middleware(req: NextRequest, ctx: any) {
     const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
     const csp = construirCsp(nonce);
 
-    if (esPublica(pathname)) {
+    // También acá: si la lectura de la sesión falla, `/api/cron` tiene
+    // que seguir llegando a su manejador — no depende de la sesión para
+    // autorizarse, y mandarlo a /login volvería a detener en silencio
+    // todos los procesos automáticos.
+    if (esPublica(pathname) || seAutorizaSola(pathname)) {
       const res = NextResponse.next({ request: { headers: headersConNonce(req, nonce, csp) } });
       res.headers.set('Content-Security-Policy', csp);
       return res;

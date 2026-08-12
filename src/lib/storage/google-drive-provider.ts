@@ -58,6 +58,34 @@ function q(value: string): string {
   return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 }
 
+/**
+ * Traduce el rechazo del endpoint de token de Google a algo accionable.
+ *
+ * Es lo que termina leyendo el administrador en «Estado del sistema»,
+ * así que cada caso lleva el paso siguiente, no el diagnóstico a secas.
+ * `invalid_grant` es el que de verdad ocurre: mientras la app OAuth
+ * siga en estado «Prueba» en Google Cloud, Google vence el refresh
+ * token a los 7 días — pasó el 2026-08-12 y dejó el repositorio sin
+ * poder guardar nada.
+ */
+export function motivoDelRechazo(status: number, codigo: string): string {
+  const base = `Google Drive rechazó el token de actualización (${status}${codigo ? ` ${codigo}` : ''}).`;
+  if (codigo === 'invalid_grant') {
+    return (
+      `${base} El token venció o fue revocado. Reautorizá con ` +
+      '`npx tsx scripts/autorizar-drive-oauth.ts` y actualizá GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN en Vercel. ' +
+      'Si vuelve a pasar a los pocos días, es que la app OAuth sigue en modo «Prueba»: publicala en Google Cloud → Pantalla de consentimiento.'
+    );
+  }
+  if (codigo === 'invalid_client' || codigo === 'unauthorized_client') {
+    return (
+      `${base} No es el token: son las credenciales del cliente OAuth. ` +
+      'GOOGLE_DRIVE_OAUTH_CLIENT_ID / _CLIENT_SECRET no corresponden al cliente que emitió el token — revisalos en Google Cloud → Credenciales.'
+    );
+  }
+  return `${base} Volvé a autorizar la cuenta con \`npx tsx scripts/autorizar-drive-oauth.ts\`.`;
+}
+
 export class GoogleDriveProvider implements StorageProvider {
   readonly kind = 'google_drive' as const;
 
@@ -85,7 +113,19 @@ export class GoogleDriveProvider implements StorageProvider {
         }),
       });
       if (!res.ok) {
-        throw new Error(`Google Drive rechazó el token de actualización (${res.status}). Volvé a autorizar la cuenta.`);
+        // El cuerpo de Google trae el motivo exacto y cada motivo tiene
+        // un arreglo DISTINTO. Sin él, el mensaje era siempre "volvé a
+        // autorizar la cuenta" — que para `invalid_client` (credenciales
+        // del cliente cambiadas) es el consejo equivocado y hace perder
+        // la tarde.
+        const cuerpo = await res.text().catch(() => '');
+        let codigo = '';
+        try {
+          codigo = (JSON.parse(cuerpo) as { error?: string }).error ?? '';
+        } catch {
+          /* Google devolvió algo que no es JSON: queda el status a secas. */
+        }
+        throw new Error(motivoDelRechazo(res.status, codigo));
       }
       const json = (await res.json()) as { access_token: string; expires_in: number };
       this.token = { value: json.access_token, expiresAt: Date.now() + json.expires_in * 1000 };

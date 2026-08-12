@@ -230,11 +230,44 @@ Por eso el proveedor tiene ahora DOS modos de autenticación (los dos viven en
 - **Cuenta de servicio**: queda listo para el día en que haya Workspace con
   unidad compartida (`GOOGLE_DRIVE_SHARED_DRIVE_ID`).
 
-OJO: la app OAuth está en modo «Prueba» con `api.anexypro@gmail.com` como
-usuario de prueba. En ese modo Google puede vencer los refresh tokens a los
-7 días **solo si el scope es "sensible"**; `drive` es *restringido*, no
-sensible, pero si el token venciera hay que reautorizar
-(`scripts/probar-drive.ts` lo detecta al fallar) o publicar la app.
+#### El refresh token venció a los 7 días (2026-08-12) — y va a volver a pasar
+
+La advertencia de arriba estaba escrita, pero con la conclusión al revés: se
+suponía que el vencimiento a los 7 días aplicaba «solo si el scope es
+sensible» y que `drive`, por ser *restringido*, se salvaba. **No se salva.**
+El token emitido el 2026-08-05 dejó de servir el 2026-08-12 — siete días
+exactos — y Google respondió:
+
+```
+HTTP 400  invalid_grant  —  Token has been expired or revoked.
+```
+
+Con eso, el repositorio de documentos no podía guardar ni un archivo. Lo que
+vence es lo que emite una app OAuth **en estado «Prueba»**: mientras el
+proyecto de Google Cloud siga así, esto se repite cada semana.
+
+**Arreglo de una vez:** Google Cloud → APIs y servicios → Pantalla de
+consentimiento OAuth → **Publicar aplicación** (estado «En producción»). La
+app no está verificada por Google, así que al autorizar sale la pantalla
+«Google no ha verificado esta aplicación» → Configuración avanzada → Ir a
+ANEXYpro. Es esperable: el límite de una app sin verificar son 100 usuarios y
+acá el usuario es uno, la propia cuenta de la plataforma.
+
+**Arreglo de ahora (hay que hacerlo igual, publicar no revive el token
+muerto):**
+
+```
+npx tsx scripts/autorizar-drive-oauth.ts
+```
+
+y después subir el token nuevo a Vercel (`GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN`)
+y desplegar: en producción **el entorno le gana a la configuración guardada
+en la base** (ver `buildProvider`), así que cambiarlo solo en el panel no
+alcanza.
+
+El proveedor ya no dice «volvé a autorizar» para todo: distingue
+`invalid_grant` (el token) de `invalid_client` (las credenciales del cliente
+OAuth), que se arreglan en sitios distintos.
 
 ### Cambio de proveedor con archivos existentes: migración perezosa de carpetas
 
@@ -260,6 +293,10 @@ evidencias viejas (idempotente, `--dry` disponible).
 
 ### Guiones de apoyo
 
+- `scripts/autorizar-drive-oauth.ts` — reautoriza la cuenta y deja el refresh
+  token nuevo en `.env` (flujo de bucle local; el de copiar y pegar el código
+  está descontinuado desde 2022). Comprueba el token antes de darlo por bueno
+  e imprime los pasos para Vercel.
 - `scripts/probar-drive.ts` — prueba la conexión real (healthCheck, subir,
   descargar, renombrar, eliminar) sin tocar la base.
 - `scripts/activar-drive.ts` — activa Drive tras pasar el healthCheck, igual
