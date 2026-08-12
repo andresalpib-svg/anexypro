@@ -18,32 +18,44 @@ morosidad), Emisión de Documentos + visor de documento, Incumplimientos,
 Proyectos (kanban) — todo renderiza sin errores de consola con `admin_owner`.
 Confirma que los fixes de seguridad de hoy no rompieron el flujo normal.
 
+> **Actualización 2026-08-11 (tercera pasada) — los 3 hallazgos urgentes ya
+> están corregidos.** Detalle completo en la sección de cada uno más abajo.
+> Resumen: `next-auth`/`@auth/core`/`@auth/prisma-adapter` actualizados (las
+> 2 CVE críticas ya no aparecen en `npm audit`); `xlsx` reemplazado por la
+> build oficial 0.20.3 del propio CDN de SheetJS (ya no publican a npm desde
+> la 0.18.5, y no hay fix ahí); `runner.ts` con reclamo atómico
+> (`INSERT...ON CONFLICT...WHERE`) verificado con una prueba real de
+> concurrencia (5 llamadas paralelas → exactamente 1 reclama); y
+> `late-interest.ts` con `timeout`/`maxWait` explícitos. `tsc`, 318 tests,
+> `db:verify` 11/11 y una prueba funcional real de lectura/escritura de
+> `.xlsx` (con acentos y ñ) — todo en verde antes de desplegar.
+
 ---
 
 ## Resumen priorizado
 
-| # | Severidad | Área | Archivo | Problema |
-|---|---|---|---|---|
-| 1 | **Crítica** | Dependencias | `next-auth`/`@auth/core` | 2 CVE críticas: fallos de configuración pueden dejar pasar auth en vez de bloquear; bypass de normalización de email por homoglifos |
-| 2 | Alta | Dependencias | `xlsx` 0.18.5 | Prototype Pollution + ReDoS, **sin parche disponible** — confirmado explotable vía `import-excel.ts` (archivos subidos por usuario) |
-| 3 | Alta | Dependencias | `next` 14.2.35 | ~19 avisos acumulados (DoS, SSRF en Server Actions, bypass de Middleware con i18n) — requiere salto a Next 16 |
-| 4 | Alta | Condición de carrera | `src/lib/jobs/runner.ts` (`runJob`) | El propio mecanismo de idempotencia de los jobs tiene TOCTOU — dos disparos casi simultáneos de `/api/cron` pueden duplicar el cobro de interés moratorio |
-| 5 | Alta | Transacción larga | `src/lib/services/late-interest.ts` | Sin `timeout` explícito — mismo bug ya confirmado en producción (`import-excel.ts`) con muchos cargos vencidos |
-| 6 | Alta | Rendimiento | `src/lib/services/security.ts` (`getSecurityLog`) | Trae el historial COMPLETO de ingresos/paquetes/incidentes sin `take` ni filtro de fecha — mismo bug ya corregido en `visits.ts`, no replicado acá |
-| 7 | Media | Condición de carrera | `src/lib/services/demo.ts` (`createMasterDemoCompany`) | Mismo patrón que `createDemoCompany` ya protege con advisory lock, pero esta variante (demos para prospectos reales) no lo tiene |
-| 8 | Media | Condición de carrera | `src/lib/services/collections.ts` (`createPaymentPlan`) | Sin constraint único — dos aprobaciones casi simultáneas pueden crear 2 convenios "vigentes" para la misma filial |
-| 9 | Media | Fallo silencioso | `src/lib/services/subscriptions.ts` (`canCreateCondominium`) | Ante un error transitorio de BD, falla ABIERTO (bypass silencioso del límite del plan) |
-| 10 | Media | Fallo silencioso | `src/lib/services/storage.ts` (`renameObject`) | Si el proveedor no puede renombrar el archivo real, el nombre se actualiza en la BD igual — queda desincronizado para siempre |
-| 11 | Media | Fecha/zona horaria | `src/app/app/reportes/violations-tab.tsx` | Filtro de fechas sin `Z` — recorta ~6 horas del día en hora de Costa Rica; un incumplimiento reportado de noche desaparece del reporte de ese día |
-| 12 | Media | Fecha/zona horaria | `src/app/app/finanzas/actions.ts` (`generateBillingAction`) | Reintroduce el patrón `new Date(...T00:00:00)` sin `Z` que ya causó bugs de facturación en otro punto del código |
-| 13 | Media | Consistencia de datos | `src/lib/services/demo.ts:507` | `generateOrdinaryBilling(..., new Date())` en vez de `periodStart()` — rompe el invariante "período = día 1 UTC" para demos |
-| 14 | Media | Documentación | `docs/tareas-pendientes-2026-08-11.md` | Dice que los seeds de condominio nuevo no son automáticos — **ya se corrigió** 3h21min antes de escribirse esa línea (commit `76a7059`), nunca se actualizó |
-| 15 | Media-Baja | Fallo silencioso | `src/lib/services/user-provisioning.ts` | Rollback de alta de usuario en 2 pasos no atómicos, con errores silenciados — puede dejar un `User`/`Person` inconsistentes |
-| 16 | Baja-Media | Rendimiento | 9 archivos más (ver detalle) | `findMany` sin `take` sobre tablas de crecimiento continuo (cargos, pagos, gastos, comunicados, lecturas de agua, conciliación bancaria, fondo de reserva, caja chica) |
-| 17 | Baja | Condición de carrera | `src/lib/services/document-requests.ts` (`requestDocument`) | Sin constraint único — doble clic puede duplicar una solicitud de documento |
-| 18 | Baja | Cálculo | `src/lib/domain/aging.ts` | Redondeo inconsistente entre el total por fila y el total agregado — ruido de punto flotante visible en el Excel de cobranza |
-| 19 | Baja | Proceso | `prisma/migrations/` | 2 migraciones nombradas con fecha anterior a cuando realmente se escribieron/aplicaron — sin romper nada hoy, pero riesgo de despliegue futuro si alguna vez hay dependencia cruzada real |
-| 20 | Baja | Rendimiento | `src/lib/services/reports.ts` (`getDelinquencyReport`) | Las consultas de `charges`/`allocations` no se filtran por `condoIds` (a diferencia de `properties`, que sí) — no es fuga de datos (el resultado final igual se filtra), pero desperdicia trabajo que crece con la antigüedad de la empresa |
+| # | Severidad | Área | Archivo | Problema | Estado |
+|---|---|---|---|---|---|
+| 1 | **Crítica** | Dependencias | `next-auth`/`@auth/core` | 2 CVE críticas: fallos de configuración pueden dejar pasar auth en vez de bloquear; bypass de normalización de email por homoglifos | ✅ Corregido |
+| 2 | Alta | Dependencias | `xlsx` 0.18.5 | Prototype Pollution + ReDoS, **sin parche disponible** — confirmado explotable vía `import-excel.ts` (archivos subidos por usuario) | ✅ Corregido |
+| 3 | Alta | Dependencias | `next` 14.2.35 | ~19 avisos acumulados (DoS, SSRF en Server Actions, bypass de Middleware con i18n) — requiere salto a Next 16 | Pendiente (fuera de alcance de esta pasada) |
+| 4 | Alta | Condición de carrera | `src/lib/jobs/runner.ts` (`runJob`) | El propio mecanismo de idempotencia de los jobs tiene TOCTOU — dos disparos casi simultáneos de `/api/cron` pueden duplicar el cobro de interés moratorio | ✅ Corregido |
+| 5 | Alta | Transacción larga | `src/lib/services/late-interest.ts` | Sin `timeout` explícito — mismo bug ya confirmado en producción (`import-excel.ts`) con muchos cargos vencidos | ✅ Corregido |
+| 6 | Alta | Rendimiento | `src/lib/services/security.ts` (`getSecurityLog`) | Trae el historial COMPLETO de ingresos/paquetes/incidentes sin `take` ni filtro de fecha — mismo bug ya corregido en `visits.ts`, no replicado acá | Pendiente |
+| 7 | Media | Condición de carrera | `src/lib/services/demo.ts` (`createMasterDemoCompany`) | Mismo patrón que `createDemoCompany` ya protege con advisory lock, pero esta variante (demos para prospectos reales) no lo tiene | Pendiente |
+| 8 | Media | Condición de carrera | `src/lib/services/collections.ts` (`createPaymentPlan`) | Sin constraint único — dos aprobaciones casi simultáneas pueden crear 2 convenios "vigentes" para la misma filial | Pendiente |
+| 9 | Media | Fallo silencioso | `src/lib/services/subscriptions.ts` (`canCreateCondominium`) | Ante un error transitorio de BD, falla ABIERTO (bypass silencioso del límite del plan) | Pendiente |
+| 10 | Media | Fallo silencioso | `src/lib/services/storage.ts` (`renameObject`) | Si el proveedor no puede renombrar el archivo real, el nombre se actualiza en la BD igual — queda desincronizado para siempre | Pendiente |
+| 11 | Media | Fecha/zona horaria | `src/app/app/reportes/violations-tab.tsx` | Filtro de fechas sin `Z` — recorta ~6 horas del día en hora de Costa Rica; un incumplimiento reportado de noche desaparece del reporte de ese día | Pendiente |
+| 12 | Media | Fecha/zona horaria | `src/app/app/finanzas/actions.ts` (`generateBillingAction`) | Reintroduce el patrón `new Date(...T00:00:00)` sin `Z` que ya causó bugs de facturación en otro punto del código | Pendiente |
+| 13 | Media | Consistencia de datos | `src/lib/services/demo.ts:507` | `generateOrdinaryBilling(..., new Date())` en vez de `periodStart()` — rompe el invariante "período = día 1 UTC" para demos | Pendiente |
+| 14 | Media | Documentación | `docs/tareas-pendientes-2026-08-11.md` | Dice que los seeds de condominio nuevo no son automáticos — **ya se corrigió** 3h21min antes de escribirse esa línea (commit `76a7059`), nunca se actualizó | ✅ Corregido (misma nota) |
+| 15 | Media-Baja | Fallo silencioso | `src/lib/services/user-provisioning.ts` | Rollback de alta de usuario en 2 pasos no atómicos, con errores silenciados — puede dejar un `User`/`Person` inconsistentes | Pendiente |
+| 16 | Baja-Media | Rendimiento | 9 archivos más (ver detalle) | `findMany` sin `take` sobre tablas de crecimiento continuo (cargos, pagos, gastos, comunicados, lecturas de agua, conciliación bancaria, fondo de reserva, caja chica) | Pendiente |
+| 17 | Baja | Condición de carrera | `src/lib/services/document-requests.ts` (`requestDocument`) | Sin constraint único — doble clic puede duplicar una solicitud de documento | Pendiente |
+| 18 | Baja | Cálculo | `src/lib/domain/aging.ts` | Redondeo inconsistente entre el total por fila y el total agregado — ruido de punto flotante visible en el Excel de cobranza | Pendiente |
+| 19 | Baja | Proceso | `prisma/migrations/` | 2 migraciones nombradas con fecha anterior a cuando realmente se escribieron/aplicaron — sin romper nada hoy, pero riesgo de despliegue futuro si alguna vez hay dependencia cruzada real | Pendiente |
+| 20 | Baja | Rendimiento | `src/lib/services/reports.ts` (`getDelinquencyReport`) | Las consultas de `charges`/`allocations` no se filtran por `condoIds` (a diferencia de `properties`, que sí) — no es fuga de datos (el resultado final igual se filtra), pero desperdicia trabajo que crece con la antigüedad de la empresa | Pendiente |
 
 ---
 
@@ -75,6 +87,29 @@ Confirma que los fixes de seguridad de hoy no rompieron el flujo normal.
 disponible) y evaluar reemplazar `xlsx` dado que no tiene parche. `next` 16
 es un proyecto aparte, no una tarea de una tarde.
 
+**✅ Corregido (#1 y #2, no #3).**
+- `next-auth` `5.0.0-beta.20` → `5.0.0-beta.32`, `@auth/prisma-adapter`
+  `2.4.2` → `2.11.3` (arrastra `@auth/core` `0.41.2` → `0.41.3`). Las 4 CVE
+  (2 críticas, 1 alta, 1 moderada) ya no aparecen en `npm audit --omit=dev`.
+  Verificado con login real de punta a punta contra un build de producción
+  local: sesión creada, `/api/auth/session` responde con el usuario y rol
+  correctos, navegación entre módulos protegidos funciona igual que antes.
+- `xlsx` `0.18.5` (npm registry, sin parche) → `0.20.3` instalado desde el
+  CDN oficial de SheetJS (`https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`)
+  — confirmado en su propia documentación como la versión vigente que
+  recomiendan instalar así, porque dejaron de publicar a npm después de la
+  0.18.5. Prototype Pollution y ReDoS ya no aparecen en `npm audit`.
+  Verificado con una prueba funcional real: escribir un `.xlsx` con
+  `XLSX.utils.json_to_sheet`/`XLSX.write` (mismo patrón que las rutas de
+  exportación) y leerlo de vuelta con `XLSX.read`/`sheet_to_json` (mismo
+  patrón que `import-excel.ts`), incluyendo texto con acentos y ñ — los
+  datos leídos coinciden exactamente con los escritos.
+- **`next` 14.2.35 (#3) sigue pendiente, a propósito**: el fix requiere
+  Next 16 (salto mayor), justo el framework donde hoy se implementó la CSP
+  con nonce por petición (`src/middleware.ts`) — no es prudente mezclar un
+  upgrade mayor de Next con lo que se acaba de estabilizar, sin una sesión
+  dedicada solo a probar esa migración.
+
 ---
 
 ## 4. ALTA — El propio mecanismo de idempotencia de los jobs tiene una condición de carrera
@@ -91,6 +126,21 @@ de que ninguna termine de marcarse como "corriendo" → **el interés moratorio
 se cobra dos veces** sobre el mismo cargo. El propio comentario de
 `late-interest.ts` llama a esto "un problema legal, no un bug".
 
+**✅ Corregido.** `runJob` ahora reclama la corrida con una sola sentencia
+`INSERT INTO job_runs ... ON CONFLICT (job_name, run_key) DO UPDATE ...
+WHERE ... RETURNING id` — atómica en Postgres, sin la ventana entre "leer"
+y "escribir" que tenía el `findUnique`+`upsert` separados. Mismas reglas de
+antes (ok = no se repite, corriendo hace &lt;30 min = no se repite, corriendo
+hace &gt;30 min = se considera abandonada y se puede reclamar). `force`
+(reprocesar a mano) sigue con el `upsert` de siempre, sin cambios — es
+intencional saltarse la protección cuando alguien lo pide explícitamente.
+**Verificado con una prueba real de concurrencia** (no solo leyendo el
+código): 5 llamadas disparadas en paralelo (`Promise.all`) contra la misma
+clave sobre la base de datos real → exactamente 1 la reclamó, las otras 4
+no hicieron nada; una clave ya marcada `ok` no se puede volver a reclamar;
+una clave distinta sí. Script de prueba descartado después, no quedó en el
+repo.
+
 ---
 
 ## 5. ALTA — Transacción larga sin `timeout` en interés moratorio (mismo bug ya visto)
@@ -104,6 +154,13 @@ mecanismo de falla que ya se confirmó en producción con `import-excel.ts`**
 (que por eso ya tiene `{ timeout: 180_000 }`). Si corta a mitad, ese
 condominio se queda sin intereses aplicados ese día, sin alerta, y puede
 repetirse indefinidamente.
+
+**✅ Corregido.** `applyLateInterestForCondo` ahora pasa
+`{ timeout: 120_000, maxWait: 20_000 }` a `withTenantContext`, con un
+comentario que explica por qué (mismo mecanismo de falla que
+`import-excel.ts`). No se tocó la lógica de cálculo, solo el límite de
+tiempo de la transacción — verificado que los 318 tests y `tsc` siguen en
+verde.
 
 ---
 

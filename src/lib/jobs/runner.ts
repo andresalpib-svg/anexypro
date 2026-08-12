@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { prisma } from '@/lib/db';
 
 /**
@@ -91,30 +92,63 @@ export async function runJob(
 
   const runKey = opts?.companyId ? `${job.runKey(now)}:${opts.companyId}` : job.runKey(now);
 
-  if (!force) {
-    const previous = await prisma.jobRun.findUnique({
-      where: { jobName_runKey: { jobName: name, runKey } },
-    });
-    // Solo se considera "ya ejecutado" si terminó bien. Una corrida
-    // con error debe poder reintentarse.
-    if (previous && previous.status === 'ok') {
-      return { job: name, status: 'omitido', summary: `Ya se había ejecutado (${runKey}).` };
-    }
-    if (previous && previous.status === 'corriendo') {
-      // Protección contra ejecución simultánea: si otra instancia lo
-      // está corriendo, esta no debe duplicar el trabajo.
-      const minutes = (Date.now() - previous.startedAt.getTime()) / 60000;
-      if (minutes < 30) {
-        return { job: name, status: 'omitido', summary: 'Ya hay una corrida en progreso.' };
-      }
-    }
-  }
+  let run: { id: string };
 
-  const run = await prisma.jobRun.upsert({
-    where: { jobName_runKey: { jobName: name, runKey } },
-    create: { jobName: name, runKey, status: 'corriendo' },
-    update: { status: 'corriendo', startedAt: new Date(), endedAt: null, error: null },
-  });
+  if (force) {
+    // `force` es para reprocesar A MANO — quien lo pide ya sabe que
+    // puede estar pisando una corrida existente, así que no hace falta
+    // la reclamación atómica de abajo.
+    run = await prisma.jobRun.upsert({
+      where: { jobName_runKey: { jobName: name, runKey } },
+      create: { jobName: name, runKey, status: 'corriendo' },
+      update: { status: 'corriendo', startedAt: new Date(), endedAt: null, error: null },
+    });
+  } else {
+    // Reclamo atómico en una sola sentencia SQL (evaluación de errores
+    // 2026-08-11, hallazgo #2): antes, el "¿ya corrió?" (`findUnique`)
+    // y el "marcar como corriendo" (`upsert`) eran dos pasos separados
+    // por un `await` — sin ningún candado entre medio. Dos llamadas a
+    // /api/cron casi simultáneas (un reintento del proveedor de cron
+    // por timeout, o "ejecutar ahora" cruzándose con el disparo
+    // programado) podían pasar las dos el `findUnique` antes de que
+    // cualquiera terminara su `upsert`, y las dos corrían el job en
+    // paralelo — para `interes-moratorio` eso es cobrar interés DOS
+    // VECES sobre el mismo cargo.
+    //
+    // `INSERT ... ON CONFLICT ... WHERE ... RETURNING` es una única
+    // sentencia atómica en Postgres: o esta llamada reclama la fila
+    // (0 o 1 filas en el arreglo), o no pasa nada — no hay una ventana
+    // entre "leer el estado" y "escribirlo" para que otra petición se
+    // cuele en el medio. Mismas reglas de antes: "ya hecho" solo si
+    // terminó con `ok`; una corrida `corriendo` de hace más de 30
+    // minutos se considera abandonada y se puede reclamar de nuevo.
+    const id = crypto.randomUUID();
+    const claimed = await prisma.$queryRaw<{ id: string }[]>`
+      INSERT INTO job_runs (id, job_name, run_key, status, started_at, ended_at, error)
+      VALUES (${id}, ${name}, ${runKey}, 'corriendo'::"JobStatus", now(), NULL, NULL)
+      ON CONFLICT (job_name, run_key) DO UPDATE
+      SET status = 'corriendo'::"JobStatus", started_at = now(), ended_at = NULL, error = NULL
+      WHERE job_runs.status = 'error'::"JobStatus"
+         OR (job_runs.status = 'corriendo'::"JobStatus" AND job_runs.started_at < now() - interval '30 minutes')
+      RETURNING id
+    `;
+
+    if (claimed.length === 0) {
+      // No se reclamó: ya está en 'ok', o 'corriendo' hace menos de 30
+      // minutos por otra petición. Una lectura aparte (fuera de la
+      // sentencia atómica) solo para saber qué mensaje mostrar — no
+      // hay ninguna decisión que dependa de ella, es puramente
+      // informativa.
+      const previous = await prisma.jobRun.findUnique({
+        where: { jobName_runKey: { jobName: name, runKey } },
+      });
+      if (previous?.status === 'ok') {
+        return { job: name, status: 'omitido', summary: `Ya se había ejecutado (${runKey}).` };
+      }
+      return { job: name, status: 'omitido', summary: 'Ya hay una corrida en progreso.' };
+    }
+    run = claimed[0]!;
+  }
 
   try {
     const result = await job.run(now, opts);

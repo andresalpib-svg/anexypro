@@ -39,138 +39,152 @@ export async function applyLateInterestForCondo(
   today: Date,
   opts: { dryRun?: boolean } = {}
 ) {
-  return withTenantContext(companyId, async (tx) => {
-    const settings = await tx.condominiumFinancialSettings.findUnique({
-      where: { condominiumId },
-    });
-    if (!settings) return { evaluated: 0, created: 0, updated: 0, amount: 0, detail: [] as any[] };
-
-    const policy: InterestPolicy = {
-      monthlyRatePct: Number(settings.lateInterestRate),
-      graceDays: settings.interestGraceDays ?? settings.graceDays,
-      interestType: settings.interestType,
-      maxPct: Number(settings.interestMaxPct),
-    };
-    if (policy.monthlyRatePct <= 0) {
-      return { evaluated: 0, created: 0, updated: 0, amount: 0, detail: [] as any[] };
-    }
-
-    // Filiales con convenio de pago vigente: NO devengan interés.
-    // Cobrarle intereses a quien está cumpliendo un arreglo firmado es
-    // la forma más rápida de que lo abandone.
-    const withPlan = await tx.paymentPlan.findMany({
-      where: { condominiumId, status: 'vigente' },
-      select: { propertyId: true },
-    });
-    const excluded = withPlan.map((p) => p.propertyId);
-
-    // Cargos vencidos que devengan mora.
-    const charges = await tx.charge.findMany({
-      where: {
-        condominiumId,
-        status: { in: ['pendiente', 'parcial'] },
-        chargeType: { in: INTEREST_BEARING as unknown as string[] as any },
-        dueDate: { lt: today },
-        ...(excluded.length > 0 ? { propertyId: { notIn: excluded } } : {}),
-      },
-      select: {
-        id: true,
-        propertyId: true,
-        description: true,
-        amount: true,
-        dueDate: true,
-        allocations: { where: { payment: { status: 'aplicado' } }, select: { amount: true } },
-        // Interés ya cobrado por este cargo.
-        interestCharges: {
-          where: { status: { not: 'anulado' } },
-          select: { id: true, amount: true, interestThroughDate: true },
-        },
-      },
-    });
-
-    let created = 0;
-    let updated = 0;
-    let amount = 0;
-    const detail: { chargeId: string; propertyId: string; toCharge: number; daysLate: number }[] = [];
-
-    for (const charge of charges) {
-      const paid = charge.allocations.reduce((s, a) => s + Number(a.amount), 0);
-      const outstanding = round2(Number(charge.amount) - paid);
-      const alreadyCharged = charge.interestCharges.reduce((s, i) => s + Number(i.amount), 0);
-
-      const result = calculateLateInterest({
-        outstanding,
-        dueDate: charge.dueDate,
-        today,
-        alreadyCharged,
-        policy,
+  // `timeout`/`maxWait` explícitos: el bucle de abajo hace 2-3 consultas
+  // por cada cargo vencido (incluida `recordChargeAccrual`, que a su vez
+  // consulta el período contable y el plan de cuentas). Con muchos cargos
+  // vencidos —un condominio grande, o activar `autoInterest` por primera
+  // vez sobre cartera ya morosa— son cientos de queries secuenciales; el
+  // plazo de 5 s por omisión de Prisma corta a mitad de camino contra una
+  // base remota. Es el mismo mecanismo de falla que ya se confirmó en
+  // producción con la importación de Excel (`import-excel.ts`), que por
+  // eso pide su propio plazo — ver el comentario de `OpcionesTransaccion`
+  // en `src/lib/db.ts` (evaluación de errores 2026-08-11, hallazgo #3).
+  return withTenantContext(
+    companyId,
+    async (tx) => {
+      const settings = await tx.condominiumFinancialSettings.findUnique({
+        where: { condominiumId },
       });
+      if (!settings) return { evaluated: 0, created: 0, updated: 0, amount: 0, detail: [] as any[] };
 
-      // Menos de un colón no se cobra: generaría ruido diario en el
-      // estado de cuenta sin ningún valor.
-      if (result.toCharge < 1) continue;
-
-      detail.push({
-        chargeId: charge.id,
-        propertyId: charge.propertyId,
-        toCharge: result.toCharge,
-        daysLate: result.daysLate,
-      });
-      amount += result.toCharge;
-
-      if (opts.dryRun) {
-        created += 1;
-        continue;
+      const policy: InterestPolicy = {
+        monthlyRatePct: Number(settings.lateInterestRate),
+        graceDays: settings.interestGraceDays ?? settings.graceDays,
+        interestType: settings.interestType,
+        maxPct: Number(settings.interestMaxPct),
+      };
+      if (policy.monthlyRatePct <= 0) {
+        return { evaluated: 0, created: 0, updated: 0, amount: 0, detail: [] as any[] };
       }
 
-      // Un cargo de interés POR CARGO BASE, que se va actualizando.
-      // Así el estado de cuenta muestra una línea de interés por
-      // cuota, y no una línea nueva cada día.
-      const existing = charge.interestCharges[0];
-      if (existing) {
-        const nuevo = round2(Number(existing.amount) + result.toCharge);
-        await tx.charge.update({
-          where: { id: existing.id },
-          data: {
-            amount: nuevo,
-            interestThroughDate: today,
-            description: `Interés moratorio — ${charge.description} (${result.daysLate} días)`,
-          },
-        });
-        updated += 1;
-      } else {
-        const property = await tx.property.findUniqueOrThrow({
-          where: { id: charge.propertyId },
-          select: { code: true },
-        });
-        const nuevo = await tx.charge.create({
-          data: {
-            condominiumId,
-            propertyId: charge.propertyId,
-            chargeType: 'interes_moratorio',
-            description: `Interés moratorio — ${charge.description} (${result.daysLate} días)`,
-            amount: result.toCharge,
-            dueDate: today,
-            interestBaseChargeId: charge.id,
-            interestThroughDate: today,
-          },
-        });
-        await recordChargeAccrual(tx, companyId, {
-          id: nuevo.id,
+      // Filiales con convenio de pago vigente: NO devengan interés.
+      // Cobrarle intereses a quien está cumpliendo un arreglo firmado es
+      // la forma más rápida de que lo abandone.
+      const withPlan = await tx.paymentPlan.findMany({
+        where: { condominiumId, status: 'vigente' },
+        select: { propertyId: true },
+      });
+      const excluded = withPlan.map((p) => p.propertyId);
+
+      // Cargos vencidos que devengan mora.
+      const charges = await tx.charge.findMany({
+        where: {
           condominiumId,
-          propertyCode: property.code,
-          chargeType: 'interes_moratorio',
-          description: nuevo.description,
-          amount: result.toCharge,
-          period: null,
-          issuedAt: today,
-        });
-        created += 1;
-      }
-    }
+          status: { in: ['pendiente', 'parcial'] },
+          chargeType: { in: INTEREST_BEARING as unknown as string[] as any },
+          dueDate: { lt: today },
+          ...(excluded.length > 0 ? { propertyId: { notIn: excluded } } : {}),
+        },
+        select: {
+          id: true,
+          propertyId: true,
+          description: true,
+          amount: true,
+          dueDate: true,
+          allocations: { where: { payment: { status: 'aplicado' } }, select: { amount: true } },
+          // Interés ya cobrado por este cargo.
+          interestCharges: {
+            where: { status: { not: 'anulado' } },
+            select: { id: true, amount: true, interestThroughDate: true },
+          },
+        },
+      });
 
-    return { evaluated: charges.length, created, updated, amount: round2(amount), detail };
-  });
+      let created = 0;
+      let updated = 0;
+      let amount = 0;
+      const detail: { chargeId: string; propertyId: string; toCharge: number; daysLate: number }[] = [];
+
+      for (const charge of charges) {
+        const paid = charge.allocations.reduce((s, a) => s + Number(a.amount), 0);
+        const outstanding = round2(Number(charge.amount) - paid);
+        const alreadyCharged = charge.interestCharges.reduce((s, i) => s + Number(i.amount), 0);
+
+        const result = calculateLateInterest({
+          outstanding,
+          dueDate: charge.dueDate,
+          today,
+          alreadyCharged,
+          policy,
+        });
+
+        // Menos de un colón no se cobra: generaría ruido diario en el
+        // estado de cuenta sin ningún valor.
+        if (result.toCharge < 1) continue;
+
+        detail.push({
+          chargeId: charge.id,
+          propertyId: charge.propertyId,
+          toCharge: result.toCharge,
+          daysLate: result.daysLate,
+        });
+        amount += result.toCharge;
+
+        if (opts.dryRun) {
+          created += 1;
+          continue;
+        }
+
+        // Un cargo de interés POR CARGO BASE, que se va actualizando.
+        // Así el estado de cuenta muestra una línea de interés por
+        // cuota, y no una línea nueva cada día.
+        const existing = charge.interestCharges[0];
+        if (existing) {
+          const nuevo = round2(Number(existing.amount) + result.toCharge);
+          await tx.charge.update({
+            where: { id: existing.id },
+            data: {
+              amount: nuevo,
+              interestThroughDate: today,
+              description: `Interés moratorio — ${charge.description} (${result.daysLate} días)`,
+            },
+          });
+          updated += 1;
+        } else {
+          const property = await tx.property.findUniqueOrThrow({
+            where: { id: charge.propertyId },
+            select: { code: true },
+          });
+          const nuevo = await tx.charge.create({
+            data: {
+              condominiumId,
+              propertyId: charge.propertyId,
+              chargeType: 'interes_moratorio',
+              description: `Interés moratorio — ${charge.description} (${result.daysLate} días)`,
+              amount: result.toCharge,
+              dueDate: today,
+              interestBaseChargeId: charge.id,
+              interestThroughDate: today,
+            },
+          });
+          await recordChargeAccrual(tx, companyId, {
+            id: nuevo.id,
+            condominiumId,
+            propertyCode: property.code,
+            chargeType: 'interes_moratorio',
+            description: nuevo.description,
+            amount: result.toCharge,
+            period: null,
+            issuedAt: today,
+          });
+          created += 1;
+        }
+      }
+
+      return { evaluated: charges.length, created, updated, amount: round2(amount), detail };
+    },
+    { timeout: 120_000, maxWait: 20_000 }
+  );
 }
 
 /**
