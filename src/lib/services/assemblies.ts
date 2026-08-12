@@ -114,8 +114,27 @@ export async function castBallot(
   input: { voteId: string; propertyId: string; voterName: string; choice: string }
 ) {
   return withTenantContext(companyId, async (tx) => {
-    const vote = await tx.assemblyVote.findUniqueOrThrow({ where: { id: input.voteId } });
+    const vote = await tx.assemblyVote.findUniqueOrThrow({
+      where: { id: input.voteId },
+      include: { topic: { select: { assembly: { select: { condominiumId: true } } } } },
+    });
     if (vote.status !== 'abierta') throw new Error('Esta votación no está abierta.');
+
+    // `voteId` nunca se cruzaba contra el condominio del residente: sin
+    // esto, un residente de un condominio podía votar en la asamblea de
+    // OTRO condominio de la misma empresa con solo conocer el `voteId`
+    // (auditoría de seguridad 2026-08-11, hallazgo #14). `propertyId` sí
+    // viene siempre de la sesión resuelta del residente, nunca del
+    // formulario — acá se le da valor comparándolo contra el
+    // condominio real de la votación.
+    const property = await tx.property.findFirstOrThrow({
+      where: { id: input.propertyId },
+      select: { condominiumId: true },
+    });
+    if (vote.topic.assembly.condominiumId !== property.condominiumId) {
+      throw new Error('Esa votación no corresponde a tu condominio.');
+    }
+
     return tx.assemblyBallot.create({
       data: { voteId: input.voteId, propertyId: input.propertyId, voterName: input.voterName, choice: input.choice as any },
     });

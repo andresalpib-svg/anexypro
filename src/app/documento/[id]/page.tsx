@@ -1,5 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
+import { requirePanel } from '@/lib/guard';
 import { getIssuedDocument, DOC_TYPE_LABEL } from '@/lib/services/document-requests';
 import { getResidentContext } from '@/lib/services/resident-context';
 import { fechaSolo } from '@/lib/fecha-local';
@@ -23,6 +24,16 @@ export default async function DocumentoPage({ params }: { params: { id: string }
   if (session.user.role === 'condomino') {
     const ctx = await getResidentContext(session.user.id);
     if (!ctx || ctx.property.id !== request.propertyId) notFound();
+  } else {
+    // Cualquier otro rol autenticado de la empresa veía el estado de
+    // cuenta/certificación de CUALQUIER condominio sin comprobar rol ni
+    // condominio — incluido `seguridad`, que por diseño no debería ver
+    // datos financieros (auditoría de seguridad 2026-08-11, hallazgo
+    // #15). Mismo permiso/condominio que exige emitir el documento;
+    // `requirePanel` ya rechaza por su cuenta a `seguridad` y `master`
+    // (no son roles de panel).
+    const autorizado = await requirePanel({ module: '/app/emision-documentos', condominiumId: request.condominiumId });
+    if (!autorizado) notFound();
   }
   if (request.status !== 'aprobada') notFound();
 

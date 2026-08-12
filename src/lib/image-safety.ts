@@ -1,4 +1,5 @@
 import zlib from 'node:zlib';
+import type { PDFDocument, PDFImage } from 'pdf-lib';
 
 /**
  * Validación de imágenes ANTES de entregarlas al decodificador de
@@ -74,4 +75,33 @@ export function isSafeJpeg(buf: Buffer): boolean {
   // caso corrupto habitual.
   if (buf[0] !== 0xff || buf[1] !== 0xd8) return false;
   return buf[buf.length - 2] === 0xff && buf[buf.length - 1] === 0xd9;
+}
+
+/**
+ * Único punto de entrada para incrustar una imagen en un PDF con
+ * pdf-lib. SIEMPRE valida con `isSafePng`/`isSafeJpeg` antes de llamar
+ * a `embedPng`/`embedJpg` — nunca al revés.
+ *
+ * POR QUÉ: los 4 sitios que incrustan imágenes en un PDF hoy (informe
+ * de caja chica, EEFF, notificación de incumplimiento ×2) repetían la
+ * misma validación a mano antes de cada llamada — funciona, pero un
+ * generador de PDF nuevo que se agregue mañana puede olvidarla sin que
+ * nada lo avise, y eso reintroduce el cuelgue del servidor documentado
+ * en el comentario de arriba (auditoría de seguridad 2026-08-11,
+ * hallazgo #23). Centralizarlo acá hace que sea imposible olvidarlo:
+ * no hay forma de incrustar una imagen sin pasar por la validación.
+ *
+ * Devuelve `null` si la imagen no es segura — nunca lanza.
+ */
+export async function embedSafeImage(pdf: PDFDocument, ext: string, bytes: Buffer): Promise<PDFImage | null> {
+  const e = ext.toLowerCase();
+  if (e === '.png') {
+    if (!isSafePng(bytes)) return null;
+    return pdf.embedPng(bytes);
+  }
+  if (e === '.jpg' || e === '.jpeg') {
+    if (!isSafeJpeg(bytes)) return null;
+    return pdf.embedJpg(bytes);
+  }
+  return null;
 }

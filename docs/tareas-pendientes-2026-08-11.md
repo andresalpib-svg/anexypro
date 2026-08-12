@@ -14,7 +14,7 @@ huecos operativos, listados abajo por prioridad.
 
 ---
 
-## 1. CRÍTICO — Higiene de control de versiones
+## 1. ✅ RESUELTO — Higiene de control de versiones
 
 **`main` tiene 50 archivos modificados + 28 sin trackear, nunca commiteados.**
 Esto es lo más urgente de resolver porque bloquea todo lo demás: no hay forma
@@ -37,55 +37,67 @@ Lo que vive sin commitear ahora mismo incluye, al menos:
 - 5 migraciones de Prisma nuevas sin commitear (`20260811_demo_companies`
   hasta `20260815_rate_limit_hits`).
 
-**Decisión que hace falta tomar (no es mía):** ¿todo esto ya se probó y está
-listo para salir junto, o hay partes a medio terminar? Sin esa respuesta no
-se puede armar un commit responsable. Recomendación: revisar módulo por
-módulo (probablemente ya lo hiciste, dado que hay pruebas y memoria de
-verificación en vivo para casi todos), y luego un solo commit grande —o
-varios por feature— a una rama, PR, y merge a `main` cuando estés conforme.
+**✅ Resuelto.** El working tree se agrupó en 3 commits sobre la rama
+`features-y-seguridad-2026-08-11` (agua potable · empresas demo · reportes
+financieros/EEFF/línea presupuestaria/expediente de cobranza + auditoría de
+seguridad), pusheada y fusionada a `main` (fast-forward, `b196c9f`). No se
+intentó separar línea por línea los fixes de seguridad de las features que
+comparten archivo (ver el commit `bd97821`) — el costo de la cirugía no se
+justificaba dado que ambas partes ya estaban verificadas por separado.
 
 ---
 
-## 2. ALTO — Los 5 fixes de seguridad de hoy sin desplegar
+## 2. ✅ RESUELTO — Los 5 fixes de seguridad de hoy sin desplegar
 
-Están en el working tree de `main`, no en producción todavía (a propósito,
-para no mezclarlos con lo de arriba):
-- `/api/cron` sigue permitiendo que un `admin_owner` dispare procesos de
-  **todas** las empresas hasta que esto se despliegue.
-- El freno de fuerza bruta/spraying del login vive en el código pero
-  **no sirve de nada en producción sin este deploy** (la tabla ya existe,
-  pero el código que la usa no está desplegado).
-- 3 IDOR intra-empresa (documentos, pago de gastos, cierre de expedientes)
-  siguen explotables en producción.
-- El timing leak de `/recuperar` sigue vivo en producción.
-- El límite de filas de Excel sigue sin aplicar en producción.
+Desplegados a producción (`vercel deploy --prod`, deployment
+`dpl_qCC5zmN1BvJBRRUKZmWC6u3EMHYN`, `readyState: READY`, alias
+`https://api.anexypro.com` actualizado). Antes de desplegar se encontró y
+corrigió un problema mellizo al de `rate_limit_hits`: `demo_history_entries`
+(de la feature de demos, recién commiteada) tampoco estaba en la lista
+`SIN_RLS_A_PROPOSITO` de `scripts/verificar-bd.ts` — se agregó en
+`b196c9f` antes de desplegar, así que el build no volvió a fallar la
+verificación como la vez anterior. Verificado con `curl`: `/login`,
+`/demo`, `/recuperar` → 200; `/api/cron` sin sesión → redirige a login
+(ya no es un endpoint abierto).
 
-**Depende de #1** — no tiene sentido desplegar esto solo sin resolver primero
-qué pasa con el resto del working tree.
+Con esto:
+- `/api/cron` ya ata `admin_owner` a su propia empresa en producción.
+- El freno de fuerza bruta/spraying del login está activo en producción.
+- Los 3 IDOR intra-empresa (documentos, pago de gastos, cierre de
+  expedientes) están corregidos en producción.
+- El timing leak de `/recuperar` está cerrado en producción.
+- El límite de filas de Excel está activo en producción.
+- De regalo, todo el trabajo pendiente de features (demo, agua potable,
+  reportes/EEFF, línea presupuestaria) también quedó desplegado — no había
+  forma de separarlo sin la cirugía mencionada en el punto 1.
 
 ---
 
-## 3. ALTO — 17 hallazgos de la auditoría de seguridad, sin tocar
+## 3. ✅ RESUELTO — 14 hallazgos restantes de la auditoría de seguridad
 
 Del informe completo (`docs/auditoria-seguridad-2026-08-11.md`), hallazgos
-#10 a #23, ninguno corregido todavía:
+#10 a #23 — **los 14 ya están corregidos**, con `tsc`/318 tests/`next build`
+en verde. Antes de tocar código se confirmaron con el usuario las dos
+decisiones de producto que hacían falta: #10 (bypass de `master`, no era
+intencional → restringido) y #16 (reportes consolidados, no era intencional
+→ recortado por condominio asignado). Detalle completo en el informe.
 
-| # | Severidad | Qué falta |
+| # | Severidad | Cómo quedó |
 |---|---|---|
-| 10 | Media-Alta | `repositorio/actions.ts`: el rol `master` tiene bypass total de validación de condominio — confirmar si es intencional |
-| 11 | Media | `condominios/actions.ts` (asignar/quitar supervisor): depende solo de RLS, sin segunda verificación de aplicación |
-| 12 | Media | `finanzas/cobranza/actions.ts` (`logActionAction`): no cruza `propertyId` contra `condominiumId` |
-| 13 | Media | `proyectos/actions.ts` (`toggleChecklistItemAction`): no ata el ítem al proyecto validado |
-| 14 | Media | `portal/asambleas/actions.ts` (`castBallot`): un residente puede votar en una asamblea de otro condominio |
-| 15 | Media | `/documento/[id]`: estados de cuenta visibles por cualquier rol (incl. `seguridad`) sin validar condominio |
-| 16 | Media | `/app/reportes/*`: morosidad consolidada sin recorte por condominio asignado — confirmar con producto si es intencional |
-| 17 | Media | `demo-cleanup.ts` (`recolectarArbol`): sin protección contra ciclos → riesgo de loop infinito |
-| 18 | Media | Sin headers de seguridad HTTP (CSP, `X-Frame-Options`, HSTS) → clickjacking posible |
-| 19 | Baja-Media | `/api/cron`: si un job falla, cualquier `admin_owner` puede reintentarlo indefinidamente |
-| 20 | Media | Asistentes de IA sin límite de longitud/frecuencia por usuario → abuso de costo de API |
-| 21 | Baja | `CRON_SECRET` comparado con `===` en vez de `timingSafeEqual` |
-| 22 | Baja | `document-requests.ts`: 2 consultas con `prisma` crudo en vez de `withTenantContext` |
-| 23 | Baja (mitigado) | `pdf-lib`: bug de bucle infinito con PNG corrupto, mitigado hoy pero frágil ante código nuevo |
+| 10 | Media-Alta | ✅ `repositorio/actions.ts`: `master` ya no tiene bypass, pasa por `canAccessCondo` como cualquier otro rol |
+| 11 | Media | ✅ `condominios/actions.ts`: segunda verificación en código (`allowsCondo` + `condoOfSupervisor`), ya no depende solo de RLS |
+| 12 | Media | ✅ `logActionAction` cruza `propertyId` contra `condominiumId` con `condoOfProperty` |
+| 13 | Media | ✅ `toggleChecklistItemAction` ata el ítem al condominio real del proyecto (`condoOfProjectChecklistItem`) |
+| 14 | Media | ✅ `castBallot` resuelve el condominio real de la votación y lo compara contra el de la filial que vota |
+| 15 | Media | ✅ `/documento/[id]` exige `requirePanel({module: '/app/emision-documentos', condominiumId})` para roles no-condómino |
+| 16 | Media | ✅ `reports.ts` + pantalla/exportación/"Explicar con IA" de Reportes recortan por `listCondominiumsForSession` |
+| 17 | Media | ✅ `recolectarArbol` con la misma protección `Set`/seen contra ciclos que `orderFoldersDeepestFirst` |
+| 18 | Media | ✅ `next.config.js` → `headers()`: `frame-ancestors 'none'`, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, HSTS (sin CSP de scripts/estilos completa, ver nota en el informe) |
+| 19 | Baja-Media | ✅ `/api/cron` frena reintentos manuales a 10/10min (el disparo por `CRON_SECRET` no se frena) |
+| 20 | Media | ✅ Los 5 puntos de entrada a la IA limitan longitud (~800 caracteres) y frecuencia (20/10min por usuario) |
+| 21 | Baja | ✅ `CRON_SECRET` se compara con `crypto.timingSafeEqual` |
+| 22 | Baja | ✅ `document-requests.ts` usa `withTenantContext` en las 2 consultas que quedaban con `prisma` crudo |
+| 23 | Baja (reforzado) | ✅ `embedSafeImage()` centraliza la validación antes de `embedPng`/`embedJpg` en los 4 sitios que incrustan imágenes en un PDF |
 
 Además, sin CAPTCHA real en login/`/demo` (el freno por IP de hoy baja el
 techo del ataque pero no lo elimina si el atacante rota de IP).
@@ -94,12 +106,10 @@ techo del ataque pero no lo elimina si el atacante rota de IP).
 
 ## 4. MEDIA — Base de datos
 
-- **`db:verify` falla hoy** (local y probablemente producción, si esas
-  migraciones llegan a desplegarse): `demo_history_entries` no está en la
-  lista `SIN_RLS_A_PROPOSITO` de `scripts/verificar-bd.ts`, igual que le
-  pasaba a `rate_limit_hits` antes de hoy. Es el mismo patrón, mismo arreglo
-  de una línea — pendiente porque `demo_history_entries` pertenece a la
-  feature de demos, sin commitear (ver #1).
+- ~~**`db:verify` falla**: `demo_history_entries` sin RLS a propósito~~ —
+  **✅ Resuelto** al desplegar el punto 2: se agregó a
+  `SIN_RLS_A_PROPOSITO` antes del deploy, `db:verify` pasa las 11
+  comprobaciones en local y en producción.
 - **Documento de referencia de EEFF que Freddy dijo haber cargado** — no
   existe en `docs/`, `storage/` ni la base (buscado dos veces, 2026-08-09).
   El módulo se armó con contenido estándar; pedirlo si se quiere el formato

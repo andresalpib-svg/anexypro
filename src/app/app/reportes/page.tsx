@@ -40,11 +40,18 @@ export default async function ReportesPage({
   const tab = searchParams.tab ?? 'financiero';
   const companyId = session!.user.companyId;
 
+  // Recorta el consolidado a los condominios que la sesión puede ver:
+  // TODOS para admin_owner/contador, solo los asignados para
+  // admin_staff — mismo criterio que el resto del panel (auditoría de
+  // seguridad 2026-08-11, hallazgo #16). La pestaña de incumplimientos
+  // ya hacía su propio recorte con `resolveCondoId`; el resto no.
+  const condoIds = (await listCondominiumsForSession(session!)).map((c) => c.id);
+
   return (
     <div>
       <PageHeader
         title="Reportes"
-        subtitle="Consolidado de todos los condominios activos — nunca mezcla monedas distintas en un mismo total"
+        subtitle="Consolidado de tus condominios — nunca mezcla monedas distintas en un mismo total"
         action={
           <a href={`/app/reportes/exportar?tab=${tab}${tab === 'incumplimientos' ? `&condoId=${searchParams.condoId ?? ''}` : ''}`} className="btn-ghost">
             <FileSpreadsheet size={16} /> Descargar Excel
@@ -54,17 +61,17 @@ export default async function ReportesPage({
       <ReportTabsNav tab={tab} />
       <ExplainWithAI tab={tab} />
 
-      {tab === 'financiero' && <FinancieroTab companyId={companyId} />}
-      {tab === 'morosidad' && <MorosidadTab companyId={companyId} />}
-      {tab === 'mantenimiento' && <MantenimientoTab companyId={companyId} />}
-      {tab === 'proyectos' && <ProyectosTab companyId={companyId} />}
+      {tab === 'financiero' && <FinancieroTab companyId={companyId} condoIds={condoIds} />}
+      {tab === 'morosidad' && <MorosidadTab companyId={companyId} condoIds={condoIds} />}
+      {tab === 'mantenimiento' && <MantenimientoTab companyId={companyId} condoIds={condoIds} />}
+      {tab === 'proyectos' && <ProyectosTab companyId={companyId} condoIds={condoIds} />}
       {tab === 'incumplimientos' && <IncumplimientosTab companyId={companyId} searchParams={searchParams} />}
     </div>
   );
 }
 
-async function FinancieroTab({ companyId }: { companyId: string }) {
-  const rows = await getFinancialReport(companyId);
+async function FinancieroTab({ companyId, condoIds }: { companyId: string; condoIds: string[] }) {
+  const rows = await getFinancialReport(companyId, condoIds);
   return (
     <div className="card mt-4 overflow-x-auto">
       <table className="w-full text-sm">
@@ -97,8 +104,8 @@ async function FinancieroTab({ companyId }: { companyId: string }) {
   );
 }
 
-async function MorosidadTab({ companyId }: { companyId: string }) {
-  const rows = await getDelinquencyReport(companyId);
+async function MorosidadTab({ companyId, condoIds }: { companyId: string; condoIds: string[] }) {
+  const rows = await getDelinquencyReport(companyId, condoIds);
   return (
     <div className="card mt-4 overflow-x-auto">
       <table className="w-full text-sm">
@@ -131,8 +138,8 @@ async function MorosidadTab({ companyId }: { companyId: string }) {
   );
 }
 
-async function MantenimientoTab({ companyId }: { companyId: string }) {
-  const r = await getMaintenanceReport(companyId);
+async function MantenimientoTab({ companyId, condoIds }: { companyId: string; condoIds: string[] }) {
+  const r = await getMaintenanceReport(companyId, condoIds);
   return (
     <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
       <Kpi label="Tickets totales" value={r.total} />
@@ -143,8 +150,8 @@ async function MantenimientoTab({ companyId }: { companyId: string }) {
   );
 }
 
-async function ProyectosTab({ companyId }: { companyId: string }) {
-  const rows = await getProjectsReport(companyId);
+async function ProyectosTab({ companyId, condoIds }: { companyId: string; condoIds: string[] }) {
+  const rows = await getProjectsReport(companyId, condoIds);
   return (
     <div className="card mt-4 overflow-x-auto">
       <table className="w-full text-sm">

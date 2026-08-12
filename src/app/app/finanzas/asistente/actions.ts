@@ -3,6 +3,7 @@
 import { auth } from '@/lib/auth';
 import { canAccessCondo } from '@/lib/services/condominiums';
 import { ask, type AssistantAnswer } from '@/lib/services/financial-assistant';
+import { hitRateLimit } from '@/lib/rate-limit';
 
 export type AskResult = { ok: boolean; error?: string; answer?: AssistantAnswer };
 
@@ -17,6 +18,12 @@ export async function askAction(condominiumId: string, question: string): Promis
   const q = question.trim();
   if (q.length < 3) return { ok: false, error: 'Escribí una pregunta un poco más larga.' };
   if (q.length > 400) return { ok: false, error: 'La pregunta es demasiado larga.' };
+
+  // Frena el abuso de costo de la API de Anthropic (auditoría de
+  // seguridad 2026-08-11, hallazgo #20) — el límite de longitud ya
+  // existía, pero nada frenaba repetir la pregunta sin parar.
+  const { allowed } = await hitRateLimit(`ia-finanzas:${session.user.id}`, { max: 20, windowMs: 10 * 60_000 });
+  if (!allowed) return { ok: false, error: 'Hiciste muchas consultas seguidas — esperá unos minutos.' };
 
   try {
     const answer = await ask(session.user.companyId, condominiumId, q);

@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { getResidentContext } from '@/lib/services/resident-context';
 import { getPropertySuspension } from '@/lib/services/finance';
 import { askLegalArbiter, type LegalAnswer } from '@/lib/services/legal-assistant';
+import { hitRateLimit } from '@/lib/rate-limit';
 
 export type LegalState = { answer?: LegalAnswer; error?: string };
 
@@ -18,6 +19,12 @@ export async function askLegalAction(_prev: LegalState, formData: FormData): Pro
 
   const question = (formData.get('question') as string)?.trim();
   if (!question) return { error: 'Escribe tu consulta.' };
+  // Sin tope, una pregunta larguísima infla el costo de la llamada a la
+  // API de Anthropic (auditoría de seguridad 2026-08-11, hallazgo #20).
+  if (question.length > 800) return { error: 'Tu consulta es demasiado larga — resumila un poco.' };
+
+  const { allowed } = await hitRateLimit(`ia-legal:${session.user.id}`, { max: 20, windowMs: 10 * 60_000 });
+  if (!allowed) return { error: 'Hiciste muchas consultas seguidas — esperá unos minutos.' };
 
   const answer = await askLegalArbiter(session.user.companyId, ctx.condominium.id, question);
   return { answer };

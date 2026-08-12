@@ -34,12 +34,18 @@ export async function GET(req: NextRequest) {
   const tab = req.nextUrl.searchParams.get('tab') ?? 'financiero';
   const companyId = session!.user.companyId;
 
+  // Mismo recorte que la pantalla (auditoría de seguridad 2026-08-11,
+  // hallazgo #16): un admin_staff solo descarga sus condominios
+  // asignados, no toda la empresa.
+  const condos = await listCondominiumsForSession(session!);
+  const condoIds = condos.map((c) => c.id);
+
   let sheetName = 'Reporte';
   let rows: Record<string, unknown>[] = [];
 
   if (tab === 'financiero') {
     sheetName = 'Financiero';
-    rows = (await getFinancialReport(companyId)).map((r) => ({
+    rows = (await getFinancialReport(companyId, condoIds)).map((r) => ({
       Condominio: r.condoName,
       Moneda: r.currency,
       Facturado: r.billed,
@@ -48,7 +54,7 @@ export async function GET(req: NextRequest) {
     }));
   } else if (tab === 'morosidad') {
     sheetName = 'Morosidad';
-    rows = (await getDelinquencyReport(companyId)).map((r) => ({
+    rows = (await getDelinquencyReport(companyId, condoIds)).map((r) => ({
       Unidad: r.propertyCode,
       Condominio: r.condoName,
       Moneda: r.currency,
@@ -57,7 +63,7 @@ export async function GET(req: NextRequest) {
     }));
   } else if (tab === 'mantenimiento') {
     sheetName = 'Operativo';
-    const m = await getMaintenanceReport(companyId);
+    const m = await getMaintenanceReport(companyId, condoIds);
     rows = [
       { Indicador: 'Total de tickets', Valor: m.total },
       { Indicador: 'Tickets preventivos', Valor: m.preventivos },
@@ -69,7 +75,7 @@ export async function GET(req: NextRequest) {
     ];
   } else if (tab === 'proyectos') {
     sheetName = 'Proyectos';
-    rows = (await getProjectsReport(companyId)).map((r) => ({
+    rows = (await getProjectsReport(companyId, condoIds)).map((r) => ({
       Proyecto: r.name,
       Condominio: r.condoName,
       Moneda: r.currency,
@@ -81,7 +87,6 @@ export async function GET(req: NextRequest) {
     sheetName = 'Incumplimientos';
     // Este reporte es por condominio, como el módulo: se toma el
     // Condominio Activo, igual que las demás pantallas.
-    const condos = await listCondominiumsForSession(session!);
     const condoId = resolveCondoId(req.nextUrl.searchParams.get('condoId') ?? undefined, condos);
     if (condoId) {
       rows = (await getViolationReport(companyId, { condominiumId: condoId })).map((r) => ({

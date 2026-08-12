@@ -209,6 +209,28 @@ export async function condoOfProject(companyId: string, projectId: string): Prom
   return project.condominiumId;
 }
 
+/** Condominio de un ítem del checklist de un proyecto. */
+export async function condoOfProjectChecklistItem(companyId: string, itemId: string): Promise<string> {
+  const item = await withTenantContext(companyId, (tx) =>
+    tx.projectChecklistItem.findFirstOrThrow({
+      where: { id: itemId, project: { condominium: { companyId } } },
+      select: { project: { select: { condominiumId: true } } },
+    })
+  );
+  return item.project.condominiumId;
+}
+
+/** Condominio de una asignación de supervisor. */
+export async function condoOfSupervisor(companyId: string, supervisorId: string): Promise<string> {
+  const supervisor = await withTenantContext(companyId, (tx) =>
+    tx.condominiumSupervisor.findFirstOrThrow({
+      where: { id: supervisorId, condominium: { companyId } },
+      select: { condominiumId: true },
+    })
+  );
+  return supervisor.condominiumId;
+}
+
 /** Condominio de una solicitud de emisión de documento (certificación/estado de cuenta). */
 export async function condoOfDocumentRequest(companyId: string, requestId: string): Promise<string> {
   const request = await withTenantContext(companyId, (tx) =>

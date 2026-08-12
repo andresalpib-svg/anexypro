@@ -7,11 +7,22 @@ import { withTenantContext } from '@/lib/db';
  * vez. Nunca suma montos de condominios con monedas distintas (CRC
  * vs. USD) en un mismo total — se agrupan por moneda, igual regla que
  * ya aplicaba el prototipo.
+ *
+ * `condoIds`, cuando se pasa, recorta el consolidado a esos
+ * condominios — lo usa la pantalla para pasar
+ * `listCondominiumsForSession(session)`, que ya devuelve TODOS los
+ * condominios para `admin_owner`/`contador` y solo los asignados para
+ * `admin_staff` (auditoría de seguridad 2026-08-11, hallazgo #16: un
+ * supervisor veía la morosidad de condominios que no administra).
+ * Sin `condoIds` (nadie lo pasa así hoy) el consolidado sigue siendo
+ * de toda la empresa, como antes.
  */
 
-export async function getFinancialReport(companyId: string) {
+export async function getFinancialReport(companyId: string, condoIds?: string[]) {
   return withTenantContext(companyId, async (tx) => {
-    const condos = await tx.condominium.findMany({ where: { status: 'activo', deletedAt: null } });
+    const condos = await tx.condominium.findMany({
+      where: { status: 'activo', deletedAt: null, ...(condoIds ? { id: { in: condoIds } } : {}) },
+    });
     const rows = await Promise.all(
       condos.map(async (c) => {
         const charges = await tx.charge.aggregate({
@@ -31,10 +42,13 @@ export async function getFinancialReport(companyId: string) {
   });
 }
 
-export async function getDelinquencyReport(companyId: string) {
+export async function getDelinquencyReport(companyId: string, condoIds?: string[]) {
   return withTenantContext(companyId, async (tx) => {
     const properties = await tx.property.findMany({
-      where: { condominium: { status: 'activo', deletedAt: null } },
+      where: {
+        condominium: { status: 'activo', deletedAt: null },
+        ...(condoIds ? { condominiumId: { in: condoIds } } : {}),
+      },
       include: { condominium: { select: { name: true, currency: true } } },
     });
     const charges = await tx.charge.findMany({
@@ -69,10 +83,13 @@ export async function getDelinquencyReport(companyId: string) {
   });
 }
 
-export async function getMaintenanceReport(companyId: string) {
+export async function getMaintenanceReport(companyId: string, condoIds?: string[]) {
   return withTenantContext(companyId, async (tx) => {
     const tickets = await tx.maintenanceTicket.findMany({
-      where: { condominium: { status: 'activo', deletedAt: null } },
+      where: {
+        condominium: { status: 'activo', deletedAt: null },
+        ...(condoIds ? { condominiumId: { in: condoIds } } : {}),
+      },
       include: { condominium: { select: { name: true, currency: true } } },
     });
     const byStatus: Record<string, number> = {};
@@ -85,10 +102,13 @@ export async function getMaintenanceReport(companyId: string) {
   });
 }
 
-export async function getProjectsReport(companyId: string) {
+export async function getProjectsReport(companyId: string, condoIds?: string[]) {
   return withTenantContext(companyId, async (tx) => {
     const projects = await tx.project.findMany({
-      where: { condominium: { status: 'activo', deletedAt: null } },
+      where: {
+        condominium: { status: 'activo', deletedAt: null },
+        ...(condoIds ? { condominiumId: { in: condoIds } } : {}),
+      },
       include: { condominium: { select: { name: true, currency: true } }, expenses: { select: { amount: true } } },
     });
     return projects.map((p) => ({

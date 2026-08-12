@@ -5,7 +5,7 @@ import { auth } from '@/lib/auth';
 import { can } from '@/lib/rbac';
 import { canAccessCondo, getCondominium } from '@/lib/services/condominiums';
 import { getPettyCash } from '@/lib/services/petty-cash';
-import { isSafePng, isSafeJpeg } from '@/lib/image-safety';
+import { isSafePng, isSafeJpeg, embedSafeImage } from '@/lib/image-safety';
 import { actorFromSession, readObject } from '@/lib/services/storage';
 import { objectIdFromRef } from '@/lib/services/file-refs';
 import type { Actor } from '@/lib/storage/permissions';
@@ -255,7 +255,8 @@ export async function GET(req: Request) {
         continue;
       }
       try {
-        const img = ext === '.png' ? await pdf.embedPng(bytes) : await pdf.embedJpg(bytes);
+        const img = await embedSafeImage(pdf, ext, bytes);
+        if (!img) continue; // ya se validó arriba, pero nunca se llama a embedPng/embedJpg sin pasar por acá
         const p = pdf.addPage(A4);
         const availW = p.getWidth() - MARGIN * 2;
         const availH = p.getHeight() - MARGIN * 2 - 40;

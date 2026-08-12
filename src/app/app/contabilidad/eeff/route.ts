@@ -12,7 +12,7 @@ import {
 } from '@/lib/services/accounting';
 import { buildMonthlyReport } from '@/lib/services/monthly-report';
 import { withTenantContext } from '@/lib/db';
-import { isSafePng, isSafeJpeg } from '@/lib/image-safety';
+import { isSafePng, isSafeJpeg, embedSafeImage } from '@/lib/image-safety';
 import { actorFromSession, readObject } from '@/lib/services/storage';
 import { objectIdFromRef } from '@/lib/services/file-refs';
 import type { Actor } from '@/lib/storage/permissions';
@@ -138,7 +138,7 @@ export async function GET(req: Request) {
   const embedLogo = async (raw: { data: Buffer; ext: string } | null): Promise<PDFImage | null> => {
     if (!raw) return null;
     try {
-      return raw.ext === '.png' ? await pdf.embedPng(raw.data) : await pdf.embedJpg(raw.data);
+      return await embedSafeImage(pdf, raw.ext, raw.data);
     } catch {
       return null;
     }

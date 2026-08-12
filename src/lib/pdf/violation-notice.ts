@@ -1,5 +1,5 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage, type RGB } from 'pdf-lib';
-import { isSafePng, isSafeJpeg } from '@/lib/image-safety';
+import { isSafePng, isSafeJpeg, embedSafeImage } from '@/lib/image-safety';
 
 /**
  * Documento formal de incumplimiento: notificación de advertencia o
@@ -172,17 +172,16 @@ export async function buildViolationNoticePdf(input: NoticeInput): Promise<Buffe
   // ---------- Membrete ----------
   if (input.branding.logo) {
     const { data, ext } = input.branding.logo;
-    const seguro = ext === '.png' ? isSafePng(data) : isSafeJpeg(data);
-    if (seguro) {
-      try {
-        const img = ext === '.png' ? await pdf.embedPng(data) : await pdf.embedJpg(data);
+    try {
+      const img = await embedSafeImage(pdf, ext, data);
+      if (img) {
         const alto = 38;
         const ancho = (img.width / img.height) * alto;
         page.drawImage(img, { x: MARGIN, y: y - alto, width: Math.min(ancho, 150), height: alto });
         y -= alto + 8;
-      } catch {
-        // Un logo ilegible no puede impedir que salga la notificación.
       }
+    } catch {
+      // Un logo ilegible no puede impedir que salga la notificación.
     }
   }
 
@@ -313,12 +312,14 @@ export async function buildViolationNoticePdf(input: NoticeInput): Promise<Buffe
         const img = fila[c];
         if (!img) continue;
         try {
-          const emb = img.ext === '.png' ? await pdf.embedPng(img.data) : await pdf.embedJpg(img.data);
-          const escala = Math.min(anchoCelda / emb.width, altoCelda / emb.height);
-          const w = emb.width * escala;
-          const h = emb.height * escala;
-          const x = MARGIN + c * (anchoCelda + GAP) + (anchoCelda - w) / 2;
-          page.drawImage(emb, { x, y: y - h - 8, width: w, height: h });
+          const emb = await embedSafeImage(pdf, img.ext, img.data);
+          if (emb) {
+            const escala = Math.min(anchoCelda / emb.width, altoCelda / emb.height);
+            const w = emb.width * escala;
+            const h = emb.height * escala;
+            const x = MARGIN + c * (anchoCelda + GAP) + (anchoCelda - w) / 2;
+            page.drawImage(emb, { x, y: y - h - 8, width: w, height: h });
+          }
         } catch {
           // Una foto que no se puede incrustar no invalida el documento.
         }

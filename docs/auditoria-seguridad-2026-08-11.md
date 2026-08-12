@@ -10,6 +10,15 @@ general (secretos, inyección, headers, sesión, archivos, IA).
 > corregidos, con `tsc --noEmit` limpio y los 318 tests existentes en verde.
 > Cada sección de abajo tiene su nota de "✅ Corregido" con el detalle. El
 > resto de los hallazgos (medios/bajos) sigue pendiente.
+>
+> **✅ Y ya están DESPLEGADOS EN PRODUCCIÓN** (misma noche, en dos pasos):
+> primero se aisló y desplegó solo la migración `rate_limit_hits` vía un
+> `git worktree` separado (`vercel deploy --prod`, ver la nota de la sección
+> 2-3 más abajo); después se commiteó el resto del working tree completo
+> (rama `features-y-seguridad-2026-08-11`, fusionada a `main` en `b196c9f`) y
+> se desplegó de nuevo — build `READY`, alias `https://api.anexypro.com`
+> actualizado, verificado con `curl` (`/login`, `/demo`, `/recuperar` → 200;
+> `/api/cron` sin sesión → redirige a login).
 
 Se hizo con 4 revisiones independientes en paralelo sobre el código de
 `anexypro-app 10` (App Router, Prisma, NextAuth, RLS en Postgres). No se
@@ -40,20 +49,66 @@ módulos lo hace bien; los hallazgos de abajo son los puntos donde no.
 | 7 | **Alto** | IDOR intra-empresa | `src/app/app/incumplimientos/actions.ts` (`closeCaseAction`) | Cierra expedientes disciplinarios de condominios ajenos | ✅ Corregido |
 | 8 | **Alto** | Enumeración | `src/app/recuperar/actions.ts` | Timing leak: se puede saber si un correo existe midiendo el tiempo de respuesta | ✅ Corregido |
 | 9 | **Alto** | DoS lógico | `src/lib/services/import-excel.ts` | Sin límite de filas: una carga grande bloquea una conexión de BD hasta 180s, agotable en paralelo | ✅ Corregido |
-| 10 | Media-Alta | Acceso indebido | `src/app/app/repositorio/actions.ts` | Bypass total de validación de condominio para rol `master` (a confirmar si es intencional) |
-| 11 | Media | IDOR | `src/app/app/condominios/actions.ts` (asignar/quitar supervisor) | Depende solo de RLS, sin segunda verificación de aplicación |
-| 12 | Media | IDOR | `src/app/app/finanzas/cobranza/actions.ts` (`logActionAction`) | Registra gestión de cobro contra una filial de otro condominio |
-| 13 | Media | IDOR | `src/app/app/proyectos/actions.ts` (`toggleChecklistItemAction`) | Marca ítems de checklist de proyectos de otro condominio |
-| 14 | Media | IDOR | `src/app/portal/asambleas/actions.ts` (`castBallot`) | Un residente puede votar en una asamblea de otro condominio de la misma empresa |
-| 15 | Media | Exposición | `src/app/documento/[id]/page.tsx` | Estados de cuenta/certificaciones visibles por cualquier rol (incl. `seguridad`) sin validar condominio |
-| 16 | Media | Exposición | `src/app/app/reportes/*` | Reporte de morosidad consolida **toda la empresa**, sin recortar por condominio asignado (a confirmar con producto) |
-| 17 | Media | DoS lógico | `src/lib/services/demo-cleanup.ts` (`recolectarArbol`) | Recorrido de carpetas sin protección contra ciclos → riesgo de loop infinito si hay datos corruptos |
-| 18 | Media | Headers | `next.config.js`, `vercel.json` | Sin CSP / `X-Frame-Options` / HSTS → clickjacking posible |
-| 19 | Baja-Media | DoS lógico | `src/app/api/cron/route.ts` | Si un job falla, cualquier `admin_owner` puede reintentar el proceso completo repetidamente |
-| 20 | Media | Costo / abuso | Asistentes de IA (`legal-assistant.ts`, etc.) | Sin límite de longitud/frecuencia por usuario → abuso de costo de API Anthropic |
-| 21 | Baja | Timing | `src/app/api/cron/route.ts` | Comparación de `CRON_SECRET` con `===` en vez de `timingSafeEqual` |
-| 22 | Baja | Higiene | `src/lib/services/document-requests.ts` | Dos consultas usan `prisma` crudo en vez de `withTenantContext` (hoy no explotable, frágil a futuro) |
-| 23 | Baja (mitigado) | DoS lógico | `pdf-lib` + `src/lib/image-safety.ts` | Bug conocido de `pdf-lib` (bucle infinito con PNG corrupto) ya mitigado en todos los sitios actuales; frágil si se añade un nuevo generador de PDF sin repetir la validación |
+| 10 | Media-Alta | Acceso indebido | `src/app/app/repositorio/actions.ts` | Bypass total de validación de condominio para rol `master` | ✅ Corregido |
+| 11 | Media | IDOR | `src/app/app/condominios/actions.ts` (asignar/quitar supervisor) | Depende solo de RLS, sin segunda verificación de aplicación | ✅ Corregido |
+| 12 | Media | IDOR | `src/app/app/finanzas/cobranza/actions.ts` (`logActionAction`) | Registra gestión de cobro contra una filial de otro condominio | ✅ Corregido |
+| 13 | Media | IDOR | `src/app/app/proyectos/actions.ts` (`toggleChecklistItemAction`) | Marca ítems de checklist de proyectos de otro condominio | ✅ Corregido |
+| 14 | Media | IDOR | `src/app/portal/asambleas/actions.ts` (`castBallot`) | Un residente puede votar en una asamblea de otro condominio de la misma empresa | ✅ Corregido |
+| 15 | Media | Exposición | `src/app/documento/[id]/page.tsx` | Estados de cuenta/certificaciones visibles por cualquier rol (incl. `seguridad`) sin validar condominio | ✅ Corregido |
+| 16 | Media | Exposición | `src/app/app/reportes/*` | Reporte de morosidad consolida **toda la empresa**, sin recortar por condominio asignado | ✅ Corregido |
+| 17 | Media | DoS lógico | `src/lib/services/demo-cleanup.ts` (`recolectarArbol`) | Recorrido de carpetas sin protección contra ciclos → riesgo de loop infinito si hay datos corruptos | ✅ Corregido |
+| 18 | Media | Headers | `next.config.js`, `vercel.json` | Sin CSP / `X-Frame-Options` / HSTS → clickjacking posible | ✅ Corregido |
+| 19 | Baja-Media | DoS lógico | `src/app/api/cron/route.ts` | Si un job falla, cualquier `admin_owner` puede reintentar el proceso completo repetidamente | ✅ Corregido |
+| 20 | Media | Costo / abuso | Asistentes de IA (`legal-assistant.ts`, etc.) | Sin límite de longitud/frecuencia por usuario → abuso de costo de API Anthropic | ✅ Corregido |
+| 21 | Baja | Timing | `src/app/api/cron/route.ts` | Comparación de `CRON_SECRET` con `===` en vez de `timingSafeEqual` | ✅ Corregido |
+| 22 | Baja | Higiene | `src/lib/services/document-requests.ts` | Dos consultas usan `prisma` crudo en vez de `withTenantContext` (hoy no explotable, frágil a futuro) | ✅ Corregido |
+| 23 | Baja (mitigado→reforzado) | DoS lógico | `pdf-lib` + `src/lib/image-safety.ts` | Bug conocido de `pdf-lib` (bucle infinito con PNG corrupto) ya mitigado en todos los sitios actuales; frágil si se añade un nuevo generador de PDF sin repetir la validación | ✅ Reforzado |
+
+> **Actualización 2026-08-11 (segunda pasada, misma noche):** los 14
+> hallazgos restantes (#10 a #23) también están corregidos. Decisiones
+> confirmadas con el usuario antes de tocar código: #10 (bypass de
+> `master`) se restringe — no era intencional; #16 (reportes) se recorta
+> por condominio asignado — no era intencional. El resto son fixes
+> técnicos directos, sin ambigüedad de producto. Detalle:
+> - **#10-14 (IDOR/acceso):** mismo patrón `condoOf*()` + `allowsCondo`
+>   que el resto del código — se agregaron `condoOfProjectChecklistItem`,
+>   `condoOfSupervisor` a `entity-scope.ts`, y `castBallot` ahora resuelve
+>   el condominio real de la votación dentro de la misma transacción.
+> - **#15:** `/documento/[id]` ahora exige `requirePanel({module:
+>   '/app/emision-documentos', condominiumId})` para cualquier rol que no
+>   sea `condomino` — coherente con que esa misma acción de emisión ya
+>   excluía a `contador`/`seguridad`.
+> - **#16:** `reports.ts` (las 4 funciones) y la pantalla/exportación de
+>   Reportes ahora aceptan `condoIds` opcional, poblado con
+>   `listCondominiumsForSession(session)` — de paso se corrigió el mismo
+>   hueco en "Explicar con IA" de Reportes, que no era parte de la lista
+>   original pero comparte el mismo dato.
+> - **#17:** `recolectarArbol` ahora tiene la misma protección `Set`/seen
+>   contra ciclos que ya tenía `orderFoldersDeepestFirst`.
+> - **#18:** `next.config.js` agrega `headers()` con `frame-ancestors
+>   'none'` + `X-Frame-Options: DENY` + `X-Content-Type-Options` +
+>   `Referrer-Policy` + HSTS. Deliberadamente SIN una CSP de
+>   `script-src`/`style-src` completa: la app usa `style={{...}}` inline
+>   en muchos componentes y bloquearlo sin revisar pantalla por pantalla
+>   podía romper la interfaz sin forma de probarlo todo de antemano.
+> - **#19 y #21:** `/api/cron` ahora compara `CRON_SECRET` con
+>   `crypto.timingSafeEqual` y frena reintentos manuales (no los del
+>   propio `CRON_SECRET`) a 10 por 10 minutos vía `rate-limit.ts`.
+> - **#20:** los 5 puntos de entrada a la IA (legal, administrativo,
+>   financiero, comunicados, explicar reportes) ahora limitan longitud
+>   (~800 caracteres) y frecuencia (20/10min por usuario) vía
+>   `rate-limit.ts`.
+> - **#22:** `document-requests.ts` ya no usa `prisma` crudo en ningún
+>   punto — `approveRequest` y `getIssuedDocument` pasan por
+>   `withTenantContext`.
+> - **#23:** nuevo `embedSafeImage()` en `image-safety.ts` — único punto
+>   de entrada para incrustar una imagen en un PDF con pdf-lib; los 4
+>   sitios que lo hacían (informe de caja chica, EEFF, notificación de
+>   incumplimiento ×2) se migraron a usarlo, así que un generador de PDF
+>   nuevo ya no puede "olvidarse" de validar antes de incrustar.
+>
+> Verificado: `tsc --noEmit` limpio, 318/318 tests en verde, `next build`
+> de producción sin errores.
 
 ---
 

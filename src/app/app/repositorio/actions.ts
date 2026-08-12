@@ -25,7 +25,14 @@ async function guard(condominiumId: string) {
   // El repositorio del panel es para el personal; el residente ve sus
   // documentos en su propio portal.
   if (!['master', 'admin_owner', 'admin_staff', 'contador', 'seguridad'].includes(session.user.role)) return null;
-  if (session.user.role !== 'master' && !(await canAccessCondo(session, condominiumId))) return null;
+  // `master` NO tiene bypass: vive en su propia empresa de plataforma,
+  // así que `canAccessCondo` nunca le da acceso a un condominio de un
+  // cliente por acá — si necesita ver documentos de un cliente, es
+  // trabajo del panel `/master`, no de esta acción de panel normal.
+  // Antes el bypass explícito dejaba a `master` subir/borrar/renombrar
+  // documentos de CUALQUIER condominio de CUALQUIER empresa desde acá
+  // (auditoría de seguridad 2026-08-11, hallazgo #10).
+  if (!(await canAccessCondo(session, condominiumId))) return null;
   return session;
 }
 

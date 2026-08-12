@@ -117,6 +117,14 @@ async function anotarAuditoria(companyId: string, actor: PurgeActor | undefined,
 /** Recorre el árbol completo por `parentId` real, empezando en la carpeta raíz de la demo. */
 async function recolectarArbol(companyId: string, raiz: FolderRow): Promise<{ folders: FolderRow[]; objects: ObjectRow[] }> {
   const folders: FolderRow[] = [raiz];
+  // Corte defensivo ante un ciclo corrupto en `parentId` (no debería
+  // pasar nunca, pero sin esto un ciclo colgaría esta función en un
+  // bucle infinito en vez de fallar ruidosamente — mismo caso que
+  // `orderFoldersDeepestFirst` en domain/demo-cleanup.ts; auditoría de
+  // seguridad 2026-08-11, hallazgo #17). Solo se sigue por carpetas
+  // NUEVAS: si un "hijo" ya se recolectó antes, no se vuelve a seguir
+  // — así el ciclo se corta en vez de repetirse para siempre.
+  const vistos = new Set([raiz.id]);
   let frontier = [raiz.id];
   while (frontier.length) {
     const children = await withTenantContext(companyId, (tx) =>
@@ -125,9 +133,11 @@ async function recolectarArbol(companyId: string, raiz: FolderRow): Promise<{ fo
         select: { id: true, companyId: true, condominiumId: true, parentId: true, name: true, slug: true, provider: true, providerFolderId: true },
       })
     );
-    if (!children.length) break;
-    folders.push(...children);
-    frontier = children.map((c) => c.id);
+    const nuevos = children.filter((c) => !vistos.has(c.id));
+    if (!nuevos.length) break;
+    for (const c of nuevos) vistos.add(c.id);
+    folders.push(...nuevos);
+    frontier = nuevos.map((c) => c.id);
   }
 
   const folderIds = folders.map((f) => f.id);

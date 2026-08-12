@@ -1,4 +1,4 @@
-import { withTenantContext, prisma } from '@/lib/db';
+import { withTenantContext } from '@/lib/db';
 import { logActivity } from '@/lib/services/audit';
 
 /**
@@ -230,9 +230,19 @@ export async function approveRequest(
   actor: { userId: string; userName: string },
   bodyText?: string
 ) {
-  const request = await prisma.documentRequest.findFirstOrThrow({
-    where: { id: requestId, condominium: { companyId } },
-  });
+  // `withTenantContext` en vez de `prisma` crudo (auditoría de
+  // seguridad 2026-08-11, hallazgo #22): hoy no era explotable —el
+  // `where` ya filtra por `companyId` y `document_requests` tiene RLS
+  // forzado, así que de todos modos no devolvía nada ajeno— pero
+  // rompía el contrato de `src/lib/db.ts` (toda consulta a una tabla
+  // de datos de cliente pasa por acá) y un refactor futuro que le
+  // quitara el filtro del `where` sin darse cuenta sí abriría una fuga
+  // real entre empresas.
+  const request = await withTenantContext(companyId, (tx) =>
+    tx.documentRequest.findFirstOrThrow({
+      where: { id: requestId, condominium: { companyId } },
+    })
+  );
   const template = await getTemplate(companyId, request.condominiumId, request.docType);
   const snapshot = await getAccountSnapshot(companyId, request.propertyId);
 
@@ -316,14 +326,18 @@ export async function listRequestsByCondo(companyId: string, condominiumId: stri
 
 /** Datos completos para renderizar el documento emitido. */
 export async function getIssuedDocument(companyId: string, requestId: string) {
-  const request = await prisma.documentRequest.findFirst({
-    where: { id: requestId, condominium: { companyId } },
-    include: {
-      condominium: { include: { company: true } },
-      property: true,
-      person: true,
-    },
-  });
+  // Mismo motivo que en `approveRequest`: `withTenantContext` en vez
+  // de `prisma` crudo (hallazgo #22).
+  const request = await withTenantContext(companyId, (tx) =>
+    tx.documentRequest.findFirst({
+      where: { id: requestId, condominium: { companyId } },
+      include: {
+        condominium: { include: { company: true } },
+        property: true,
+        person: true,
+      },
+    })
+  );
   if (!request) return null;
 
   const template = await getTemplate(companyId, request.condominiumId, request.docType);

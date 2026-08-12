@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requirePanel } from '@/lib/guard';
-import { condoOfProject } from '@/lib/services/entity-scope';
+import { condoOfProject, condoOfProjectChecklistItem } from '@/lib/services/entity-scope';
 import { projectSchema, checklistSchema, updateSchema } from '@/lib/validations/project';
 import {
   createProject,
@@ -65,6 +65,13 @@ export async function addChecklistItemAction(_prev: ActionState, formData: FormD
 export async function toggleChecklistItemAction(itemId: string, projectId: string, done: boolean) {
   const session = await guardProject(projectId);
   if (!session) return;
+  // `guardProject(projectId)` solo valida el PROYECTO declarado; el
+  // `itemId` nunca se ataba a él, así que un supervisor con acceso al
+  // proyecto A podía togglear un ítem real de un proyecto del
+  // condominio B (auditoría de seguridad 2026-08-11, hallazgo #13).
+  const condoDelItem = await condoOfProjectChecklistItem(session.user.companyId, itemId);
+  const condoDelProyecto = await condoOfProject(session.user.companyId, projectId);
+  if (condoDelItem !== condoDelProyecto) return;
   await toggleChecklistItem(session.user.companyId, itemId, done);
   revalidatePath(`/app/proyectos/${projectId}`);
 }

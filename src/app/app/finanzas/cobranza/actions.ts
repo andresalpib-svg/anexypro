@@ -36,6 +36,13 @@ export async function logActionAction(input: {
 }): Promise<{ ok: boolean; error?: string }> {
   const session = await guard(input.condominiumId);
   if (!session) return { ok: false, error: 'Sin permiso.' };
+  // A diferencia de `listActionsAction` (mismo archivo), esta acción no
+  // cruzaba `propertyId` contra el `condominiumId` declarado — un
+  // supervisor con acceso al condominio A podía registrar una gestión
+  // de cobro contra una filial real del condominio B con solo mandar
+  // su `propertyId` (auditoría de seguridad 2026-08-11, hallazgo #12).
+  const condoReal = await condoOfProperty(session.user.companyId, input.propertyId);
+  if (condoReal !== input.condominiumId) return { ok: false, error: 'La filial no pertenece a ese condominio.' };
   try {
     await logCollectionAction(session.user.companyId, { ...input, userId: session.user.id });
   } catch (e: any) {

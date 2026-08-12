@@ -3,10 +3,11 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
-import { requireOwner, SIN_PERMISO } from '@/lib/guard';
+import { requireOwner, allowsCondo, SIN_PERMISO } from '@/lib/guard';
 import { canCreateCondominium } from '@/lib/services/subscriptions';
 import { condominiumSchema } from '@/lib/validations/condominium';
 import { createCondominium, assignSupervisor, removeSupervisor } from '@/lib/services/condominiums';
+import { condoOfSupervisor } from '@/lib/services/entity-scope';
 import { bulkCreateProperties } from '@/lib/services/properties';
 import { importResidentsExcel } from '@/lib/services/import-excel';
 import { pickFile } from '@/lib/upload';
@@ -76,6 +77,13 @@ export async function assignSupervisorAction(
   if (!session?.user || session.user.role !== 'admin_owner') {
     return { ok: false, error: 'Solo el administrador principal asigna supervisores.' };
   }
+  // Segunda verificación en código, no solo RLS (auditoría de
+  // seguridad 2026-08-11, hallazgo #11): `assignSupervisor` nunca
+  // comprobó que `condominiumId` fuera de esta empresa antes de
+  // insertar la asignación.
+  if (!(await allowsCondo(session, condominiumId))) {
+    return { ok: false, error: 'No tienes acceso a ese condominio.' };
+  }
   try {
     await assignSupervisor(session.user.companyId, condominiumId, userId);
   } catch (e: any) {
@@ -93,7 +101,17 @@ export async function removeSupervisorAction(
   if (!session?.user || session.user.role !== 'admin_owner') {
     return { ok: false, error: 'Solo el administrador principal asigna supervisores.' };
   }
+  if (!(await allowsCondo(session, condominiumId))) {
+    return { ok: false, error: 'No tienes acceso a ese condominio.' };
+  }
+  // `removeSupervisor` nunca usaba `condominiumId` — solo `supervisorId`,
+  // dependía por completo de RLS para no borrar la asignación de otra
+  // empresa. Se cruza acá antes de borrar.
   try {
+    const condoReal = await condoOfSupervisor(session.user.companyId, supervisorId);
+    if (condoReal !== condominiumId) {
+      return { ok: false, error: 'Ese supervisor no pertenece a ese condominio.' };
+    }
     await removeSupervisor(session.user.companyId, supervisorId);
   } catch (e: any) {
     return { ok: false, error: e?.message ?? 'No se pudo quitar el supervisor.' };
