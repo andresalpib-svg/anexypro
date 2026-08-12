@@ -114,9 +114,17 @@ techo del ataque pero no lo elimina si el atacante rota de IP).
   existe en `docs/`, `storage/` ni la base (buscado dos veces, 2026-08-09).
   El módulo se armó con contenido estándar; pedirlo si se quiere el formato
   exacto.
-- **Seeds no automáticos para condominios nuevos**: `seed-violations.ts` y
-  `seed-asset-categories.ts` hay que correrlos a mano — `services/condominiums.ts`
-  no los dispara al crear un condominio. Hueco conocido, no nuevo.
+- ~~**Seeds no automáticos para condominios nuevos**~~ — **✅ Esta nota estaba
+  desactualizada.** `createCondominium` (`services/condominiums.ts`) ya llama
+  automáticamente a `seedCondoCatalogs` desde el commit `76a7059` ("Un
+  condominio nuevo nace con sus catálogos de incumplimientos y categorías"),
+  escrito **antes** de que se escribiera esta línea del documento — quedó sin
+  corregir por un descuido de la sesión. `seed-violations.ts`/
+  `seed-asset-categories.ts` siguen existiendo solo como scripts manuales de
+  respaldo/backfill para condominios que ya existían antes del fix
+  (`prisma/migrations/20260811_catalogo_incumplimientos_base`). Detectado en
+  la evaluación de errores del 11 de agosto, ver
+  `docs/evaluacion-errores-2026-08-11.md`.
 
 ---
 
