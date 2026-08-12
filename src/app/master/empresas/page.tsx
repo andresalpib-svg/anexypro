@@ -45,9 +45,14 @@ export default async function EmpresasPage() {
               >
                 <Building2 size={20} />
               </span>
-              <StatusChip variant={ESTADO[e.status]?.variant ?? 'neutral'}>
-                {ESTADO[e.status]?.label ?? e.status}
-              </StatusChip>
+              <div className="flex flex-col items-end gap-1.5">
+                <StatusChip variant={ESTADO[e.status]?.variant ?? 'neutral'}>
+                  {ESTADO[e.status]?.label ?? e.status}
+                </StatusChip>
+                {/* Nace y muere sola por el job `demo-vencidos` — el
+                    master no debería confundirla con un cliente real. */}
+                {e.isDemo && <StatusChip variant="neutral">Demo</StatusChip>}
+              </div>
             </div>
 
             <p className="mt-3 font-bold text-ink">{e.tradeName ?? e.legalName}</p>

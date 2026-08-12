@@ -70,6 +70,103 @@ model Company {
   // Módulos del panel que el usuario master oculta para esta empresa.
   // Se guardan los href de nav-config (p. ej. "/app/proyectos").
   hiddenModules String[]      @default([]) @map("hidden_modules")
+
+  // ---------- Demo ----------
+  /// Empresa creada desde /demo para que un visitante la pruebe. Los
+  /// jobs financieros (facturación, interés moratorio, cobranza,
+  /// informe mensual) la saltan. Su repositorio de archivos usa el
+  /// mismo proveedor activo que cualquier empresa real (PASO 8 — antes
+  /// forzaba `local`, pero el disco de una función serverless no
+  /// sobrevive entre invocaciones), aislada en su propio árbol de
+  /// carpetas "DEMOS/DEMO_<id>" — ver `demoDriveFolderId` más abajo y
+  /// `services/storage.ts` → `ensureCondoTree`.
+  isDemo        Boolean       @default(false) @map("is_demo")
+  /// Ciclo de vida de la demo. NULL en cualquier empresa real — solo
+  /// se usa cuando `isDemo = true`. No sustituye a `blockedAt`: el
+  /// bloqueo real de acceso lo sigue decidiendo `blockedAt` (mismo
+  /// mecanismo que una empresa en mora); este campo es para poder
+  /// CONSULTAR y REPORTAR en qué etapa está una demo sin tener que
+  /// derivarlo de las fechas cada vez.
+  demoStatus    DemoStatus?   @map("demo_status")
+  /// Instante exacto en que se creó la demo — hora del SERVIDOR
+  /// (`new Date()` en Node), nunca la del navegador. De aquí salen
+  /// `demoExpiresAt` y `demoDeleteScheduledAt` (`domain/demo-lifecycle.ts`).
+  demoStartedAt DateTime?     @map("demo_started_at")
+  /// Cuándo vence el acceso de una empresa demo (inicio + 15 días). El
+  /// job diario `demo-vencidos` la BLOQUEA al pasar esta fecha (el
+  /// mismo mecanismo de `blockedAt` que usa cualquier empresa en
+  /// mora) — nunca la borra.
+  demoExpiresAt DateTime?     @map("demo_expires_at")
+  /// Fecha a partir de la cual un futuro proceso de limpieza PODRÍA
+  /// borrar esta demo (vencimiento + 3 días = inicio + 18 días). Solo
+  /// programa la fecha — ningún proceso automático borra nada todavía.
+  demoDeleteScheduledAt DateTime? @map("demo_delete_scheduled_at")
+  /// Usuario `master` que creó esta demo, si la creó un master desde
+  /// el panel (a diferencia del alta pública y anónima en /demo, que
+  /// deja este campo en NULL — no hay ningún master detrás).
+  demoCreatedById String?     @map("demo_created_by_id")
+  /// Cuándo se marcó esta demo como convertida a cliente real. NULL =
+  /// nunca se convirtió. Es un hecho explícito (igual que
+  /// `blockedAt`): no se infiere de nada, alguien lo registra.
+  demoConvertedAt DateTime?   @map("demo_converted_at")
+  /// Cuándo `purgeDemoDriveFiles` (PASO 9, `services/demo-cleanup.ts`)
+  /// terminó de eliminar FÍSICAMENTE los archivos de esta demo y sus
+  /// filas de `StorageFolder`/`StorageObject`. NULL = nunca se purgó
+  /// (incluye el caso de una limpieza que falló a medias: eso lo dice
+  /// `demoStatus = DEMO_CLEANUP_FAILED`, este campo se llena recién
+  /// cuando el resultado final es limpio). Mismo criterio que
+  /// `demoConvertedAt`: un hecho explícito, nunca se infiere.
+  demoDeletedAt DateTime?   @map("demo_deleted_at")
+
+  // ---------- Historial comercial permanente (PASO 11) ----------
+  // Estos tres campos completan lo que `demoCreatedById`/`demoConvertedAt`
+  // ya cubrían: quién CONVIRTIÓ (no solo cuándo), qué plan se llevó
+  // realmente (una foto fija, tomada una sola vez al convertir — si
+  // después un master le cambia el plan desde /master/suscripciones,
+  // este campo NO se actualiza: es el registro de qué vendió la
+  // conversión, no el plan vigente hoy) y una libreta de notas libres
+  // para comercial. Ninguno se borra nunca junto con la demo: la fila
+  // de `Company` NO se elimina físicamente en ningún punto del sistema
+  // (`purgeDemoDriveFiles`, PASO 9, solo borra `storage_folders`/
+  // `storage_objects` — nunca `companies`), así que este historial
+  // sobrevive intacto a la purga de archivos.
+  /// Usuario `master` que ejecutó `convertDemoToFormal`. NULL = nunca
+  /// se convirtió (mismo criterio que `demoConvertedAt`).
+  demoConvertedById String? @map("demo_converted_by_id")
+  /// Nombre del plan en el momento exacto de la conversión — copia
+  /// fija, no una referencia viva a `SubscriptionPlan`. NULL = nunca
+  /// se convirtió.
+  demoConvertedPlanName String? @map("demo_converted_plan_name")
+  /// Observaciones comerciales — texto libre que el master edita a
+  /// mano en cualquier momento del ciclo de vida (el único campo de
+  /// este bloque pensado para cambiar después de escrito). NUNCA
+  /// contiene archivos ni datos operativos: es una libreta de ventas,
+  /// no un respaldo del condominio.
+  demoCommercialNotes String? @map("demo_commercial_notes")
+
+  // ---------- Carpeta exclusiva en Google Drive (PASO 8) ----------
+  // "demo_id"/"tenant_id" NO se duplican en columnas nuevas: la propia
+  // `Company.id` YA ES el tenant/demo id — es la misma columna que usa
+  // `StorageFolder.companyId` para aislar todo lo demás. Estos tres
+  // campos son la copia EXPLÍCITA, de un solo lugar, del mapeo
+  // "esta demo → esta carpeta real" — para que un futuro proceso de
+  // limpieza no tenga que reconstruir el árbol de `StorageFolder` para
+  // saber dónde borrar. La fuente de verdad sigue siendo
+  // `StorageFolder` (fila con `slug='condominio'`); esto es una
+  // consulta directa hacia el mismo dato, no un dato aparte.
+  /// Id REAL de la carpeta "DEMO_<id>" en el proveedor activo (Drive
+  /// en producción). Puede quedar `local` en desarrollo si ese es el
+  /// proveedor activo — el nombre del campo sigue el proveedor
+  /// principal de la integración, no excluye a los demás.
+  demoDriveFolderId String? @map("demo_drive_folder_id")
+  /// Nombre visible de esa carpeta ("DEMO_<id>") — solo para que un
+  /// humano la reconozca en Drive. NUNCA se usa para identificar al
+  /// dueño: eso lo decide `companyId`, no el texto del nombre.
+  demoDriveFolderName String? @map("demo_drive_folder_name")
+  /// Cuándo se creó esa carpeta por primera vez. No se pisa si la
+  /// carpeta se recrea al cambiar de proveedor (ver `ensureCondoTree`).
+  demoDriveFolderCreatedAt DateTime? @map("demo_drive_folder_created_at")
+
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
 
@@ -84,8 +181,64 @@ model Company {
   activityLog   AuditLog[]
   StorageFolder StorageFolder[]
   StorageObject StorageObject[]
+  demoCreatedBy    User?              @relation("DemoCreatedBy", fields: [demoCreatedById], references: [id])
+  demoConvertedBy  User?              @relation("DemoConvertedBy", fields: [demoConvertedById], references: [id])
+  demoHistory      DemoHistoryEntry[]
 
   @@map("companies")
+}
+
+/// Ciclo de vida de una empresa demo (`Company.isDemo = true`).
+/// Ver `src/lib/domain/demo-lifecycle.ts` para cómo se calculan las
+/// fechas y `src/lib/services/demo.ts` para dónde se asigna cada uno.
+enum DemoStatus {
+  /// Recién creada o dentro de sus 15 días de prueba.
+  DEMO_ACTIVO
+  /// Pasó `demoExpiresAt`; el job `demo-vencidos` la bloqueó.
+  DEMO_VENCIDO
+  /// Alguien la marcó como convertida a cliente real (`demoConvertedAt`).
+  DEMO_CONVERTIDO
+  /// `purgeDemoDriveFiles` (PASO 9) terminó sin ningún archivo o
+  /// carpeta pendiente: la demo ya fue borrada físicamente de Drive y
+  /// sus filas de `StorageFolder`/`StorageObject` ya no existen.
+  DEMO_ELIMINADO
+  /// Un intento de `purgeDemoDriveFiles` encontró algo que NO pudo
+  /// identificar con absoluta seguridad como exclusivo de esta demo
+  /// (o encontró un elemento vivo que no pudo borrar) y se detuvo sin
+  /// tocarlo — el intento queda anotado en `DemoHistoryEntry` con el
+  /// detalle, y necesita revisión manual antes de reintentar.
+  DEMO_CLEANUP_FAILED
+}
+
+/// Historial de una empresa demo: cada evento de su ciclo de vida
+/// (creada, vencida, convertida, y en el futuro, eliminada) en una
+/// fila aparte — para poder ver "qué le pasó a esta demo" sin
+/// reconstruirlo a partir de los campos actuales de `Company`, que
+/// solo guardan el último estado.
+///
+/// Sin Row-Level Security a propósito, igual que `companies`: es
+/// información de PLATAFORMA (la consulta el master), no de un
+/// condominio de un cliente.
+model DemoHistoryEntry {
+  id          String   @id @default(uuid())
+  companyId   String   @map("company_id")
+  /// Texto libre ("creada", "vencida", "conversión_registrada",
+  /// "creación_fallida"…) — no se restringe a los valores de
+  /// `DemoStatus` para poder anotar eventos que no son un cambio de
+  /// estado final (p. ej. un intento de creación que falló a medio
+  /// camino).
+  event       String
+  detail      String?
+  occurredAt  DateTime @default(now()) @map("occurred_at")
+  /// Quién generó el evento: un master, o NULL si lo generó un
+  /// proceso automático (el job `demo-vencidos`, por ejemplo).
+  actorUserId String?  @map("actor_user_id")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  actor   User?   @relation(fields: [actorUserId], references: [id])
+
+  @@index([companyId, occurredAt(sort: Desc)])
+  @@map("demo_history_entries")
 }
 
 enum UserRole {
@@ -137,6 +290,9 @@ model User {
   approvedExpenses     Expense[]               @relation("ExpenseApprovedBy")
   closedPeriods        AccountingPeriod[]      @relation("PeriodClosedBy")
   supervisedCondos     CondominiumSupervisor[]
+  createdDemoCompanies   Company[]               @relation("DemoCreatedBy")
+  convertedDemoCompanies Company[]               @relation("DemoConvertedBy")
+  demoHistoryActions   DemoHistoryEntry[]
   // Relaciones "createdBy"/"receivedBy"/etc. de otros módulos se
   // omiten del lado User (unidireccionales) para no inflar este
   // modelo con decenas de relaciones inversas sin valor de consulta.
@@ -1565,6 +1721,23 @@ model AuthLog {
 
   @@index([userId, createdAt(sort: Desc)])
   @@map("auth_log")
+}
+
+/// Freno de tasa por IP, respaldado en Postgres porque no hay
+/// Redis/Upstash en este despliegue. SIN Row-Level Security a
+/// propósito, igual que `User`/`Company`: se usa para frenar fuerza
+/// bruta y saturación ANTES de saber a qué empresa pertenece nadie
+/// (login, "olvidé mi contraseña", /demo) — no guarda ningún dato de
+/// un tenant, así que no hay nada que RLS deba aislar acá. Ver
+/// `src/lib/rate-limit.ts`.
+model RateLimitHit {
+  id        BigInt   @id @default(autoincrement())
+  /// p. ej. "login-fail:203.0.113.4", "demo:203.0.113.4".
+  bucket    String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([bucket, createdAt])
+  @@map("rate_limit_hits")
 }
 
 // ============================================================

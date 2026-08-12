@@ -18,12 +18,14 @@ import {
   Menu,
   X,
   Activity,
+  FlaskConical,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
 const MASTER_NAV = [
   { label: 'Plataforma', href: '/master', icon: Globe },
   { label: 'Empresas', href: '/master/empresas', icon: Building2 },
+  { label: 'Usuarios Demo', href: '/master/usuarios-demo', icon: FlaskConical },
   { label: 'Usuarios', href: '/master/usuarios', icon: Users },
   { label: 'Suscripciones', href: '/master/suscripciones', icon: CreditCard },
   { label: 'Proveedores varios', href: '/master/proveedores', icon: Store },

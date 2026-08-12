@@ -1,9 +1,9 @@
 import crypto from 'node:crypto';
 import type { Prisma } from '@prisma/client';
 import { prisma, withTenantContext, forEachCompany } from '@/lib/db';
-import { activeProvider, getStorageSettings } from '@/lib/storage';
+import { activeProvider, getStorageSettings, providerForCompany } from '@/lib/storage';
 import type { StorageKind } from '@/lib/storage/provider';
-import { CONDO_TREE, CONDOS_NAME, ROOT_NAME, flattenTree, residentSlug, RESIDENTS_SLUG } from '@/lib/storage/tree';
+import { CONDO_TREE, CONDOS_NAME, DEMOS_NAME, ROOT_NAME, demoFolderName, flattenTree, residentSlug, RESIDENTS_SLUG } from '@/lib/storage/tree';
 import { canReadFolder, canReadObject, canWriteFolder, canDeleteObject, type Actor } from '@/lib/storage/permissions';
 import { logActivity } from '@/lib/services/audit';
 
@@ -50,14 +50,23 @@ export type StoredFile = {
 // Árbol de carpetas
 // ============================================================
 
-/** Carpeta raíz "ANEXYpro" y el contenedor "Condominios". */
-async function ensureRoots(companyId: string): Promise<{ rootId: string; condosId: string; provider: StorageKind }> {
-  const settings = await getStorageSettings();
-  const provider = await activeProvider();
+/**
+ * Carpeta raíz "ANEXYpro" y los contenedores "Condominios" y "DEMOS".
+ *
+ * Son filas compartidas por toda la plataforma (sin `companyId`), una
+ * por cada `kind` de proveedor. Los dos contenedores se crean siempre
+ * —cueste lo mismo que crear uno solo, e idempotente—, aunque la
+ * empresa que dispara la llamada todavía no vaya a usar el de DEMOS:
+ * así no hace falta decidir acá si esta empresa es demo o no, esa
+ * decisión la toma `ensureCondoTree`, que es quien sabe bajo cuál
+ * colgar la carpeta del condominio.
+ */
+async function ensureRoots(companyId: string): Promise<{ rootId: string; condosId: string; demosId: string; kind: StorageKind }> {
+  const { kind, provider } = await providerForCompany(companyId);
 
   let root = await enEmpresa(companyId, (tx) =>
     tx.storageFolder.findFirst({
-      where: { kind: 'raiz', provider: settings.provider },
+      where: { kind: 'raiz', provider: kind },
     })
   );
   if (!root) {
@@ -68,7 +77,7 @@ async function ensureRoots(companyId: string): Promise<{ rootId: string; condosI
           name: ROOT_NAME,
           slug: 'raiz',
           kind: 'raiz',
-          provider: settings.provider,
+          provider: kind,
           providerFolderId: created.id,
           allowedRoles: ['master'],
         },
@@ -81,7 +90,7 @@ async function ensureRoots(companyId: string): Promise<{ rootId: string; condosI
 
   let condos = await enEmpresa(companyId, (tx) =>
     tx.storageFolder.findFirst({
-      where: { kind: 'condominios', provider: settings.provider },
+      where: { kind: 'condominios', provider: kind },
     })
   );
   if (!condos) {
@@ -92,7 +101,7 @@ async function ensureRoots(companyId: string): Promise<{ rootId: string; condosI
           name: CONDOS_NAME,
           slug: 'condominios',
           kind: 'condominios',
-          provider: settings.provider,
+          provider: kind,
           providerFolderId: created.id,
           parentId: root.id,
           allowedRoles: ['master'],
@@ -101,7 +110,33 @@ async function ensureRoots(companyId: string): Promise<{ rootId: string; condosI
     );
   }
 
-  return { rootId: root.id, condosId: condos.id, provider: settings.provider };
+  // "DEMOS" (PASO 8): hermano de "Condominios", nunca su contenido.
+  // Mismo `kind: 'condominios'` en la base (es el mismo TIPO de
+  // contenedor — "una carpeta por cliente colgada de acá"); lo que los
+  // distingue es el `slug`, que es lo único que se consulta.
+  let demos = await enEmpresa(companyId, (tx) =>
+    tx.storageFolder.findFirst({
+      where: { slug: 'demos', provider: kind },
+    })
+  );
+  if (!demos) {
+    const created = await provider.createFolder(DEMOS_NAME, root.providerFolderId);
+    demos = await enEmpresa(companyId, (tx) =>
+      tx.storageFolder.create({
+        data: {
+          name: DEMOS_NAME,
+          slug: 'demos',
+          kind: 'condominios',
+          provider: kind,
+          providerFolderId: created.id,
+          parentId: root.id,
+          allowedRoles: ['master'],
+        },
+      })
+    );
+  }
+
+  return { rootId: root.id, condosId: condos.id, demosId: demos.id, kind };
 }
 
 export type TreeResult = { created: number; existing: number; folders: number };
@@ -117,36 +152,47 @@ export async function ensureCondoTree(companyId: string, condominiumId: string):
   const condo = await enEmpresa(companyId, (tx) =>
     tx.condominium.findUniqueOrThrow({
       where: { id: condominiumId },
-      select: { name: true, companyId: true },
+      select: { name: true, companyId: true, company: { select: { isDemo: true } } },
     })
   );
-  const { condosId, provider: kind } = await ensureRoots(companyId);
-  const provider = await activeProvider();
-  const condosFolder = await enEmpresa(companyId, (tx) =>
-    tx.storageFolder.findUniqueOrThrow({ where: { id: condosId } })
+  const { condosId, demosId, kind } = await ensureRoots(companyId);
+  const { provider } = await providerForCompany(companyId);
+
+  // PASO 8: una empresa demo cuelga de "DEMOS", nunca de "Condominios"
+  // — nunca comparte padre con un cliente real. El NOMBRE visible
+  // ("DEMO_<companyId>") es solo para que un humano lo reconozca de
+  // un vistazo en Drive; lo que de verdad la identifica es la columna
+  // `company_id` de la fila (ver el `data:` de abajo) y el
+  // `provider_folder_id` real de Drive — nunca el nombre.
+  const esDemo = condo.company.isDemo;
+  const padreId = esDemo ? demosId : condosId;
+  const nombreCarpeta = esDemo ? demoFolderName(companyId) : condo.name;
+  const padreFolder = await enEmpresa(companyId, (tx) =>
+    tx.storageFolder.findUniqueOrThrow({ where: { id: padreId } })
   );
 
   const result: TreeResult = { created: 0, existing: 0, folders: 0 };
 
-  // Carpeta del condominio.
+  // Carpeta del condominio (o de la demo, dentro de "DEMOS").
   let condoFolder = await enEmpresa(companyId, (tx) =>
     tx.storageFolder.findFirst({
       where: { condominiumId, slug: 'condominio' },
     })
   );
+  const esCreacionNueva = !condoFolder;
   if (!condoFolder) {
-    const made = await provider.createFolder(condo.name, condosFolder.providerFolderId);
+    const made = await provider.createFolder(nombreCarpeta, padreFolder.providerFolderId);
     condoFolder = await enEmpresa(companyId, (tx) =>
       tx.storageFolder.create({
         data: {
           companyId,
           condominiumId,
-          name: condo.name,
+          name: nombreCarpeta,
           slug: 'condominio',
           kind: 'condominio',
           provider: kind,
           providerFolderId: made.id,
-          parentId: condosFolder.id,
+          parentId: padreFolder.id,
           allowedRoles: ['master', 'admin_owner', 'admin_staff', 'contador'],
         },
       })
@@ -157,16 +203,37 @@ export async function ensureCondoTree(companyId: string, condominiumId: string):
     // trabajar en local): se crea la carpeta en el proveedor activo y la
     // fila se actualiza. Los archivos viejos no se mueven — cada objeto
     // recuerda su proveedor y se sigue leyendo de ahí.
-    const made = await provider.createFolder(condo.name, condosFolder.providerFolderId);
+    const made = await provider.createFolder(nombreCarpeta, padreFolder.providerFolderId);
     condoFolder = await enEmpresa(companyId, (tx) =>
       tx.storageFolder.update({
         where: { id: condoFolder!.id },
-        data: { provider: kind, providerFolderId: made.id, parentId: condosFolder.id },
+        data: { provider: kind, providerFolderId: made.id, parentId: padreFolder.id },
       })
     );
     result.created += 1;
   } else {
     result.existing += 1;
+  }
+
+  // PASO 8 — "Guardar en la base de datos": demo_id/tenant_id ya ES
+  // `companyId` (la fila de `Company` es el tenant); esto guarda,
+  // ADEMÁS y de forma explícita en la propia fila de la empresa, el
+  // `google_drive_folder_id` real, el nombre de la carpeta y cuándo se
+  // creó — para que un futuro proceso de limpieza (todavía no
+  // implementado) pueda encontrar la carpeta exclusiva de una demo con
+  // UNA sola lectura, sin tener que reconstruir el árbol de
+  // `StorageFolder`. La fecha de creación solo se fija la PRIMERA vez
+  // (`esCreacionNueva`); si más tarde cambia de proveedor, el id se
+  // actualiza pero la fecha original no se pisa.
+  if (esDemo) {
+    await prisma.company.update({
+      where: { id: companyId },
+      data: {
+        demoDriveFolderId: condoFolder.providerFolderId,
+        demoDriveFolderName: condoFolder.name,
+        ...(esCreacionNueva ? { demoDriveFolderCreatedAt: condoFolder.createdAt } : {}),
+      },
+    });
   }
 
   // Secciones y subsecciones, en orden: los padres antes que los hijos.
@@ -261,8 +328,7 @@ export async function ensureResidentFolder(companyId: string, condominiumId: str
     );
   }
 
-  const settings = await getStorageSettings();
-  const provider = await activeProvider();
+  const { kind, provider } = await providerForCompany(companyId);
   // El contenedor puede venir de un proveedor anterior.
   const parentSync = await syncFolderWithActiveProvider(companyId, parent.id);
   const made = await provider.createFolder(person.fullName, parentSync.providerFolderId);
@@ -276,7 +342,7 @@ export async function ensureResidentFolder(companyId: string, condominiumId: str
         name: person.fullName,
         slug,
         kind: 'residente',
-        provider: settings.provider,
+        provider: kind,
         providerFolderId: made.id,
         parentId: parentSync.id,
         // Vacío a propósito: el acceso lo resuelve la regla de carpeta de
@@ -301,17 +367,18 @@ export async function ensureCompanyFolder(companyId: string, slug: string, name:
   );
   if (existing) return existing;
 
-  const settings = await getStorageSettings();
-  const provider = await activeProvider();
+  const { kind, provider } = await providerForCompany(companyId);
   const { rootId } = await ensureRoots(companyId);
   const root = await enEmpresa(companyId, (tx) =>
     tx.storageFolder.findUniqueOrThrow({ where: { id: rootId } })
   );
 
-  // Contenedor "Empresas", común a la plataforma.
+  // Contenedor "Empresas", común a la plataforma — una fila por
+  // proveedor, igual que la raíz: una empresa demo forzada a `local`
+  // no debe reutilizar el contenedor de Drive.
   let empresas = await enEmpresa(companyId, (tx) =>
     tx.storageFolder.findFirst({
-      where: { companyId: null, condominiumId: null, slug: 'empresas' },
+      where: { companyId: null, condominiumId: null, slug: 'empresas', provider: kind },
     })
   );
   if (!empresas) {
@@ -322,7 +389,7 @@ export async function ensureCompanyFolder(companyId: string, slug: string, name:
           name: 'Empresas',
           slug: 'empresas',
           kind: 'condominios',
-          provider: settings.provider,
+          provider: kind,
           providerFolderId: made.id,
           parentId: root.id,
           allowedRoles: ['master'],
@@ -334,7 +401,7 @@ export async function ensureCompanyFolder(companyId: string, slug: string, name:
   // Carpeta de esta empresa.
   let empresa = await enEmpresa(companyId, (tx) =>
     tx.storageFolder.findFirst({
-      where: { companyId, condominiumId: null, slug: 'empresa' },
+      where: { companyId, condominiumId: null, slug: 'empresa', provider: kind },
     })
   );
   if (!empresa) {
@@ -352,7 +419,7 @@ export async function ensureCompanyFolder(companyId: string, slug: string, name:
           name: company.tradeName ?? company.legalName,
           slug: 'empresa',
           kind: 'condominio',
-          provider: settings.provider,
+          provider: kind,
           providerFolderId: made.id,
           parentId: empresas.id,
           allowedRoles: ['master', 'admin_owner', 'admin_staff', 'contador', 'seguridad', 'condomino'],
@@ -371,7 +438,7 @@ export async function ensureCompanyFolder(companyId: string, slug: string, name:
         name,
         slug: `empresa/${slug}`,
         kind: 'seccion',
-        provider: settings.provider,
+        provider: kind,
         providerFolderId: made.id,
         parentId: empresaSync.id,
         // Estas carpetas guardan fotos de perfil y logos: los ve todo el
@@ -439,24 +506,27 @@ async function syncFolderWithActiveProvider(
   companyId: string,
   folderId: string
 ): Promise<{ id: string; providerFolderId: string }> {
-  const settings = await getStorageSettings();
+  const { kind, provider } = await providerForCompany(companyId);
   const row = await enEmpresa(companyId, (tx) =>
     tx.storageFolder.findUniqueOrThrow({ where: { id: folderId } })
   );
-  if (row.provider === settings.provider) return { id: row.id, providerFolderId: row.providerFolderId };
+  if (row.provider === kind) return { id: row.id, providerFolderId: row.providerFolderId };
 
-  // Las dos carpetas de plataforma se resuelven con ensureRoots, que ya
-  // es consciente del proveedor (crea filas nuevas por proveedor).
-  if (row.kind === 'raiz' || row.kind === 'condominios') {
+  // Las carpetas de plataforma ("ANEXYpro", "Condominios", "DEMOS") se
+  // resuelven con ensureRoots, que ya es consciente del proveedor
+  // (crea filas nuevas por proveedor). Se distinguen por `slug`, no por
+  // `kind`: "Condominios", "DEMOS" y "Empresas" comparten el mismo
+  // `kind: 'condominios'` (son el mismo TIPO de contenedor), así que
+  // `kind` por sí solo ya no alcanza para saber cuál es cuál.
+  if (row.slug === 'raiz' || row.slug === 'condominios' || row.slug === 'demos') {
     const roots = await ensureRoots(companyId);
-    const id = row.kind === 'raiz' ? roots.rootId : roots.condosId;
+    const id = row.slug === 'raiz' ? roots.rootId : row.slug === 'demos' ? roots.demosId : roots.condosId;
     const fresh = await enEmpresa(companyId, (tx) =>
       tx.storageFolder.findUniqueOrThrow({ where: { id } })
     );
     return { id: fresh.id, providerFolderId: fresh.providerFolderId };
   }
 
-  const provider = await activeProvider();
   const parent = row.parentId
     ? await syncFolderWithActiveProvider(companyId, row.parentId)
     : await (async () => {
@@ -471,7 +541,7 @@ async function syncFolderWithActiveProvider(
   const updated = await enEmpresa(companyId, (tx) =>
     tx.storageFolder.update({
       where: { id: row.id },
-      data: { provider: settings.provider, providerFolderId: made.id, parentId: parent.id },
+      data: { provider: kind, providerFolderId: made.id, parentId: parent.id },
     })
   );
   return { id: updated.id, providerFolderId: updated.providerFolderId };
@@ -520,8 +590,7 @@ export async function uploadToFolder(
   }
 
   const sha256 = crypto.createHash('sha256').update(input.data).digest('hex');
-  const provider = await activeProvider();
-  const settings = await getStorageSettings();
+  const { kind, provider } = await providerForCompany(actor.companyId);
 
   // Duplicado exacto en la MISMA carpeta: se devuelve el que ya está en
   // vez de guardar dos veces los mismos bytes.
@@ -560,7 +629,7 @@ export async function uploadToFolder(
         companyId: row.companyId ?? actor.companyId,
         condominiumId: row.condominiumId,
         folderId: input.folderId,
-        provider: settings.provider,
+        provider: kind,
         providerFileId: uploaded.id,
         name: input.fileName,
         mimeType: input.mimeType,

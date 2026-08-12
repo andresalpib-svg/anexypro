@@ -19,7 +19,10 @@ function esPublica(pathname: string): boolean {
     pathname === '/recuperar' ||
     pathname === '/restablecer' ||
     pathname.startsWith('/restablecer/') ||
-    pathname.startsWith('/api/auth')
+    pathname.startsWith('/api/auth') ||
+    // /demo crea su propia empresa aislada y no necesita sesión — es la
+    // puerta pública para probar ANEXYpro sin una cuenta real.
+    pathname === '/demo'
   );
 }
 

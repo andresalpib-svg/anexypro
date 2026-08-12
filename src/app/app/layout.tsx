@@ -13,6 +13,7 @@ import { OverdueModal } from '@/components/layout/overdue-modal';
 import { brandStyle } from '@/lib/branding';
 import { getCompanyShell } from '@/lib/services/company-shell';
 import { BlockedScreen } from '@/components/layout/blocked-screen';
+import { DemoBadge } from '@/components/layout/demo-badge';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -78,7 +79,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     if (session.user.role === 'admin_owner') {
       if (pathname !== '/app/suscripcion') redirect('/app/suscripcion');
     } else {
-      return <BlockedScreen rol={session.user.role} />;
+      return <BlockedScreen rol={session.user.role} isDemo={suscripcion.isDemo} />;
     }
   }
 
@@ -103,6 +104,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             when: n.when.toISOString(),
           }))}
         />
+        {/* Ya se descartó `suscripcion.blocked` arriba (esos casos
+            terminan en /app/suscripcion o BlockedScreen) — acá solo
+            llega una demo todavía dentro de sus 15 días. */}
+        {suscripcion.isDemo && <DemoBadge expiresAt={suscripcion.demoExpiresAt} />}
         <main className="min-w-0 flex-1 overflow-y-auto bg-canvas p-4 sm:p-6">{children}</main>
       </div>
     </div>

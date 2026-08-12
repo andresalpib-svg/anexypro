@@ -22,7 +22,7 @@ import type { SubscriptionState } from '@/lib/domain/subscription';
 export type CompanyShell = {
   hiddenModules: string[];
   brand: { brandPrimary: string | null; brandDeep: string | null };
-  subscription: SubscriptionState & { blocked: boolean };
+  subscription: SubscriptionState & { blocked: boolean; isDemo: boolean; demoExpiresAt: Date | null };
 };
 
 export async function getCompanyShell(
@@ -38,6 +38,8 @@ export async function getCompanyShell(
       planId: true,
       nextPaymentDate: true,
       blockedAt: true,
+      isDemo: true,
+      demoExpiresAt: true,
       plan: { select: { graceDays: true } },
     },
   });
@@ -46,7 +48,7 @@ export async function getCompanyShell(
     return {
       hiddenModules: [],
       brand: { brandPrimary: null, brandDeep: null },
-      subscription: { ...subscriptionState({}, now), blocked: false },
+      subscription: { ...subscriptionState({}, now), blocked: false, isDemo: false, demoExpiresAt: null },
     };
   }
 
@@ -65,6 +67,11 @@ export async function getCompanyShell(
     brand: { brandPrimary: empresa.brandPrimary, brandDeep: empresa.brandDeep },
     // Solo el bloqueo explícito corta el acceso: estar en mora avisa al
     // master, pero no deja a nadie fuera sin que él lo decida.
-    subscription: { ...state, blocked: Boolean(empresa.blockedAt) },
+    subscription: {
+      ...state,
+      blocked: Boolean(empresa.blockedAt),
+      isDemo: empresa.isDemo,
+      demoExpiresAt: empresa.demoExpiresAt,
+    },
   };
 }

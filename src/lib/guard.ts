@@ -1,5 +1,6 @@
 import type { Session } from 'next-auth';
 import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/db';
 import { can, type PermissionArea } from '@/lib/rbac';
 import { NAV_ITEMS, CONTADOR_MODULES } from '@/lib/nav-config';
 import { canAccessCondo } from '@/lib/services/condominiums';
@@ -48,12 +49,37 @@ export type GuardOptions = {
   condominiumId?: string | null;
 };
 
+/**
+ * Empresa DEMO vencida: cierra el paso a las Server Actions, no solo a
+ * la pantalla. `src/app/app/layout.tsx` ya manda al `admin_owner` a
+ * `/app/suscripcion` y al resto a `BlockedScreen`, pero eso protege la
+ * PANTALLA — una acción disparada desde una pestaña que ya estaba
+ * abierta no vuelve a pasar por el layout, y sin este chequeo se
+ * ejecutaba igual. Ver PASO 4: "no podrá... realizar operaciones".
+ *
+ * Se limita a `isDemo` a propósito: una empresa REAL en mora sigue
+ * dejando actuar desde una pestaña ya abierta (decisión previa,
+ * documentada en `app/app/layout.tsx` — "no se borra ni se oculta
+ * información: solo se cierra el paso", y el `admin_owner` necesita
+ * poder seguir viendo `/app/suscripcion`). Tocar eso no lo pidió nadie
+ * en este paso.
+ */
+async function demoBloqueada(companyId: string): Promise<boolean> {
+  const empresa = await prisma.company.findUnique({
+    where: { id: companyId },
+    select: { isDemo: true, blockedAt: true },
+  });
+  return Boolean(empresa?.isDemo && empresa.blockedAt);
+}
+
 export async function requirePanel(opts: GuardOptions = {}): Promise<Session | null> {
   const session = await auth();
   if (!session?.user) return null;
 
   const roles = opts.roles ?? PANEL_ROLES;
   if (!roles.includes(session.user.role)) return null;
+
+  if (await demoBloqueada(session.user.companyId)) return null;
 
   const item = opts.module ? NAV_ITEMS.find((i) => i.href === opts.module) : undefined;
 
@@ -88,6 +114,11 @@ export async function requirePanel(opts: GuardOptions = {}): Promise<Session | n
 export async function requireSecurity(condominiumId?: string | null): Promise<Session | null> {
   const session = await auth();
   if (!session?.user || session.user.role !== 'seguridad') return null;
+  // A diferencia de una empresa real en mora (la caseta sigue operando
+  // a propósito: cortar el control de acceso físico por una factura
+  // impaga arriesga a residentes ajenos al problema comercial), una
+  // demo vencida no tiene ese riesgo — son datos ficticios.
+  if (await demoBloqueada(session.user.companyId)) return null;
   if (condominiumId && !(await canAccessCondo(session, condominiumId))) return null;
   return session;
 }

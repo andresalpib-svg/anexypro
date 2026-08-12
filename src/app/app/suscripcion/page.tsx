@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
-import { CreditCard, ShieldCheck, Mail, Phone } from 'lucide-react';
+import Link from 'next/link';
+import { CreditCard, Hourglass, ShieldCheck, Mail, Phone } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { getCompanySubscription } from '@/lib/services/subscriptions';
@@ -27,8 +28,54 @@ export default async function SuscripcionPage() {
 
   const empresa = await prisma.company.findUnique({
     where: { id: session.user.companyId },
-    select: { legalName: true, tradeName: true, blockReason: true, plan: { select: { name: true } } },
+    select: { legalName: true, tradeName: true, blockReason: true, isDemo: true, plan: { select: { name: true } } },
   });
+
+  // Una empresa demo nunca está "pendiente de pago" — venció su plazo
+  // de prueba. La pantalla de suscripción real no aplica: ni hay a
+  // quién llamar ni nada que "regularizar".
+  if (empresa?.isDemo) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-deep p-6">
+        <div className="w-full max-w-lg">
+          <div className="mb-6 text-center">
+            <Logo className="text-3xl" />
+          </div>
+
+          <div className="card p-8">
+            <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-warn-bg text-warn">
+              <Hourglass size={26} />
+            </span>
+
+            <h1 className="mt-4 text-center text-xl font-extrabold text-ink">Esta demo venció</h1>
+            <p className="mt-2 text-center text-sm text-muted">
+              Las demos de ANEXYpro duran 15 días para que cualquiera pueda probarlas sin saturar el
+              sistema. Esta ya se cumplió.
+            </p>
+
+            <div className="mt-5 flex items-start gap-3 rounded-xl bg-ok-bg/50 px-4 py-3">
+              <ShieldCheck size={18} className="mt-0.5 flex-none text-ok" />
+              <p className="text-sm text-ink">
+                <span className="font-semibold">No se perdió ninguna información.</span> Simplemente
+                queda bloqueada — no vuelve a activarse, pero podés crear otra en cualquier momento.
+              </p>
+            </div>
+
+            <Link
+              href="/demo"
+              className="mt-6 block w-full rounded-2xl bg-royal py-3.5 text-center text-base font-semibold text-white transition hover:opacity-90"
+            >
+              Crear una demo nueva
+            </Link>
+          </div>
+
+          <p className="mt-4 text-center text-xs text-white/50">
+            Ingresaste como {session.user.name ?? session.user.email}.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-deep p-6">
