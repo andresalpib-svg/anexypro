@@ -109,6 +109,23 @@ módulos lo hace bien; los hallazgos de abajo son los puntos donde no.
 >
 > Verificado: `tsc --noEmit` limpio, 318/318 tests en verde, `next build`
 > de producción sin errores.
+>
+> **✅ Y ya está DESPLEGADO EN PRODUCCIÓN** (commit `d271721`, fusionado a
+> `main` y desplegado con `vercel deploy --prod` — `readyState: READY`,
+> alias `https://api.anexypro.com`). Verificado en vivo con `curl`: los 5
+> headers nuevos del hallazgo #18 (`content-security-policy: frame-ancestors
+> 'none'`, `x-frame-options: DENY`, `x-content-type-options: nosniff`,
+> `referrer-policy`, `strict-transport-security`) están presentes en la
+> respuesta real; `/documento/[id]` y `/app/reportes` redirigen a login sin
+> sesión (307).
+>
+> **Con esto, los 23 hallazgos de la auditoría están corregidos y en
+> producción.** Lo único que queda fuera del alcance de esta auditoría
+> formal: CAPTCHA real en login/`/demo` (el freno por IP baja el techo del
+> ataque pero no lo elimina si el atacante rota de IP) y una CSP completa
+> de `script-src`/`style-src` (requiere revisar pantalla por pantalla el
+> uso extensivo de `style={{...}}` inline antes de poder restringirlo sin
+> riesgo).
 
 ---
 
