@@ -2538,6 +2538,11 @@ model Supplier {
   taxId              String?  @map("tax_id")
   email              String?
   phone              String?
+  // Rubro/giro comercial declarado al darlo de alta (p. ej. "Seguros",
+  // "Jardinería"). No confundir con `defaultCategory`: esa es la
+  // categoría CONTABLE que el sistema aprende sola del historial de
+  // gastos; esta la escribe quien registra el proveedor.
+  activity           String?
   bankAccount        String?  @map("bank_account")
   // Lo que el sistema APRENDE: la cuenta y categoría que más usa este
   // proveedor. Es lo que permite registrar un gasto sin elegirlas.

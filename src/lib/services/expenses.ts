@@ -421,7 +421,15 @@ export async function listSuppliers(companyId: string) {
 
 export async function upsertSupplier(
   companyId: string,
-  input: { id?: string; legalName: string; tradeName?: string; taxId?: string; email?: string; phone?: string }
+  input: {
+    id?: string;
+    legalName: string;
+    tradeName?: string;
+    taxId?: string;
+    email?: string;
+    phone?: string;
+    activity?: string;
+  }
 ) {
   return withTenantContext(companyId, (tx) => {
     const data = {
@@ -430,6 +438,7 @@ export async function upsertSupplier(
       taxId: input.taxId || null,
       email: input.email || null,
       phone: input.phone || null,
+      activity: input.activity || null,
     };
     return input.id
       ? tx.supplier.update({ where: { id: input.id }, data })

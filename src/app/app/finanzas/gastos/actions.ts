@@ -206,9 +206,24 @@ const supplierSchema = z.object({
   taxId: z.string().max(30).optional().or(z.literal('')),
   email: z.string().email('Correo inválido').optional().or(z.literal('')),
   phone: z.string().max(30).optional().or(z.literal('')),
+  activity: z.string().max(100).optional().or(z.literal('')),
 });
 
-export async function createSupplierAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+/**
+ * Extiende `ActionState` con el proveedor recién creado: el formulario
+ * de gasto lo necesita para agregarlo a su lista y seleccionarlo sin
+ * esperar a que la página vuelva a cargar del servidor (antes el
+ * `<select>` se quedaba con la lista vieja y el proveedor "desaparecía"
+ * después de crearlo).
+ */
+export type SupplierActionState = ActionState & {
+  supplier?: { id: string; name: string; defaultCategory: string | null };
+};
+
+export async function createSupplierAction(
+  _prev: SupplierActionState,
+  formData: FormData
+): Promise<SupplierActionState> {
   const session = await auth();
   if (!session?.user || !['admin_owner', 'admin_staff'].includes(session.user.role)) {
     return { formError: 'Sin permiso.' };
@@ -216,13 +231,21 @@ export async function createSupplierAction(_prev: ActionState, formData: FormDat
   const parsed = supplierSchema.safeParse(Object.fromEntries(formData.entries()));
   if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors as Record<string, string[]> };
 
+  let created;
   try {
-    await upsertSupplier(session.user.companyId, parsed.data);
+    created = await upsertSupplier(session.user.companyId, parsed.data);
   } catch (e: any) {
     return { formError: e?.message ?? 'No se pudo guardar el proveedor.' };
   }
   revalidatePath('/app/finanzas/gastos');
-  return { success: true };
+  return {
+    success: true,
+    supplier: {
+      id: created.id,
+      name: created.tradeName ?? created.legalName,
+      defaultCategory: created.defaultCategory,
+    },
+  };
 }
 
 

@@ -14,6 +14,7 @@ import {
   createSupplierAction,
   readInvoiceXmlAction,
   type ActionState,
+  type SupplierActionState,
 } from './actions';
 import { enTransicion } from '@/lib/accion-segura';
 import { hoyISO as hoy } from '@/lib/fecha-local';
@@ -105,6 +106,10 @@ function NewExpenseModal({
 }) {
   const [state, formAction] = useFormState<ActionState, FormData>(createExpenseAction, {});
   const formRef = useRef<HTMLFormElement>(null);
+  // Copia local: permite agregar el proveedor recién creado sin
+  // esperar a que el servidor vuelva a mandar la lista completa (ver
+  // `onSupplierCreated`).
+  const [supplierList, setSupplierList] = useState(suppliers);
   const [supplierId, setSupplierId] = useState('');
   const [category, setCategory] = useState('mantenimiento');
   const [subtotal, setSubtotal] = useState('');
@@ -161,8 +166,18 @@ function NewExpenseModal({
   // Al elegir proveedor se hereda la categoría que usó la última vez.
   const onSupplier = (id: string) => {
     setSupplierId(id);
-    const s = suppliers.find((x) => x.id === id);
+    const s = supplierList.find((x) => x.id === id);
     if (s?.defaultCategory) setCategory(s.defaultCategory);
+  };
+
+  // El proveedor se crea desde ESTE mismo formulario ("+ nuevo"), así
+  // que se agrega a la lista y se deja seleccionado de una vez — antes
+  // el <select> se quedaba con la lista con la que abrió el modal, y el
+  // proveedor recién creado no aparecía hasta recargar la página.
+  const onSupplierCreated = (s: SupplierOpt) => {
+    setSupplierList((prev) => [...prev, s].sort((a, b) => a.name.localeCompare(b.name, 'es')));
+    setSupplierId(s.id);
+    if (s.defaultCategory) setCategory(s.defaultCategory);
   };
 
   const total = (Number(subtotal) || 0) + (Number(tax) || 0);
@@ -241,7 +256,7 @@ function NewExpenseModal({
                 className="field-input"
               >
                 <option value="">Sin proveedor</option>
-                {suppliers.map((s) => (
+                {supplierList.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
                   </option>
@@ -378,19 +393,29 @@ function NewExpenseModal({
         </div>
       </form>
 
-      {showSupplier && <NewSupplierModal onDone={() => setShowSupplier(false)} />}
+      {showSupplier && (
+        <NewSupplierModal onDone={() => setShowSupplier(false)} onCreated={onSupplierCreated} />
+      )}
     </Modal>
   );
 }
 
-function NewSupplierModal({ onDone }: { onDone: () => void }) {
-  const [state, formAction] = useFormState<ActionState, FormData>(createSupplierAction, {});
+function NewSupplierModal({
+  onDone,
+  onCreated,
+}: {
+  onDone: () => void;
+  /** El proveedor creado, ya listo para agregar al `<select>` del gasto. */
+  onCreated: (s: SupplierOpt) => void;
+}) {
+  const [state, formAction] = useFormState<SupplierActionState, FormData>(createSupplierAction, {});
   useEffect(() => {
-    if (state.success) {
-      toast.success('Proveedor agregado. Volvé a abrir la lista para elegirlo.');
+    if (state.success && state.supplier) {
+      toast.success('Proveedor agregado y seleccionado.');
+      onCreated(state.supplier);
       onDone();
     }
-  }, [state.success, onDone]);
+  }, [state.success, state.supplier, onCreated, onDone]);
 
   return (
     <Modal title="Nuevo proveedor" onClose={onDone} width="max-w-lg">
@@ -418,6 +443,14 @@ function NewSupplierModal({ onDone }: { onDone: () => void }) {
             <label className="field-label">Teléfono</label>
             <input name="phone" className="field-input w-36" />
           </div>
+        </div>
+        <div>
+          <label className="field-label">Actividad</label>
+          <input
+            name="activity"
+            className="field-input"
+            placeholder="Ej: Seguros, jardinería, mantenimiento eléctrico…"
+          />
         </div>
         <Errors state={state} />
         <div className="flex gap-2 pt-2">
