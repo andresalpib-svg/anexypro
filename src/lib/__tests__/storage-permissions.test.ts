@@ -165,6 +165,49 @@ describe('regla de fondo', () => {
   });
 });
 
+describe('buzón de envíos del residente (reservas y visitas)', () => {
+  const reservas = carpeta({ slug: 'seguridad/reservas', allowedRoles: ['master', 'admin_owner', 'admin_staff', 'contador', 'seguridad'] });
+  const visitas = carpeta({ slug: 'seguridad/visitas', allowedRoles: ['master', 'admin_owner', 'admin_staff', 'contador', 'seguridad'] });
+
+  it('el residente puede enviar el comprobante de una reserva o la foto de un visitante', () => {
+    expect(canWriteFolder(laura, reservas).allowed).toBe(true);
+    expect(canWriteFolder(laura, visitas).allowed).toBe(true);
+  });
+
+  it('pero sigue sin poder navegar o listar esas carpetas', () => {
+    expect(canReadFolder(laura, reservas).allowed).toBe(false);
+    expect(canReadFolder(laura, visitas).allowed).toBe(false);
+  });
+
+  it('ni eliminar lo que hay ahí, ni siquiera lo que él mismo envió', () => {
+    expect(canDeleteObject(laura, reservas).allowed).toBe(false);
+  });
+
+  it('no cruza empresas: no envía a la carpeta de otra administradora', () => {
+    const ajena = carpeta({ slug: 'seguridad/reservas', companyId: 'empresa-9' });
+    expect(canWriteFolder(laura, ajena).allowed).toBe(false);
+  });
+
+  it('el buzón no se extiende a otras carpetas de administración', () => {
+    expect(canWriteFolder(laura, carpeta({ slug: 'facturas' })).allowed).toBe(false);
+  });
+});
+
+describe('fotografía de perfil del residente ("empresa/perfiles")', () => {
+  const perfiles = carpeta({
+    companyId: EMPRESA,
+    condominiumId: null,
+    slug: 'empresa/perfiles',
+    kind: 'seccion',
+    allowedRoles: ['master', 'admin_owner', 'admin_staff', 'contador', 'seguridad', 'condomino'],
+  });
+
+  it('el residente ve y actualiza su propia fotografía', () => {
+    expect(canReadFolder(laura, perfiles).allowed).toBe(true);
+    expect(canWriteFolder(laura, perfiles).allowed).toBe(true);
+  });
+});
+
 describe('lectura de un archivo dirigido a una persona (canReadObject)', () => {
   const incumplimientos = () =>
     carpeta({ slug: 'incumplimientos', allowedRoles: ['master', 'admin_owner', 'admin_staff'] });

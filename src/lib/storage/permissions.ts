@@ -67,9 +67,16 @@ export function canReadFolder(actor: Actor, folder: FolderTarget): Decision {
     return deny('Ese rol no accede a las carpetas de los residentes.');
   }
 
-  // --- Un residente no entra a ninguna otra carpeta ---
+  // --- Un residente no entra a ninguna otra carpeta, salvo que esa
+  // carpeta lo incluya explícitamente en sus roles autorizados (p. ej.
+  // "empresa/perfiles", donde el propio residente ve su fotografía).
+  // Ninguna carpeta de `CONDO_TREE` lo incluye nunca —ver el comentario
+  // en `storage/tree.ts`—, así que esto no abre nada del repositorio
+  // por condominio, solo lo que ya se marcó a propósito.
   if (actor.role === 'condomino') {
-    return deny('El residente solo accede a su propia carpeta.');
+    return folder.allowedRoles.includes('condomino')
+      ? allow('La carpeta incluye explícitamente al residente en sus roles autorizados.')
+      : deny('El residente solo accede a su propia carpeta.');
   }
 
   // --- Junta directiva: solo si además es miembro ---
@@ -130,13 +137,33 @@ function supervisorScope(actor: Actor, folder: FolderTarget, okReason: string): 
  * propia carpeta — es la administración la que le entrega documentos.
  */
 export function canWriteFolder(actor: Actor, folder: FolderTarget): Decision {
+  if (actor.role === 'condomino') {
+    // Buzón de una sola vía: el residente ENVÍA un archivo puntual —el
+    // comprobante de pago de su reserva, la foto de un visitante que
+    // anuncia—, pero nunca navega ni lista esas carpetas después: siguen
+    // negadas en `canReadFolder`, porque ninguna carpeta de "Seguridad"
+    // lo incluye en `allowedRoles` (ver `storage/tree.ts`). No es acceso
+    // al repositorio, es un envío dirigido por el propio flujo.
+    const buzones = ['seguridad/reservas', 'seguridad/visitas'];
+    if (buzones.some((f) => folder.slug === f || folder.slug.startsWith(`${f}/`))) {
+      if (folder.companyId && folder.companyId !== actor.companyId) {
+        return deny('La carpeta pertenece a otra empresa administradora.');
+      }
+      return allow('Envío dirigido permitido (comprobante de reserva o foto de visitante).');
+    }
+  }
+
   const read = canReadFolder(actor, folder);
   if (!read.allowed) return read;
 
   if (actor.role === 'master') return allow('El usuario master tiene acceso completo.');
 
   if (actor.role === 'condomino') {
-    return deny('El residente consulta sus documentos, pero no los deposita.');
+    // "empresa/perfiles" es la excepción: ahí actualiza su propia
+    // fotografía. Todo lo demás sigue siendo de solo lectura.
+    return folder.slug === 'empresa/perfiles'
+      ? allow('El residente actualiza su propia fotografía de perfil.')
+      : deny('El residente consulta sus documentos, pero no los deposita.');
   }
   if (actor.role === 'junta_directiva') {
     return deny('La junta directiva consulta, no modifica el repositorio.');
@@ -163,6 +190,12 @@ export function canWriteFolder(actor: Actor, folder: FolderTarget): Decision {
 
 /** ¿Puede eliminar? Más estricto que escribir: nunca el supervisor. */
 export function canDeleteObject(actor: Actor, folder: FolderTarget): Decision {
+  // El buzón de `canWriteFolder` (reservas/visitas) autoriza a DEPOSITAR
+  // un archivo nuevo, no a administrar lo que ya hay ahí: ni el propio
+  // residente puede borrar un comprobante después de enviarlo.
+  if (actor.role === 'condomino' && folder.slug !== 'empresa/perfiles') {
+    return deny('El residente no elimina documentos del repositorio.');
+  }
   const write = canWriteFolder(actor, folder);
   if (!write.allowed) return write;
   if (actor.role === 'admin_staff') {
