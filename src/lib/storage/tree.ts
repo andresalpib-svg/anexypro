@@ -20,8 +20,11 @@ export type FolderSpec = {
   children?: FolderSpec[];
   /**
    * Roles con acceso. Si se omite, hereda del padre.
-   * `condomino` NUNCA aparece acá: el residente solo entra a su propia
-   * carpeta, que se crea aparte.
+   * `condomino` casi nunca aparece acá: el residente entra a su propia
+   * carpeta (que se crea aparte), no a las de `CONDO_TREE`. La única
+   * excepción es "multimedia/fotografias", que el residente necesita
+   * LEER para ver las fotos de las áreas comunes al reservar —sigue
+   * sin poder escribir, eso lo decide `canWriteFolder`, no esta lista.
    */
   roles?: string[];
 };
@@ -85,7 +88,12 @@ export const CONDO_TREE: FolderSpec[] = [
     slug: 'multimedia',
     roles: ADMIN,
     children: [
-      { name: 'Fotografías', slug: 'multimedia/fotografias', roles: ADMIN },
+      // Comparte activos de mantenimiento y fotos de áreas comunes: el
+      // residente necesita ver estas últimas al reservar, por eso es
+      // la única carpeta de `CONDO_TREE` que sí lo incluye (ver el
+      // comentario de `FolderSpec.roles` más arriba). Sigue sin poder
+      // escribir acá: `canWriteFolder` no la trata como buzón.
+      { name: 'Fotografías', slug: 'multimedia/fotografias', roles: [...ADMIN, 'condomino'] },
       { name: 'Logos', slug: 'multimedia/logos', roles: ADMIN },
     ],
   },

@@ -193,6 +193,21 @@ describe('buzón de envíos del residente (reservas y visitas)', () => {
   });
 });
 
+describe('fotos de áreas comunes ("multimedia/fotografias")', () => {
+  const fotografias = carpeta({
+    slug: 'multimedia/fotografias',
+    allowedRoles: ['master', 'admin_owner', 'admin_staff', 'contador', 'condomino'],
+  });
+
+  it('el residente ve la foto de la amenidad al ir a reservar', () => {
+    expect(canReadFolder(laura, fotografias).allowed).toBe(true);
+  });
+
+  it('pero no puede subir ni reemplazar fotos ahí', () => {
+    expect(canWriteFolder(laura, fotografias).allowed).toBe(false);
+  });
+});
+
 describe('fotografía de perfil del residente ("empresa/perfiles")', () => {
   const perfiles = carpeta({
     companyId: EMPRESA,
