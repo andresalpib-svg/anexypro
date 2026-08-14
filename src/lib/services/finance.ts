@@ -564,3 +564,78 @@ export async function listPropertiesWithBalance(companyId: string, condominiumId
     });
   });
 }
+
+/**
+ * Anula un cargo (lo marca como 'anulado' y revierte el asiento contable).
+ * Solo se puede anular un cargo que NO tiene pagos aplicados.
+ * Si tiene pagos, se debe generar una devolución/crédito en su lugar (no implementado aún).
+ */
+export async function cancelCharge(
+  companyId: string,
+  user: { id: string; name: string },
+  input: {
+    chargeId: string;
+    condominiumId: string;
+    reason: string;
+  }
+) {
+  return withTenantContext(companyId, async (tx) => {
+    // Verificar que el cargo existe y pertenece al condominio
+    const charge = await tx.charge.findFirst({
+      where: { id: input.chargeId, condominiumId: input.condominiumId },
+      include: { allocations: { select: { id: true } }, property: { select: { code: true } } },
+    });
+    if (!charge) throw new Error('Ese cargo no existe o no pertenece a este condominio.');
+
+    // No se puede anular un cargo con pagos aplicados
+    if (charge.allocations.length > 0) {
+      throw new Error(
+        'No se puede anular un cargo que ya tiene pagos aplicados. Genera una devolución en su lugar.'
+      );
+    }
+
+    // No se puede anular un cargo ya anulado
+    if (charge.status === 'anulado') {
+      throw new Error('Este cargo ya está anulado.');
+    }
+
+    // Cambiar status a anulado
+    const updated = await tx.charge.update({
+      where: { id: charge.id },
+      data: { status: 'anulado' },
+    });
+
+    // Registrar la reversión del asiento (débito/crédito invertidos)
+    // La función recordChargeAccrual registra el cargo; aquí invertimos
+    await recordChargeAccrual(tx, companyId, {
+      id: `${charge.id}-reversal`,
+      condominiumId: input.condominiumId,
+      propertyCode: charge.property.code,
+      chargeType: charge.chargeType,
+      description: `[ANULADO] ${charge.description}`,
+      amount: -Number(charge.amount), // Negativo = reversión
+      period: charge.period,
+      issuedAt: new Date(),
+    });
+
+    // Registrar evento
+    await tx.propertyEvent.create({
+      data: {
+        propertyId: charge.propertyId,
+        eventType: 'cargo',
+        description: `Cargo anulado: ${charge.description}. Razón: ${input.reason}`,
+      },
+    });
+
+    // Loguear actividad
+    await logActivity(tx, companyId, {
+      userId: user.id,
+      userName: user.name,
+      module: 'Finanzas',
+      action: 'Cargo anulado',
+      target: `${charge.property.code} · ${charge.description}`,
+    });
+
+    return updated;
+  });
+}
