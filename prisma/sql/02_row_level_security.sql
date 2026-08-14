@@ -169,8 +169,14 @@ DROP POLICY IF EXISTS tenant_expenses ON project_expenses;
 CREATE POLICY tenant_expenses ON project_expenses USING (project_id IN (SELECT id FROM projects WHERE condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id'))));
 DROP POLICY IF EXISTS tenant_updates ON project_updates;
 CREATE POLICY tenant_updates ON project_updates USING (project_id IN (SELECT id FROM projects WHERE condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id'))));
+-- Desde la migración 20260817_plan_cuentas_por_condominio el plan de
+-- cuentas es POR CONDOMINIO, no por empresa: dos condominios de la
+-- misma empresa ya no comparten fila. Se aísla igual que charges/assets
+-- (por condominio, no solo por empresa) — antes esta política solo
+-- filtraba por company_id, que ya no distingue entre condominios de la
+-- misma administradora.
 DROP POLICY IF EXISTS tenant_accounts ON chart_of_accounts;
-CREATE POLICY tenant_accounts ON chart_of_accounts USING (company_id = current_setting('app.current_company_id'));
+CREATE POLICY tenant_accounts ON chart_of_accounts USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
 DROP POLICY IF EXISTS tenant_journal ON journal_entries;
 CREATE POLICY tenant_journal ON journal_entries USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
 DROP POLICY IF EXISTS tenant_journallines ON journal_lines;
@@ -215,60 +221,86 @@ CREATE POLICY tenant_audit_log ON audit_log USING (company_id = current_setting(
 -- cada conexión, con el companyId de la sesión autenticada — nunca
 -- con un valor recibido directamente del cliente sin validar.
 
--- Caja chica (ronda 13). Aíslan por company_id propio, igual que
--- admin_tasks: la columna ya viene en la tabla, no hace falta el
--- subselect por condominio.
+-- Caja chica (ronda 13).
+--
+-- ENDURECIDO (auditoría del módulo de Finanzas, 2026-08-13): filtraban
+-- solo por company_id, así que un condominio A y un condominio B de la
+-- MISMA empresa se veían entre sí a nivel de base de datos — el
+-- aislamiento dependía por completo de que cada Server Action
+-- verificara el condominio a mano (y `deleteExpenseAction` no lo
+-- hacía: ver la corrección en `entity-scope.ts` / `petty-cash-actions.ts`,
+-- IDOR confirmado y corregido el mismo día). La columna
+-- `condominium_id` ya viene en la tabla; ahora la política la usa.
 ALTER TABLE petty_cash_allocations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE petty_cash_expenses    ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS tenant_pettycash_alloc ON petty_cash_allocations;
-CREATE POLICY tenant_pettycash_alloc ON petty_cash_allocations USING (company_id = current_setting('app.current_company_id'));
+CREATE POLICY tenant_pettycash_alloc ON petty_cash_allocations USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
 DROP POLICY IF EXISTS tenant_pettycash_exp ON petty_cash_expenses;
-CREATE POLICY tenant_pettycash_exp   ON petty_cash_expenses    USING (company_id = current_setting('app.current_company_id'));
+CREATE POLICY tenant_pettycash_exp   ON petty_cash_expenses    USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
 
--- Fase 0 y 1 de Finanzas: todas llevan company_id propio.
+-- Fase 0 y 1 de Finanzas.
+--
+-- ENDURECIDO (mismo motivo de arriba): `accounting_periods`,
+-- `bank_accounts` y `expenses` tienen `condominium_id` propio y ahora
+-- la política lo usa — antes solo distinguían por empresa. `suppliers`
+-- se queda por `company_id` a propósito: es un catálogo de PROVEEDORES
+-- a nivel empresa (se reutiliza entre condominios de la misma
+-- administradora), no tiene `condominium_id` y no es información
+-- financiera de un condominio específico. `expense_payments` no tiene
+-- `condominium_id` propio: se resuelve por el gasto al que pertenece.
 ALTER TABLE accounting_periods ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bank_accounts      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE suppliers          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE expenses           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE expense_payments   ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS tenant_periods ON accounting_periods;
-CREATE POLICY tenant_periods  ON accounting_periods USING (company_id = current_setting('app.current_company_id'));
+CREATE POLICY tenant_periods  ON accounting_periods USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
 DROP POLICY IF EXISTS tenant_banks ON bank_accounts;
-CREATE POLICY tenant_banks    ON bank_accounts      USING (company_id = current_setting('app.current_company_id'));
+CREATE POLICY tenant_banks    ON bank_accounts      USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
 DROP POLICY IF EXISTS tenant_supp ON suppliers;
 CREATE POLICY tenant_supp     ON suppliers          USING (company_id = current_setting('app.current_company_id'));
 DROP POLICY IF EXISTS tenant_expenses ON expenses;
-CREATE POLICY tenant_expenses ON expenses           USING (company_id = current_setting('app.current_company_id'));
+CREATE POLICY tenant_expenses ON expenses           USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
 DROP POLICY IF EXISTS tenant_exppay ON expense_payments;
-CREATE POLICY tenant_exppay   ON expense_payments   USING (company_id = current_setting('app.current_company_id'));
+CREATE POLICY tenant_exppay   ON expense_payments   USING (expense_id IN (SELECT id FROM expenses WHERE condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id'))));
 
 -- Fases 2 y 3 de Finanzas.
+--
+-- ENDURECIDO: `recurring_expenses` y `contracts` tienen `condominium_id`
+-- propio. `bank_transactions` y `bank_match_rules` no lo tienen —se
+-- resuelven por la cuenta bancaria a la que pertenecen, que sí es de un
+-- condominio— igual que `expense_payments` arriba.
 ALTER TABLE recurring_expenses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE contracts          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bank_transactions  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bank_match_rules   ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS tenant_recurring ON recurring_expenses;
-CREATE POLICY tenant_recurring ON recurring_expenses USING (company_id = current_setting('app.current_company_id'));
+CREATE POLICY tenant_recurring ON recurring_expenses USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
 DROP POLICY IF EXISTS tenant_contracts ON contracts;
-CREATE POLICY tenant_contracts ON contracts          USING (company_id = current_setting('app.current_company_id'));
+CREATE POLICY tenant_contracts ON contracts          USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
 DROP POLICY IF EXISTS tenant_banktx ON bank_transactions;
-CREATE POLICY tenant_banktx    ON bank_transactions  USING (company_id = current_setting('app.current_company_id'));
+CREATE POLICY tenant_banktx    ON bank_transactions  USING (bank_account_id IN (SELECT id FROM bank_accounts WHERE condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id'))));
 DROP POLICY IF EXISTS tenant_bankrules ON bank_match_rules;
-CREATE POLICY tenant_bankrules ON bank_match_rules   USING (company_id = current_setting('app.current_company_id'));
+CREATE POLICY tenant_bankrules ON bank_match_rules   USING (bank_account_id IN (SELECT id FROM bank_accounts WHERE condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id'))));
 
 -- Fases 4 y 5 de Finanzas.
+--
+-- ENDURECIDO: `reserve_funds`, `payment_plans` y `collection_actions`
+-- tienen `condominium_id` propio. `reserve_fund_movements` no lo tiene
+-- —se resuelve por el fondo al que pertenece, que sí es de un
+-- condominio—.
 ALTER TABLE reserve_funds           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reserve_fund_movements  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payment_plans           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE collection_actions      ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS tenant_reserve ON reserve_funds;
-CREATE POLICY tenant_reserve    ON reserve_funds          USING (company_id = current_setting('app.current_company_id'));
+CREATE POLICY tenant_reserve    ON reserve_funds          USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
 DROP POLICY IF EXISTS tenant_reservemov ON reserve_fund_movements;
-CREATE POLICY tenant_reservemov ON reserve_fund_movements USING (company_id = current_setting('app.current_company_id'));
+CREATE POLICY tenant_reservemov ON reserve_fund_movements USING (fund_id IN (SELECT id FROM reserve_funds WHERE condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id'))));
 DROP POLICY IF EXISTS tenant_plans ON payment_plans;
-CREATE POLICY tenant_plans      ON payment_plans          USING (company_id = current_setting('app.current_company_id'));
+CREATE POLICY tenant_plans      ON payment_plans          USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
 DROP POLICY IF EXISTS tenant_collection ON collection_actions;
-CREATE POLICY tenant_collection ON collection_actions     USING (company_id = current_setting('app.current_company_id'));
+CREATE POLICY tenant_collection ON collection_actions     USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
 
 -- Repositorio de documentos.
 ALTER TABLE storage_folders ENABLE ROW LEVEL SECURITY;

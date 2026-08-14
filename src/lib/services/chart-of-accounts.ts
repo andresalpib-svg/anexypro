@@ -1,19 +1,27 @@
 import type { Prisma } from '@prisma/client';
 
 /**
- * Plan de cuentas de arranque de una empresa administradora.
+ * Plan de cuentas de arranque de un condominio.
  *
  * POR QUÉ VIVE AQUÍ Y NO EN EL SEED. Estaba solo en `prisma/seed.ts`,
  * o sea que únicamente la empresa de arranque lo tenía. Cualquier
  * empresa dada de alta desde el panel master nacía SIN plan contable, y
  * eso no se nota hasta el primer intento de facturar: el motor de
  * partida doble busca la cuenta 1101 al emitir un cargo y aborta con
- * "Cuenta contable 1101 no existe para esta empresa". Es decir, una
- * administradora recién creada no podía cobrarle a nadie.
+ * "Cuenta contable 1101 no existe para este condominio". Es decir, un
+ * condominio recién creado no podía cobrarle a nadie.
  *
- * Ahora el alta de empresas lo crea en la misma transacción, con el
- * mismo criterio que ya se aplicaba al administrador: una empresa sin
- * plan de cuentas no sirve, así que no debe poder existir.
+ * POR QUÉ ES POR CONDOMINIO Y NO POR EMPRESA (2026-08-13). Antes se
+ * sembraba una sola vez al crear la EMPRESA, y todos sus condominios
+ * compartían las mismas filas de `chart_of_accounts` — un condominio
+ * nuevo heredaba la ESTRUCTURA del catálogo (correcto) pero de una
+ * fila de base de datos que también pertenecía a otros condominios
+ * (incorrecto: rompe el aislamiento financiero exigido entre
+ * condominios). Ahora el alta de un condominio (`createCondominium`)
+ * clona su propia copia del catálogo estándar, igual que ya hacía con
+ * los tipos de incumplimiento y las categorías de activos
+ * (`seedCondoCatalogs`). Ver migración
+ * `20260817_plan_cuentas_por_condominio`.
  */
 export const CHART_OF_ACCOUNTS: Array<{
   code: string;
@@ -55,18 +63,19 @@ export const CHART_OF_ACCOUNTS: Array<{
 ];
 
 /**
- * Crea el plan de cuentas de la empresa si todavía no lo tiene.
+ * Crea el plan de cuentas del condominio si todavía no lo tiene.
  *
- * Idempotente a propósito: sirve tanto para el alta de una empresa
- * nueva como para poner al día una que se creó antes de este arreglo.
+ * Idempotente a propósito: sirve tanto para el alta de un condominio
+ * nuevo como para poner al día uno que se creó antes de este arreglo.
  * Devuelve cuántas cuentas creó.
  */
 export async function ensureChartOfAccounts(
   tx: Prisma.TransactionClient,
+  condominiumId: string,
   companyId: string
 ): Promise<number> {
   const existentes = await tx.chartOfAccount.findMany({
-    where: { companyId },
+    where: { condominiumId },
     select: { code: true },
   });
   const yaEstan = new Set(existentes.map((c) => c.code));
@@ -74,7 +83,7 @@ export async function ensureChartOfAccounts(
   if (faltantes.length === 0) return 0;
 
   await tx.chartOfAccount.createMany({
-    data: faltantes.map((a) => ({ ...a, companyId, isSystem: true })),
+    data: faltantes.map((a) => ({ ...a, condominiumId, companyId, isSystem: true })),
   });
   return faltantes.length;
 }

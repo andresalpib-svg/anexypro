@@ -79,8 +79,11 @@ async function createJournalEntry(
     );
   }
 
+  // Por condominio, no por empresa (2026-08-13): dos condominios de la
+  // misma administradora ya no comparten plan de cuentas — ver
+  // migración 20260817_plan_cuentas_por_condominio.
   const accounts = await tx.chartOfAccount.findMany({
-    where: { companyId, code: { in: input.lines.map((l) => l.accountCode) } },
+    where: { condominiumId: input.condominiumId, code: { in: input.lines.map((l) => l.accountCode) } },
   });
   const byCode = new Map(accounts.map((a) => [a.code, a]));
 
@@ -95,7 +98,7 @@ async function createJournalEntry(
       lines: {
         create: input.lines.map((l) => {
           const acc = byCode.get(l.accountCode);
-          if (!acc) throw new Error(`Cuenta contable ${l.accountCode} no existe para esta empresa`);
+          if (!acc) throw new Error(`Cuenta contable ${l.accountCode} no existe para este condominio`);
           return { accountId: acc.id, debit: l.debit ?? 0, credit: l.credit ?? 0 };
         }),
       },

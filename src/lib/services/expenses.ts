@@ -138,12 +138,12 @@ export async function createExpense(
     }
 
     // La línea presupuestaria se comprueba contra el plan de cuentas
-    // REAL de la empresa (solo cuentas de gasto): un código inexistente
+    // REAL del condominio (solo cuentas de gasto): un código inexistente
     // haría fallar el asiento contable después.
     let accountCode = CATEGORY_ACCOUNT[input.category] ?? CATEGORY_ACCOUNT.otro!;
     if (input.budgetAccountCode) {
       const account = await tx.chartOfAccount.findFirst({
-        where: { companyId, code: input.budgetAccountCode, type: 'gasto' },
+        where: { condominiumId: input.condominiumId, code: input.budgetAccountCode, type: 'gasto' },
         select: { code: true },
       });
       if (!account) throw new Error('Esa línea presupuestaria no existe en el plan de cuentas.');
@@ -396,7 +396,7 @@ export async function listBudgetLineOptions(
   return withTenantContext(companyId, async (tx) => {
     const [accounts, lines] = await Promise.all([
       tx.chartOfAccount.findMany({
-        where: { companyId, type: 'gasto' },
+        where: { condominiumId, type: 'gasto' },
         select: { id: true, code: true, name: true },
         orderBy: { code: 'asc' },
       }),

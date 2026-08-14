@@ -2,7 +2,7 @@
  * Usuarios de PRUEBA para validar la seguridad por roles.
  * Ejecutar:  npx tsx prisma/test-users-seed.ts   (re-ejecutable)
  *
- *   master@anexypro.com        / Master123*      → Panel Master (plataforma)
+ *   api@anexypro.com           / 123456789       → Panel Master (plataforma)
  *   administrador@anexypro.com / Admin123*       → Panel Administradora completo
  *   supervisor@anexypro.com    / Supervisor123*  → Staff con permisos parciales
  *   condomino@anexypro.com     / Condomino123*   → Ecosistema Condómino
@@ -47,7 +47,11 @@ async function upsertUser(
 async function main() {
   const company = await prisma.company.findFirstOrThrow();
 
-  await upsertUser(company.id, 'master@anexypro.com', 'Master123*', 'Usuario Master', 'master');
+  // El master es único en toda la plataforma (índice único parcial en
+  // 04_master_unico.sql): si el correo de aquí no coincide con el del
+  // master real, este upsert intentaría crear un SEGUNDO master y el
+  // sembrado moriría con una violación de restricción.
+  await upsertUser(company.id, 'api@anexypro.com', '123456789', 'Usuario Master', 'master');
   await upsertUser(company.id, 'administrador@anexypro.com', 'Admin123*', 'Administrador Principal', 'admin_owner');
   await upsertUser(company.id, 'supervisor@anexypro.com', 'Supervisor123*', 'Supervisor Operativo', 'admin_staff', SUPERVISOR_PERMISSIONS);
 
@@ -73,7 +77,7 @@ async function main() {
   }
 
   console.log('✅ Usuarios de prueba listos:');
-  console.log('   master@anexypro.com        / Master123*');
+  console.log('   api@anexypro.com           / 123456789');
   console.log('   administrador@anexypro.com / Admin123*');
   console.log('   supervisor@anexypro.com    / Supervisor123*  (sin finanzas/contabilidad/reportes/auditoría/IA)');
   console.log('   condomino@anexypro.com     / Condomino123*');

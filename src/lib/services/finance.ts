@@ -365,6 +365,30 @@ export async function makePayment(
   userName: string
 ) {
   return withTenantContext(companyId, async (tx) => {
+    // Validación de duplicados: si hay referencia, verificar que no
+    // exista otro pago del MISMO método, referencia y fecha (hoy o paymentDate).
+    // Esto impide cobrar dos veces accidentalmente el mismo comprobante/transferencia.
+    if (input.reference) {
+      const today = input.paymentDate ?? new Date();
+      const dayStart = new Date(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+      const dayEnd = new Date(dayStart);
+      dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
+
+      const existing = await tx.payment.findFirst({
+        where: {
+          propertyId: input.propertyId,
+          method: input.method as any,
+          reference: input.reference,
+          paymentDate: { gte: dayStart, lt: dayEnd },
+        },
+      });
+      if (existing) {
+        throw new Error(
+          `Ya existe un pago registrado con el mismo método (${input.method}), referencia (${input.reference}) y fecha. Verifica que no sea un duplicado.`
+        );
+      }
+    }
+
     const pendingCharges = await tx.charge.findMany({
       where: { propertyId: input.propertyId, status: { in: ['pendiente', 'parcial'] } },
       orderBy: { dueDate: 'asc' },

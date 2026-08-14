@@ -378,6 +378,7 @@ model Condominium {
   collectionActions    CollectionAction[]
   storageFolders       StorageFolder[]
   storageObjects       StorageObject[]
+  chartOfAccounts      ChartOfAccount[]
   journalEntries       JournalEntry[]
   budgetLines          BudgetLine[]
   assemblies           Assembly[]
@@ -1867,24 +1868,36 @@ enum AccountSub {
   no_corriente
 }
 
+// Plan de cuentas — POR CONDOMINIO, no por empresa (auditoría del
+// módulo de Finanzas, 2026-08-13: un catálogo compartido entre
+// condominios de la misma empresa rompía la regla de que un condominio
+// nuevo hereda la ESTRUCTURA del plan de cuentas estándar, nunca datos
+// de otro condominio existente — ver migración
+// 20260817_plan_cuentas_por_condominio). `companyId` se conserva
+// denormalizado, igual que en el resto de tablas financieras
+// (Expense, BankAccount, ReserveFund…), pero el tenant real de esta
+// tabla es el condominio.
 model ChartOfAccount {
-  id          String      @id @default(uuid())
-  companyId   String      @map("company_id")
-  code        String
-  name        String
-  type        AccountType
-  parentId    String?     @map("parent_id")
-  isSystem    Boolean     @default(true) @map("is_system")
-  sub         AccountSub? // solo aplica a activo/pasivo
-  isOperating Boolean     @default(true) @map("is_operating") // solo aplica a ingreso/gasto
+  id            String      @id @default(uuid())
+  companyId     String      @map("company_id")
+  condominiumId String      @map("condominium_id")
+  code          String
+  name          String
+  type          AccountType
+  parentId      String?     @map("parent_id")
+  isSystem      Boolean     @default(true) @map("is_system")
+  sub           AccountSub? // solo aplica a activo/pasivo
+  isOperating   Boolean     @default(true) @map("is_operating") // solo aplica a ingreso/gasto
 
   company      Company          @relation(fields: [companyId], references: [id])
+  condominium  Condominium      @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
   parent       ChartOfAccount?  @relation("AccountTree", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   children     ChartOfAccount[] @relation("AccountTree")
   journalLines JournalLine[]
   budgetLines  BudgetLine[]
 
-  @@unique([companyId, code])
+  @@unique([condominiumId, code])
+  @@index([condominiumId])
   @@index([companyId])
   @@map("chart_of_accounts")
 }

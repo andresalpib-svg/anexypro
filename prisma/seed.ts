@@ -1,16 +1,14 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
-// El plan de cuentas vive en el servicio para que el alta de empresas
-// desde el panel master y este seed no puedan divergir.
-import { CHART_OF_ACCOUNTS, ensureChartOfAccounts } from '../src/lib/services/chart-of-accounts';
 
 const prisma = new PrismaClient();
 
-// Plan de cuentas estándar para condominios — mismo catálogo que el
-// prototipo validó en Contabilidad Inteligente (ver
-// diseno-modulo-15-contabilidad.md). Es plantilla del sistema
-// (isSystem=true), no "datos demo": toda empresa nueva la necesita
-// para que el motor de partida doble funcione desde el día uno.
+// El plan de cuentas (chart_of_accounts) ya NO se siembra acá: desde
+// 2026-08-13 es por CONDOMINIO, no por empresa (ver
+// src/lib/services/chart-of-accounts.ts), y este seed a propósito no
+// crea ningún condominio ("base de datos limpia"). `createCondominium`
+// lo crea automáticamente en cuanto la administración da de alta su
+// primer condominio.
 
 async function main() {
   const email = process.env.SEED_ADMIN_EMAIL ?? 'admin@tuempresa.com';
@@ -38,14 +36,12 @@ async function main() {
     },
   });
 
-  await prisma.$transaction((tx) => ensureChartOfAccounts(tx, company.id));
-
   console.log('Empresa y usuario administrador creados.');
   console.log(`  Correo:     ${email}`);
   console.log(`  Contraseña: ${password}`);
   console.log('  ⚠️  Cambia esta contraseña de inmediato después del primer ingreso.');
-  console.log(`Plan de cuentas: ${CHART_OF_ACCOUNTS.length} cuentas creadas para "${companyName}".`);
   console.log('Sin condominios, propiedades ni datos de demostración — base de datos limpia, como se pidió.');
+  console.log('El plan de cuentas se crea solo al dar de alta el primer condominio.');
 }
 
 main()

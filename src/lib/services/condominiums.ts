@@ -1,5 +1,6 @@
 import { withTenantContext } from '@/lib/db';
 import { logActivity } from '@/lib/services/audit';
+import { ensureChartOfAccounts } from '@/lib/services/chart-of-accounts';
 import type { CondominiumInput } from '@/lib/validations/condominium';
 import {
   TIPOS_INCUMPLIMIENTO_INICIALES,
@@ -129,6 +130,16 @@ export async function createCondominium(
       },
       include: { financialSettings: true },
     });
+    // Plan de cuentas contable: en la MISMA transacción y ANTES que
+    // nada dependa de él, por el mismo criterio que financialSettings
+    // arriba — un condominio sin plan de cuentas no puede emitir un
+    // solo cargo (el motor de partida doble busca la cuenta 1101 y
+    // aborta), así que no debe poder existir a medias. Es la
+    // ESTRUCTURA estándar del catálogo la que se clona (mismos
+    // código/nombre/tipo); nunca datos financieros de otro condominio
+    // — cada condominio recibe su propia copia, no una fila compartida
+    // (ver migración 20260817_plan_cuentas_por_condominio).
+    await ensureChartOfAccounts(tx, condo.id, companyId);
     await logActivity(tx, companyId, { userId, userName, module: 'Condominios', action: 'Condominio creado', target: condo.name });
     return condo;
   });

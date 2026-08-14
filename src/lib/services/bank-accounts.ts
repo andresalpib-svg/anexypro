@@ -36,7 +36,7 @@ export async function listBankAccountsWithBalance(
     const out: BankAccountWithBalance[] = [];
     for (const account of accounts) {
       const chart = await tx.chartOfAccount.findUnique({
-        where: { companyId_code: { companyId, code: account.accountCode } },
+        where: { condominiumId_code: { condominiumId, code: account.accountCode } },
         select: { id: true },
       });
 
@@ -81,7 +81,7 @@ export async function createBankAccount(
     // La cuenta contable espejo tiene que existir: si no, los asientos
     // de pago fallarían más adelante con un error incomprensible.
     const chart = await tx.chartOfAccount.findUnique({
-      where: { companyId_code: { companyId, code: input.accountCode } },
+      where: { condominiumId_code: { condominiumId: input.condominiumId, code: input.accountCode } },
     });
     if (!chart) throw new Error(`La cuenta contable ${input.accountCode} no existe en el plan de cuentas.`);
     if (chart.type !== 'activo') throw new Error(`La cuenta ${input.accountCode} no es una cuenta de activo.`);
@@ -101,10 +101,10 @@ export async function updateBankAccount(
 }
 
 /** Cuentas de activo disponibles para usar como espejo contable. */
-export async function listAssetAccounts(companyId: string) {
+export async function listAssetAccounts(companyId: string, condominiumId: string) {
   return withTenantContext(companyId, (tx) =>
     tx.chartOfAccount.findMany({
-      where: { companyId, type: 'activo', sub: 'corriente' },
+      where: { condominiumId, type: 'activo', sub: 'corriente' },
       select: { code: true, name: true },
       orderBy: { code: 'asc' },
     })

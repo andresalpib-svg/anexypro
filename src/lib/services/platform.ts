@@ -2,7 +2,6 @@ import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { prisma, forEachCompany, withTenantContext } from '@/lib/db';
 import { MARCA_POR_DEFECTO } from '@/lib/branding';
-import { ensureChartOfAccounts } from '@/lib/services/chart-of-accounts';
 
 /**
  * Operaciones de plataforma — solo el usuario master.
@@ -89,18 +88,10 @@ export async function createCompanyWithAdmin(
         status: 'activo',
       },
     });
-    // El plan de cuentas va en la MISMA transacción, por el mismo
-    // criterio que el administrador: una empresa sin plan contable no
-    // puede emitir un solo cargo —el motor de partida doble busca la
-    // cuenta 1101 y aborta—, así que no debe poder existir a medias.
-    //
-    // `chart_of_accounts` lleva Row-Level Security: sin fijar el
-    // contexto de empresa, `current_setting('app.current_company_id')`
-    // no devuelve vacío, LANZA ("unrecognized configuration
-    // parameter") — esta transacción no pasa por `withTenantContext`
-    // porque todavía no existía `company.id` cuando empezó.
-    await tx.$executeRawUnsafe(`SELECT set_config('app.current_company_id', $1, true)`, company.id);
-    await ensureChartOfAccounts(tx, company.id);
+    // El plan de cuentas YA NO se siembra acá: desde 2026-08-13 es por
+    // CONDOMINIO, no por empresa (ver `chart-of-accounts.ts`), y esta
+    // empresa todavía no tiene ninguno. `createCondominium` lo crea
+    // cuando la administración da de alta su primer condominio.
     return { company, user };
   });
 

@@ -6,7 +6,6 @@ import { demoLifecycleDates } from '@/lib/domain/demo-lifecycle';
 import { subscriptionState } from '@/lib/domain/subscription';
 import { emitirToken } from '@/lib/services/password-reset';
 import { appUrl } from '@/lib/email';
-import { ensureChartOfAccounts } from '@/lib/services/chart-of-accounts';
 import { generarPassword } from '@/lib/services/platform';
 import { createCondominium, activateCondominium } from '@/lib/services/condominiums';
 import { bulkCreateProperties, addPersonToProperty } from '@/lib/services/properties';
@@ -165,14 +164,13 @@ export async function createDemoCompany(opts: { createdByUserId?: string } = {})
         status: 'activo',
       },
     });
-    // Misma regla que un alta real: sin plan de cuentas en la MISMA
-    // transacción, el primer cargo aborta buscando la cuenta 1101.
-    // `chart_of_accounts` lleva RLS — hay que fijar el contexto a mano
-    // porque esta transacción no pasa por `withTenantContext` (todavía
-    // no existía `company.id` cuando empezó). Ver la misma nota en
-    // `createCompanyWithAdmin` (services/platform.ts).
+    // `audit_logs` lleva RLS — hay que fijar el contexto a mano porque
+    // esta transacción no pasa por `withTenantContext` (todavía no
+    // existía `company.id` cuando empezó). El plan de cuentas YA NO se
+    // siembra acá (es por CONDOMINIO desde 2026-08-13, ver
+    // `chart-of-accounts.ts`): lo crea `createCondominium`, más abajo
+    // en `seedDemoCondominium`.
     await tx.$executeRawUnsafe(`SELECT set_config('app.current_company_id', $1, true)`, company.id);
-    await ensureChartOfAccounts(tx, company.id);
     await tx.auditLog.create({
       data: {
         companyId: company.id,
@@ -419,10 +417,10 @@ export async function createMasterDemoCompany(
         status: 'activo',
       },
     });
-    // Mismo motivo que en `createDemoCompany`: sin este `set_config`,
-    // `ensureChartOfAccounts` lanza (RLS sin contexto), no devuelve vacío.
+    // Mismo motivo que en `createDemoCompany`: `audit_logs` lleva RLS,
+    // así que hace falta el contexto a mano. El plan de cuentas lo crea
+    // `createCondominium` más abajo (es por condominio, no por empresa).
     await tx.$executeRawUnsafe(`SELECT set_config('app.current_company_id', $1, true)`, company.id);
-    await ensureChartOfAccounts(tx, company.id);
     await tx.auditLog.create({
       data: {
         companyId: company.id,

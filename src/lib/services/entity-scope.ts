@@ -264,6 +264,38 @@ export async function condoOfExpense(companyId: string, expenseId: string): Prom
   return expense.condominiumId;
 }
 
+/**
+ * Condominio de un gasto de caja chica.
+ *
+ * Sin esto, `deleteExpenseAction` (caja chica) solo comprobaba que el
+ * actor tuviera acceso al `condominiumId` que ÉL MISMO mandaba en el
+ * formulario, sin cruzarlo contra el condominio real del gasto — un
+ * `admin_staff` (supervisor, restringido por condominio) podía borrar
+ * el gasto de caja chica de OTRO condominio de la misma empresa con
+ * solo conocer su `id` (auditoría del módulo de Finanzas, 2026-08-13,
+ * IDOR confirmado). Mismo patrón que `condoOfExpense`.
+ */
+export async function condoOfPettyCashExpense(companyId: string, expenseId: string): Promise<string> {
+  const expense = await withTenantContext(companyId, (tx) =>
+    tx.pettyCashExpense.findFirstOrThrow({
+      where: { id: expenseId, companyId },
+      select: { condominiumId: true },
+    })
+  );
+  return expense.condominiumId;
+}
+
+/** Condominio de una asignación de caja chica. Mismo motivo que `condoOfPettyCashExpense`. */
+export async function condoOfPettyCashAllocation(companyId: string, allocationId: string): Promise<string> {
+  const allocation = await withTenantContext(companyId, (tx) =>
+    tx.pettyCashAllocation.findFirstOrThrow({
+      where: { id: allocationId, companyId },
+      select: { condominiumId: true },
+    })
+  );
+  return allocation.condominiumId;
+}
+
 export async function condoOfDocument(companyId: string, documentId: string): Promise<string> {
   const doc = await withTenantContext(companyId, (tx) =>
     tx.document.findFirstOrThrow({

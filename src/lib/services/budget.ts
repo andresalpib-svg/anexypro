@@ -55,7 +55,7 @@ export async function getBudget(
 
     const [accounts, lines, expenses] = await Promise.all([
       tx.chartOfAccount.findMany({
-        where: { companyId, type: 'gasto' },
+        where: { condominiumId, type: 'gasto' },
         select: { id: true, code: true, name: true },
         orderBy: { code: 'asc' },
       }),

@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { canAccessCondo } from '@/lib/services/condominiums';
+import { condoOfPettyCashExpense, condoOfPettyCashAllocation } from '@/lib/services/entity-scope';
 import {
   allocatePettyCash,
   addPettyCashExpense,
@@ -116,6 +117,22 @@ export async function deleteExpenseAction(
 ): Promise<{ ok: boolean; error?: string }> {
   const session = await guard(condominiumId);
   if (!session) return { ok: false, error: 'Sin permiso.' };
+
+  // `guard()` solo comprobó el condominio DECLARADO por quien llama;
+  // hay que comprobar también que el gasto que se va a borrar sea de
+  // ESE condominio — si no, un supervisor con acceso al condominio A
+  // podría borrar un gasto real del condominio B con solo mandar el
+  // `id` ajeno mientras declara `condominiumId=A` (IDOR confirmado en
+  // la auditoría del módulo de Finanzas, 2026-08-13).
+  try {
+    const condoReal = await condoOfPettyCashExpense(session.user.companyId, id);
+    if (condoReal !== condominiumId) {
+      return { ok: false, error: 'Ese gasto no pertenece a este condominio.' };
+    }
+  } catch {
+    return { ok: false, error: 'Ese gasto no existe.' };
+  }
+
   try {
     await deletePettyCashExpense(session.user.companyId, id);
   } catch (e: any) {
@@ -131,6 +148,21 @@ export async function deleteAllocationAction(
 ): Promise<{ ok: boolean; error?: string }> {
   const session = await guard(condominiumId, { ownerOnly: true });
   if (!session) return { ok: false, error: 'Solo la administración puede eliminar una asignación.' };
+
+  // Mismo motivo que en `deleteExpenseAction`: el `id` de la asignación
+  // podría ser de otro condominio de la misma empresa. El rol exigido
+  // acá (`admin_owner`) ya ve toda la empresa, así que esto no cierra
+  // una fuga entre roles — pero deja la acción consistente con el resto
+  // del módulo, que siempre verifica el condominio REAL del recurso.
+  try {
+    const condoReal = await condoOfPettyCashAllocation(session.user.companyId, id);
+    if (condoReal !== condominiumId) {
+      return { ok: false, error: 'Esa asignación no pertenece a este condominio.' };
+    }
+  } catch {
+    return { ok: false, error: 'Esa asignación no existe.' };
+  }
+
   try {
     await deletePettyCashAllocation(session.user.companyId, id);
   } catch (e: any) {

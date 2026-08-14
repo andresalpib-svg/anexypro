@@ -38,7 +38,7 @@ export default async function BancosPage({
 
   const [accounts, assetAccounts] = await Promise.all([
     listBankAccountsWithBalance(session!.user.companyId, condoId),
-    listAssetAccounts(session!.user.companyId),
+    listAssetAccounts(session!.user.companyId, condoId),
   ]);
 
   const selected = accounts.find((a) => a.id === searchParams.cuenta) ?? accounts[0] ?? null;

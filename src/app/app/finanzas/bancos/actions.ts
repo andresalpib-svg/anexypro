@@ -154,15 +154,18 @@ export async function ignoreAction(
  *
  * La empresa sale de la sesión. Antes llegaba por parámetro y la
  * función no pedía sesión: cualquiera podía leer el plan de cuentas de
- * cualquier empresa con solo conocer su identificador.
+ * cualquier empresa con solo conocer su identificador. El condominio
+ * SÍ llega por parámetro, pero se valida contra los condominios de la
+ * sesión antes de usarlo — el plan de cuentas es por condominio desde
+ * 2026-08-13, así que un condominio ajeno no debe poder leerse aquí.
  */
-export async function assetAccountsAction() {
-  const session = await auth();
-  if (!session?.user || !['admin_owner', 'contador'].includes(session.user.role)) return [];
+export async function assetAccountsAction(condominiumId: string) {
+  const session = await guard(condominiumId);
+  if (!session || !['admin_owner', 'contador'].includes(session.user.role)) return [];
 
   return withTenantContext(session.user.companyId, (tx) =>
     tx.chartOfAccount.findMany({
-      where: { companyId: session.user.companyId, type: 'activo', sub: 'corriente' },
+      where: { condominiumId, type: 'activo', sub: 'corriente' },
       select: { code: true, name: true },
       orderBy: { code: 'asc' },
     })
