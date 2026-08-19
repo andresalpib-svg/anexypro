@@ -6,6 +6,8 @@ export type ChangeRow = {
   userName: string;
   entity: string;
   entityId: string | null;
+  /** Desde dónde se hizo. Nulo si lo hizo un proceso automático. */
+  ip: string | null;
   action: string;
   changes: Record<string, unknown> | null;
 };
@@ -52,7 +54,10 @@ export function ChangesTable({ rows }: { rows: ChangeRow[] }) {
                   <td className="whitespace-nowrap px-4 py-2.5 text-xs text-muted">
                     {new Date(r.createdAt).toLocaleString('es-CR')}
                   </td>
-                  <td className="px-4 py-2.5 text-ink">{r.userName}</td>
+                  <td className="px-4 py-2.5 text-ink">
+                    {r.userName}
+                    {r.ip && <span className="block text-[.7rem] text-muted">desde {r.ip}</span>}
+                  </td>
                   <td className="px-4 py-2.5 text-muted">{r.entity}</td>
                   <td className="px-4 py-2.5 text-ink">{r.action}</td>
                   <td className="px-4 py-2.5">

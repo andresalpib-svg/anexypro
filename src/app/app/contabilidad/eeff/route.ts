@@ -263,6 +263,9 @@ export async function GET(req: Request) {
 
   const byType = (t: string) => balance.filter((b: BalanceRow) => b.type === t);
   // Pasivo y patrimonio llevan saldo acreedor: se presentan en positivo.
+  // El criterio vive en `domain/balance-presentacion.ts` — este PDF lo
+  // hacía a mano y era el único de los tres consumidores que acertaba;
+  // ahora los tres usan la misma función.
   const sum = (rows: BalanceRow[]) => rows.reduce((s, r) => s + Number(r.balance), 0);
   const activos = byType('activo');
   const pasivos = byType('pasivo');

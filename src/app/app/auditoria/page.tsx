@@ -47,6 +47,7 @@ export default async function AuditoriaPage({
             createdAt: c.createdAt.toISOString(),
             userName: c.user?.fullName ?? 'Sistema (proceso automático)',
             entity: ENTIDAD_LABEL[c.entity] ?? c.entity,
+            ip: c.ip,
             entityId: c.entityId,
             action: ACCION_LABEL[c.action] ?? c.action,
             changes: c.changes as Record<string, unknown> | null,

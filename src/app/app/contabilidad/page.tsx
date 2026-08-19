@@ -11,6 +11,7 @@ import { CondoSelect } from '../propiedades/condo-select';
 import { FinanceTabs } from '../finanzas/finance-tabs';
 import { DescargarReporte } from '../finanzas/descargar-reporte';
 import { ReportTabs } from './report-tabs';
+import { saldoParaMostrar } from '@/lib/domain/balance-presentacion';
 
 const ACCOUNT_TYPE_LABEL: Record<string, string> = {
   activo: 'Activo',
@@ -141,7 +142,11 @@ export default async function ContabilidadPage({
                       {subset.map((r) => (
                         <div key={r.code} className="flex justify-between py-1 text-sm">
                           <span className="text-ink">{r.name}</span>
-                          <span className="font-medium text-ink">{fmt(r.balance, condo.currency)}</span>
+                          {/* Pasivo y patrimonio se presentan en positivo — mismo
+                              criterio que el PDF de estados financieros. */}
+                          <span className="font-medium text-ink">
+                            {fmt(saldoParaMostrar(r.type, Number(r.balance)), condo.currency)}
+                          </span>
                         </div>
                       ))}
                     </div>

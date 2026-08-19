@@ -64,6 +64,30 @@ export async function GET(req: NextRequest) {
   const condos = await listCondominiumsForSession(session!);
   const condoIds = condos.map((c) => c.id);
 
+  /**
+   * El condominio se resuelve UNA sola vez, y un id explícito que no
+   * esté entre los permitidos se RECHAZA.
+   *
+   * Antes cada pestaña llamaba a `resolveCondoId` por su cuenta, y esa
+   * función —pensada para el Condominio Activo de una pantalla— cae al
+   * primero disponible cuando el id no sirve. En una descarga eso es
+   * engañoso: un supervisor de A pedía el Excel de B y recibía el de A,
+   * con 200 y sin aviso, en un archivo que no decía de quién era
+   * (Etapa 10, OBS-1). Las rutas hermanas —`finanzas/exportar`,
+   * `finanzas/exportar-estado`, `contabilidad/eeff`— siempre
+   * respondieron 403; esta era la excepción.
+   *
+   * Sin `condoId` en la URL se sigue cayendo al Condominio Activo, que
+   * no engaña a nadie: no se pidió ninguno en particular.
+   */
+  const condoIdPedido = req.nextUrl.searchParams.get('condoId') || null;
+  if (condoIdPedido && !condoIds.includes(condoIdPedido)) {
+    return new Response('Sin acceso a ese condominio', { status: 403 });
+  }
+  const condoId = resolveCondoId(condoIdPedido ?? undefined, condos);
+  const condo = condos.find((c) => c.id === condoId) ?? null;
+  const anioParam = Number(req.nextUrl.searchParams.get('anio')) || new Date().getUTCFullYear();
+
   let sheetName = 'Reporte';
   let rows: Record<string, unknown>[] = [];
 
@@ -81,25 +105,23 @@ export async function GET(req: NextRequest) {
     // con el desglose de egresos por origen para poder reconciliar
     // contra Finanzas → Gastos. El balance es el histórico acumulado.
     sheetName = 'Resumen';
-    const condoId = resolveCondoId(req.nextUrl.searchParams.get('condoId') ?? undefined, condos);
-    const year = Number(req.nextUrl.searchParams.get('anio')) || new Date().getUTCFullYear();
     if (condoId) {
       const [resumen, balance] = await Promise.all([
-        getResumenFinanciero(companyId, condoId, year),
+        getResumenFinanciero(companyId, condoId, anioParam),
         getBalanceGeneral(companyId, condoId),
       ]);
       rows = [
-        { Sección: `Resumen ${year}`, Cuenta: 'Total ingresos', Tipo: 'ingreso', Monto: resumen.totalIngresos },
-        { Sección: `Resumen ${year}`, Cuenta: 'Total egresos', Tipo: 'gasto', Monto: resumen.totalEgresos },
-        { Sección: `Resumen ${year}`, Cuenta: 'Resultado', Tipo: '—', Monto: resumen.resultado },
+        { Sección: `Resumen ${anioParam}`, Cuenta: 'Total ingresos', Tipo: 'ingreso', Monto: resumen.totalIngresos },
+        { Sección: `Resumen ${anioParam}`, Cuenta: 'Total egresos', Tipo: 'gasto', Monto: resumen.totalEgresos },
+        { Sección: `Resumen ${anioParam}`, Cuenta: 'Resultado', Tipo: '—', Monto: resumen.resultado },
         ...resumen.egresosPorOrigen.map((o) => ({
-          Sección: `Egresos ${year} (por origen)`,
+          Sección: `Egresos ${anioParam} (por origen)`,
           Cuenta: o.label,
           Tipo: 'gasto',
           Monto: o.total,
         })),
         ...resumen.ingresosRows.map((r) => ({
-          Sección: `Ingresos ${year} (detalle)`,
+          Sección: `Ingresos ${anioParam} (detalle)`,
           Cuenta: `${r.code} · ${r.name}`,
           Tipo: r.type,
           Monto: Number(r.balance),
@@ -141,28 +163,24 @@ export async function GET(req: NextRequest) {
   } else if (tab === 'ingresos') {
     // Misma vista v_estado_resultados que la pantalla — un solo condominio.
     sheetName = 'Ingresos';
-    const condoId = resolveCondoId(req.nextUrl.searchParams.get('condoId') ?? undefined, condos);
-    const year = Number(req.nextUrl.searchParams.get('anio')) || new Date().getUTCFullYear();
     if (condoId) {
       const resultados = await getEstadoResultadosRango(
         companyId,
         condoId,
-        new Date(Date.UTC(year, 0, 1)),
-        new Date(Date.UTC(year, 11, 31, 23, 59, 59))
+        new Date(Date.UTC(anioParam, 0, 1)),
+        new Date(Date.UTC(anioParam, 11, 31, 23, 59, 59))
       );
       rows = resultados
         .filter((r) => r.type === 'ingreso')
-        .map((r) => ({ Cuenta: `${r.code} · ${r.name}`, Año: year, Monto: Number(r.balance) }));
+        .map((r) => ({ Cuenta: `${r.code} · ${r.name}`, Año: anioParam, Monto: Number(r.balance) }));
     }
   } else if (tab === 'egresos') {
     // Mismo `getEgresosReport` que la pantalla: el detalle del módulo
     // de Gastos y, a continuación, el resto del gasto contabilizado
     // (depreciación, mantenimiento, proyectos) hasta el total del año.
     sheetName = 'Egresos';
-    const condoId = resolveCondoId(req.nextUrl.searchParams.get('condoId') ?? undefined, condos);
-    const year = Number(req.nextUrl.searchParams.get('anio')) || new Date().getUTCFullYear();
     if (condoId) {
-      const reporte = await getEgresosReport(companyId, condoId, year);
+      const reporte = await getEgresosReport(companyId, condoId, anioParam);
       rows = [
         ...reporte.lines.map((e) => ({
           Origen: 'Módulo de Gastos',
@@ -174,13 +192,12 @@ export async function GET(req: NextRequest) {
         })),
         ...reporte.ledger.byOrigin
           .filter((o) => o.sourceTable !== 'expenses')
-          .map((o) => ({ Origen: o.label, 'N.º': '', Fecha: '', Proveedor: '', Descripción: `Total ${year}`, Monto: o.total })),
-        { Origen: 'TOTAL', 'N.º': '', Fecha: '', Proveedor: '', Descripción: `Egresos contabilizados ${year}`, Monto: reporte.ledger.total },
+          .map((o) => ({ Origen: o.label, 'N.º': '', Fecha: '', Proveedor: '', Descripción: `Total ${anioParam}`, Monto: o.total })),
+        { Origen: 'TOTAL', 'N.º': '', Fecha: '', Proveedor: '', Descripción: `Egresos contabilizados ${anioParam}`, Monto: reporte.ledger.total },
       ];
     }
   } else if (tab === 'fondos') {
     sheetName = 'Fondos';
-    const condoId = resolveCondoId(req.nextUrl.searchParams.get('condoId') ?? undefined, condos);
     if (condoId) {
       rows = (await listFunds(companyId, condoId)).map((f) => ({
         Fondo: f.name,
@@ -193,7 +210,6 @@ export async function GET(req: NextRequest) {
     }
   } else if (tab === 'inversiones') {
     sheetName = 'Inversiones';
-    const condoId = resolveCondoId(req.nextUrl.searchParams.get('condoId') ?? undefined, condos);
     if (condoId) {
       rows = (await listInvestments(companyId, condoId)).map((i) => ({
         Institución: i.institution,
@@ -206,7 +222,6 @@ export async function GET(req: NextRequest) {
     }
   } else if (tab === 'intereses') {
     sheetName = 'Intereses';
-    const condoId = resolveCondoId(req.nextUrl.searchParams.get('condoId') ?? undefined, condos);
     if (condoId) {
       rows = (await listInvestmentInterests(companyId, condoId)).map((i) => ({
         Fecha: i.date.toISOString().slice(0, 10),
@@ -217,7 +232,6 @@ export async function GET(req: NextRequest) {
     }
   } else if (tab === 'activos') {
     sheetName = 'Activos';
-    const condoId = resolveCondoId(req.nextUrl.searchParams.get('condoId') ?? undefined, condos);
     if (condoId) {
       const [assets, bookValues] = await Promise.all([listAssets(companyId, condoId), listAssetBookValues(companyId, condoId)]);
       rows = assets.map((a) => {
@@ -236,7 +250,6 @@ export async function GET(req: NextRequest) {
     }
   } else if (tab === 'depreciaciones') {
     sheetName = 'Depreciaciones';
-    const condoId = resolveCondoId(req.nextUrl.searchParams.get('condoId') ?? undefined, condos);
     if (condoId) {
       rows = (await listDepreciationEntries(companyId, condoId)).map((e) => ({
         Período: e.period,
@@ -248,10 +261,8 @@ export async function GET(req: NextRequest) {
     }
   } else if (tab === 'presupuesto') {
     sheetName = 'Presupuesto';
-    const condoId = resolveCondoId(req.nextUrl.searchParams.get('condoId') ?? undefined, condos);
-    const year = Number(req.nextUrl.searchParams.get('anio')) || new Date().getUTCFullYear();
     if (condoId) {
-      const budget = await getBudget(companyId, condoId, year);
+      const budget = await getBudget(companyId, condoId, anioParam);
       rows = budget.rows
         .filter((r) => r.budgeted > 0 || r.executed > 0)
         .map((r) => ({
@@ -268,7 +279,6 @@ export async function GET(req: NextRequest) {
     sheetName = 'Incumplimientos';
     // Este reporte es por condominio, como el módulo: se toma el
     // Condominio Activo, igual que las demás pantallas.
-    const condoId = resolveCondoId(req.nextUrl.searchParams.get('condoId') ?? undefined, condos);
     if (condoId) {
       rows = (await getViolationReport(companyId, { condominiumId: condoId })).map((r) => ({
         Expediente: r.caseNumber,
@@ -292,7 +302,29 @@ export async function GET(req: NextRequest) {
 
   if (rows.length === 0) rows = [{ Aviso: 'Sin datos para este reporte todavía.' }];
 
-  const ws = XLSX.utils.json_to_sheet(rows);
+  const today = new Date().toISOString().slice(0, 10);
+
+  /**
+   * Encabezado que dice DE QUIÉN es el archivo.
+   *
+   * Un Excel financiero que no nombra su condominio se presta a que
+   * alguien lleve a una asamblea las cifras de otro (Etapa 10, OBS-1).
+   * Las pestañas consolidadas ya traen una columna "Condominio" por
+   * fila; las de un solo condominio no decían nada, ni en el contenido
+   * ni en el nombre del archivo.
+   */
+  const consolidado = !SINGLE_CONDO_TABS.has(tab);
+  const titulo = consolidado
+    ? `Consolidado — ${sheetName}`
+    : `${condo?.name ?? 'Condominio'} — ${sheetName}${YEAR_TABS.has(tab) ? ` ${anioParam}` : ''}`;
+
+  const ws = XLSX.utils.aoa_to_sheet([
+    [titulo],
+    [`Generado el ${today}${condo && !consolidado ? ` · Moneda ${condo.currency}` : ''}`],
+    [],
+  ]);
+  XLSX.utils.sheet_add_json(ws, rows, { origin: 'A4' });
+
   // Ancho de columnas acorde al contenido para que el Excel abra legible.
   const firstRow = rows[0]!;
   ws['!cols'] = Object.keys(firstRow).map((key) => ({
@@ -302,11 +334,24 @@ export async function GET(req: NextRequest) {
   XLSX.utils.book_append_sheet(wb, ws, sheetName);
   const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
 
-  const today = new Date().toISOString().slice(0, 10);
+  // El nombre del archivo también lleva el condominio: es lo primero
+  // que se ve en la carpeta de descargas.
+  const sufijo = consolidado ? 'consolidado' : (condo?.code ?? 'condominio').toLowerCase();
   return new Response(new Uint8Array(buf), {
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'Content-Disposition': `attachment; filename="reporte-${tab}-${today}.xlsx"`,
+      'Content-Disposition': `attachment; filename="reporte-${tab}-${sufijo}-${today}.xlsx"`,
     },
   });
 }
+
+/**
+ * Pestañas de un solo condominio y pestañas con año. Se declaran acá
+ * además de en `page.tsx` porque la ruta no puede importar de un
+ * componente de servidor; si cambian, cambian en los dos lados.
+ */
+const SINGLE_CONDO_TABS = new Set([
+  'incumplimientos', 'resumen', 'ingresos', 'egresos', 'fondos',
+  'inversiones', 'intereses', 'activos', 'depreciaciones', 'presupuesto',
+]);
+const YEAR_TABS = new Set(['resumen', 'ingresos', 'egresos', 'presupuesto']);

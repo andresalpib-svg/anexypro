@@ -24,6 +24,7 @@ import { listCondominiumsForSession, getCondominium } from '@/lib/services/condo
 import { resolveCondoId } from '@/lib/active-condo';
 import { CondoSelect } from '../propiedades/condo-select';
 import { round2 } from '@/lib/domain/late-interest';
+import { saldoParaMostrar } from '@/lib/domain/balance-presentacion';
 
 function fmt(n: number, currency: string) {
   return new Intl.NumberFormat('es-CR', { style: 'currency', currency, maximumFractionDigits: 0 }).format(n);
@@ -400,7 +401,11 @@ async function ResumenTab({ companyId, searchParams }: { companyId: string; sear
                 <tr key={r.code} className="border-b border-line last:border-0">
                   <td className="px-4 py-3 text-ink">{r.code} · {r.name}</td>
                   <td className="px-4 py-3 capitalize text-muted">{r.type}</td>
-                  <td className="px-4 py-3 text-right font-sans font-semibold text-ink">{fmt(Number(r.balance), currency)}</td>
+                  {/* Pasivo y patrimonio llevan saldo acreedor: se presentan en
+                      positivo, igual que en el PDF de estados financieros. */}
+                  <td className="px-4 py-3 text-right font-sans font-semibold text-ink">
+                    {fmt(saldoParaMostrar(r.type, Number(r.balance)), currency)}
+                  </td>
                 </tr>
               ))
             )}

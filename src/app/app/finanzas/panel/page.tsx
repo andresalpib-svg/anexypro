@@ -103,10 +103,15 @@ export default async function PanelFinancieroPage({ searchParams }: { searchPara
       {/* ---------- KPIs ---------- */}
       <div className="mt-4 grid grid-cols-4 gap-4 max-lg:grid-cols-2">
         {[
-          { label: 'Ingresos del mes', value: fmt(data.kpis.income), var: variacion(data.kpis.incomeVar), icon: TrendingUp, color: 'bg-ok/15 text-ok' },
-          { label: 'Gastos del mes', value: fmt(data.kpis.expense), var: variacion(data.kpis.expenseVar), icon: TrendingDown, color: 'bg-warn-bg text-warn' },
-          { label: 'Resultado del mes', value: fmt(data.kpis.result), var: null, icon: Scale, color: data.kpis.result >= 0 ? 'bg-ok/15 text-ok' : 'bg-danger-bg text-danger' },
-          { label: `En bancos (${data.kpis.bankCount})`, value: fmt(data.kpis.bankBalance), var: null, icon: Wallet, color: 'bg-royal-soft text-royal' },
+          // Este panel es de CAJA y del MES: "ingresos" es lo cobrado y
+          // "gastos" lo registrado en el módulo de Gastos. No es el
+          // resultado contable —ese vive en Reportes → Resumen, sale del
+          // libro diario del AÑO e incluye depreciación y mantenimiento—
+          // y los rótulos lo dicen para que nadie confunda uno con otro.
+          { label: 'Cobrado en el mes', value: fmt(data.kpis.income), var: variacion(data.kpis.incomeVar), icon: TrendingUp, color: 'bg-ok/15 text-ok', hint: 'Pagos aplicados' },
+          { label: 'Gastos del mes', value: fmt(data.kpis.expense), var: variacion(data.kpis.expenseVar), icon: TrendingDown, color: 'bg-warn-bg text-warn', hint: 'Módulo de Gastos' },
+          { label: 'Diferencia del mes', value: fmt(data.kpis.result), var: null, icon: Scale, color: data.kpis.result >= 0 ? 'bg-ok/15 text-ok' : 'bg-danger-bg text-danger', hint: 'Cobrado − gastos. No es el resultado contable' },
+          { label: `En bancos (${data.kpis.bankCount})`, value: fmt(data.kpis.bankBalance), var: null, icon: Wallet, color: 'bg-royal-soft text-royal', hint: null },
         ].map((k) => (
           <div key={k.label} className="card p-5">
             <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${k.color}`}>
@@ -114,6 +119,7 @@ export default async function PanelFinancieroPage({ searchParams }: { searchPara
             </span>
             <p className="mt-3 font-sans text-xl font-bold text-ink">{k.value}</p>
             <p className="text-sm text-muted">{k.label}</p>
+            {k.hint && <p className="text-[.7rem] text-muted">{k.hint}</p>}
             {k.var && <p className="mt-0.5 text-[.7rem] text-muted">{k.var}</p>}
           </div>
         ))}

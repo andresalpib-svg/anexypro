@@ -1,5 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import { withTenantContext } from '@/lib/db';
+import { clientIp } from '@/lib/rate-limit';
 
 /**
  * Rastro de cambios de las operaciones sensibles: qué valía antes el
@@ -76,6 +77,14 @@ export async function logChange(
     motivo?: string | null;
   }
 ) {
+  // Desde DÓNDE se hizo el cambio. Las columnas `ip` y `user_agent`
+  // existían en el modelo desde el inicio y nadie las llenaba; para una
+  // anulación de un movimiento financiero es justo el dato que se
+  // pregunta después. Se leen de la petición en curso — `headers()`
+  // falla fuera de una (un job, un guion de mantenimiento), y ahí
+  // quedan nulas, que es la respuesta correcta: no hubo navegador.
+  const origen = await leerOrigen();
+
   return tx.systemAuditEntry.create({
     data: {
       companyId,
@@ -84,6 +93,8 @@ export async function logChange(
       entity: input.entity,
       entityId: input.entityId ?? null,
       action: input.action as any,
+      ip: origen.ip,
+      userAgent: origen.userAgent,
       changes: {
         ...(input.cambios?.length ? { cambios: input.cambios as any } : {}),
         ...(input.snapshot ? { snapshot: normalizarFila(input.snapshot) as any } : {}),
@@ -91,6 +102,23 @@ export async function logChange(
       },
     },
   });
+}
+
+/**
+ * IP y navegador de la petición en curso, si la hay.
+ *
+ * `next/headers` se importa de forma dinámica y dentro de un try: fuera
+ * de una petición lanza, y este rastro no debe hacer fallar la
+ * operación que audita. Un cambio sin origen es un cambio del sistema.
+ */
+async function leerOrigen(): Promise<{ ip: string | null; userAgent: string | null }> {
+  try {
+    const { headers } = await import('next/headers');
+    const h = headers();
+    return { ip: clientIp(h), userAgent: h.get('user-agent')?.slice(0, 300) ?? null };
+  } catch {
+    return { ip: null, userAgent: null };
+  }
 }
 
 function normalizarFila(fila: Record<string, unknown>): Record<string, unknown> {
