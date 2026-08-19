@@ -4,6 +4,11 @@ Fecha: 2026-08-20
 
 # VEREDICTO: **APROBADO CON OBSERVACIONES**
 
+> **Actualización 2026-08-19 — OBS-1 y OBS-2 CORREGIDAS y desplegadas.**
+> También se corrigieron dos observaciones que venían de la Etapa 7 (signo
+> del balance en pantalla, rótulos del panel financiero) y una de la Etapa 8
+> (IP y navegador en el rastro de cambios). Ver el detalle al final.
+
 Los nueve criterios de aprobación se cumplen. Las 36 cifras que calculé a mano
 coinciden **exactamente** con lo que reporta el sistema, los tres condominios
 están completamente aislados y la facturación electrónica sigue apagada.
@@ -217,3 +222,44 @@ npx tsx --env-file=.env scripts/probar-etapa10.ts --limpiar
 ```
 
 Ningún dato de los condominios preexistentes fue modificado.
+
+
+---
+
+# Correcciones aplicadas (2026-08-19, posteriores al veredicto)
+
+| Observación | Estado |
+| --- | --- |
+| OBS-1 · Excel de Reportes entregaba otro condominio en silencio | ✅ **CORREGIDA** |
+| OBS-2 · Reporte vacío sin identificación | ✅ **CORREGIDA** (el encabezado lo resuelve) |
+| Etapa 7 · Balance con pasivo y patrimonio en negativo | ✅ **CORREGIDA** |
+| Etapa 7 · Panel financiero mezcla caja y devengo | ✅ **Rotulado sin ambigüedad** |
+| Etapa 8 · `ip` y `user_agent` sin capturar | ✅ **CORREGIDA** |
+| Etapa 8 · `AuditLog.device` fijo en "Escritorio" | ⬜ pendiente |
+| Etapa 8 · Server Actions sin prueba dinámica por HTTP | ⬜ pendiente |
+| Etapa 8 · Bitácoras sin política de retención | ⬜ pendiente (decisión de producto) |
+| Etapa 9 · `nextExpenseNumber` con `MAX + 1` | ⬜ **reevaluada a baja** |
+
+**OBS-1.** El condominio se resuelve una sola vez y un id explícito fuera de los
+permitidos responde **403**, igual que las tres rutas hermanas. Cada Excel lleva
+además un encabezado con el condominio, el período y la moneda, y el nombre del
+archivo incluye el código (`reporte-egresos-e10a-2026-08-19.xlsx`). Verificado en
+vivo: supervisor de A pidiendo B → 403; pidiendo un condominio de otra empresa →
+403; su propio condominio → 200 con el encabezado correcto; el consolidado sigue
+funcionando y se rotula "Consolidado — …".
+
+**Balance.** El PDF de estados financieros ya presentaba pasivo y patrimonio en
+positivo; las dos pantallas que leen la misma vista, no. Nuevo
+`domain/balance-presentacion.ts` con el criterio único (9 pruebas). Verificado:
+"Proveedores por Pagar" pasó de −₡345 000 a ₡345 000, y "Depreciación Acumulada"
+sigue en negativo, que es lo correcto para una cuenta que resta del activo.
+
+**Panel financiero.** No se redefinió qué mide —esa es una decisión de producto—:
+se rotuló para que no se confunda con el resultado contable. "Cobrado en el mes ·
+Pagos aplicados", "Gastos del mes · Módulo de Gastos", "Diferencia del mes ·
+Cobrado − gastos. No es el resultado contable".
+
+**`nextExpenseNumber`.** Reevaluada a **baja**: la tabla tiene
+`@@unique([condominiumId, expenseNumber])`, así que una carrera **falla** en vez
+de duplicar. Es un problema de robustez (el segundo usuario ve un error), no de
+integridad. No se reestructuró la transacción de creación de gastos por eso.
