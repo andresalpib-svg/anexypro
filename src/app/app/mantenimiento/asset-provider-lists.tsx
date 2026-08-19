@@ -16,10 +16,11 @@ import { CategorySelect, type AssetCategoryOption } from './category-select';
 
 export type AssetItem = {
   id: string;
+  code: string;
   name: string;
   category: { id: string; name: string } | null;
   description: string | null;
-  approxCost: string | null;
+  acquisitionValue: string | null;
   location: string | null;
   photoUrl: string | null;
 };
@@ -85,11 +86,12 @@ function AssetRow({ asset, condominiumId, categories }: { asset: AssetItem; cond
         )}
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium text-ink">
+            <span className="font-normal text-muted">{asset.code} · </span>
             {asset.name} <span className="font-normal text-muted">· {asset.category?.name ?? 'Sin categoría'}</span>
           </p>
           <p className="truncate text-xs text-muted">
             {asset.description || 'Sin descripción'}
-            {asset.approxCost !== null && ` · Costo aprox. ${Number(asset.approxCost).toLocaleString('es-CR')}`}
+            {asset.acquisitionValue !== null && ` · Valor ${Number(asset.acquisitionValue).toLocaleString('es-CR')}`}
           </p>
         </div>
         <button type="button" onClick={() => setEditing(true)} className="text-muted transition hover:text-royal" title="Editar">
@@ -105,6 +107,10 @@ function AssetRow({ asset, condominiumId, categories }: { asset: AssetItem; cond
       <form ref={formRef} action={formAction} className="flex flex-wrap items-end gap-2 rounded-lg bg-canvas p-3">
         <input type="hidden" name="assetId" value={asset.id} />
         <div>
+          <label className="field-label">Código</label>
+          <input name="code" defaultValue={asset.code} className="field-input w-28" />
+        </div>
+        <div>
           <label className="field-label">Nombre</label>
           <input name="name" defaultValue={asset.name} className="field-input w-40" />
         </div>
@@ -117,8 +123,8 @@ function AssetRow({ asset, condominiumId, categories }: { asset: AssetItem; cond
           <input name="description" defaultValue={asset.description ?? ''} className="field-input w-56" />
         </div>
         <div>
-          <label className="field-label">Costo aproximado</label>
-          <input name="approxCost" type="number" step="0.01" defaultValue={asset.approxCost ?? ''} className="field-input w-28" />
+          <label className="field-label">Valor de adquisición</label>
+          <input name="acquisitionValue" type="number" step="0.01" defaultValue={asset.acquisitionValue ?? ''} className="field-input w-28" />
         </div>
         <div>
           <label className="field-label">Ubicación</label>

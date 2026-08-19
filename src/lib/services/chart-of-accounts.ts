@@ -33,7 +33,16 @@ export const CHART_OF_ACCOUNTS: Array<{
   { code: '1001', name: 'Banco Cuenta Corriente', type: 'activo', sub: 'corriente' },
   { code: '1101', name: 'Cuotas por Cobrar', type: 'activo', sub: 'corriente' },
   { code: '1200', name: 'Fondo de Reserva', type: 'activo', sub: 'corriente' },
+  // Etapa 5 — Fondos e inversiones: el capital colocado en una
+  // inversión (certificado a plazo, fondo de inversión...) es un
+  // activo distinto de "Banco" — sacarlo de ahí y no reflejarlo en
+  // ningún lado subestimaría el patrimonio del condominio.
+  { code: '1210', name: 'Inversiones a Plazo', type: 'activo', sub: 'corriente' },
   { code: '1501', name: 'Activos Fijos e Instalaciones', type: 'activo', sub: 'no_corriente' },
+  // Etapa 6 — Activos y depreciaciones: contra-activo. Se acredita en
+  // cada corrida de depreciación en vez de rebajar 1501 directamente,
+  // para conservar el costo histórico del activo en el balance.
+  { code: '1502', name: 'Depreciación Acumulada', type: 'activo', sub: 'no_corriente' },
   { code: '2001', name: 'Proveedores por Pagar', type: 'pasivo', sub: 'corriente' },
   { code: '2002', name: 'Adelantos de Condóminos', type: 'pasivo', sub: 'corriente' },
   { code: '2003', name: 'Depósitos sin Identificar', type: 'pasivo', sub: 'corriente' },
@@ -47,6 +56,13 @@ export const CHART_OF_ACCOUNTS: Array<{
   { code: '4202', name: 'Ingresos por Multas', type: 'ingreso', isOperating: true },
   { code: '4203', name: 'Ingresos por Reservas de Áreas Comunes', type: 'ingreso', isOperating: true },
   { code: '4901', name: 'Otros Ingresos', type: 'ingreso', isOperating: false },
+  // Etapa 5: intereses ganados por inversiones. Cuenta PROPIA a
+  // propósito — nunca "4901 Otros Ingresos" ni ninguna cuenta de cuota
+  // condominal: la spec exige que el interés de inversión se distinga
+  // como ingreso financiero, no como cuota (ver `services/investments.ts`).
+  { code: '4902', name: 'Ingresos Financieros (Intereses)', type: 'ingreso', isOperating: false },
+  // Etapa 6: gasto por depreciación periódica de activos fijos.
+  { code: '5902', name: 'Gasto por Depreciación', type: 'gasto', isOperating: true },
   { code: '5001', name: 'Mantenimiento de Áreas Verdes', type: 'gasto' },
   { code: '5002', name: 'Mantenimiento de Equipos', type: 'gasto' },
   { code: '5003', name: 'Mantenimiento General', type: 'gasto' },

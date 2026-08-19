@@ -1,5 +1,6 @@
 import { withTenantContext } from '@/lib/db';
 import { logActivity } from '@/lib/services/audit';
+import { logChange } from '@/lib/services/audit-trail';
 
 export type PettyCashSummary = {
   assigned: number;
@@ -34,8 +35,16 @@ export async function getPettyCash(companyId: string, condominiumId: string) {
         orderBy: [{ spentOn: 'desc' }, { createdAt: 'desc' }],
         include: { createdBy: { select: { fullName: true } } },
       }),
-      tx.pettyCashAllocation.aggregate({ where: { companyId, condominiumId }, _sum: { amount: true } }),
-      tx.pettyCashExpense.aggregate({ where: { companyId, condominiumId }, _sum: { amount: true } }),
+      // Un movimiento anulado sigue en la lista de arriba (para que el
+      // informe muestre que existió) pero no entra en el saldo.
+      tx.pettyCashAllocation.aggregate({
+        where: { companyId, condominiumId, voidedAt: null },
+        _sum: { amount: true },
+      }),
+      tx.pettyCashExpense.aggregate({
+        where: { companyId, condominiumId, voidedAt: null },
+        _sum: { amount: true },
+      }),
     ]);
 
     const assigned = Number(assignedAgg._sum.amount ?? 0);
@@ -129,10 +138,69 @@ export async function addPettyCashExpense(
   });
 }
 
-export async function deletePettyCashExpense(companyId: string, id: string) {
-  return withTenantContext(companyId, (tx) => tx.pettyCashExpense.delete({ where: { id } }));
+/**
+ * Anula un gasto o una asignación de caja chica. NO los borra.
+ *
+ * Antes los eliminaba de verdad, y encima sin registrar nada: el saldo
+ * de la caja cambiaba solo y no había forma de saber qué movimiento
+ * desapareció, quién lo quitó ni por qué —siendo que el alta sí se
+ * registraba en la bitácora (Etapa 8, hallazgo 8.4)—. Un movimiento
+ * anulado deja de sumar al saldo pero sigue en el informe, marcado.
+ */
+async function anularMovimientoCaja(
+  companyId: string,
+  id: string,
+  reason: string,
+  user: { id: string; name: string },
+  clase: 'gasto' | 'asignacion'
+) {
+  if (!reason || reason.trim().length < 5) throw new Error('Indicá el motivo de la anulación.');
+  return withTenantContext(companyId, async (tx) => {
+    const esGasto = clase === 'gasto';
+    const fila = esGasto
+      ? await tx.pettyCashExpense.findUniqueOrThrow({ where: { id } })
+      : await tx.pettyCashAllocation.findUniqueOrThrow({ where: { id } });
+    if (fila.voidedAt) throw new Error('Este movimiento ya estaba anulado.');
+
+    const data = { voidedAt: new Date(), voidReason: reason.trim(), voidedById: user.id };
+    if (esGasto) await tx.pettyCashExpense.update({ where: { id }, data });
+    else await tx.pettyCashAllocation.update({ where: { id }, data });
+
+    await logChange(tx, companyId, {
+      entity: esGasto ? 'petty_cash_expenses' : 'petty_cash_allocations',
+      entityId: id,
+      condominiumId: fila.condominiumId,
+      action: 'anular',
+      userId: user.id,
+      motivo: reason.trim(),
+      snapshot: esGasto
+        ? { detalle: (fila as any).detail, monto: fila.amount, fecha: (fila as any).spentOn }
+        : { nota: (fila as any).note, monto: fila.amount, fecha: (fila as any).allocatedOn },
+    });
+    await logActivity(tx, companyId, {
+      userId: user.id,
+      userName: user.name,
+      module: 'Caja chica',
+      action: esGasto ? 'Gasto anulado' : 'Asignación anulada',
+      target: `₡${Number(fila.amount).toLocaleString('es-CR')} · ${reason.trim()}`,
+    });
+  });
 }
 
-export async function deletePettyCashAllocation(companyId: string, id: string) {
-  return withTenantContext(companyId, (tx) => tx.pettyCashAllocation.delete({ where: { id } }));
+export async function voidPettyCashExpense(
+  companyId: string,
+  id: string,
+  reason: string,
+  user: { id: string; name: string }
+) {
+  return anularMovimientoCaja(companyId, id, reason, user, 'gasto');
+}
+
+export async function voidPettyCashAllocation(
+  companyId: string,
+  id: string,
+  reason: string,
+  user: { id: string; name: string }
+) {
+  return anularMovimientoCaja(companyId, id, reason, user, 'asignacion');
 }

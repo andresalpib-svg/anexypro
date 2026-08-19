@@ -34,6 +34,7 @@ export function BudgetBoard({
   years,
   currency,
   rows,
+  totalExecuted,
   yearProgress,
   canEdit,
 }: {
@@ -42,6 +43,8 @@ export function BudgetBoard({
   years: number[];
   currency: string;
   rows: BudgetRowView[];
+  /** Viene de `getBudget` — el ejecutado NUNCA se recalcula en el cliente (fuente de verdad única, Etapa 7). */
+  totalExecuted: number;
   yearProgress: number;
   canEdit: boolean;
 }) {
@@ -54,11 +57,14 @@ export function BudgetBoard({
   const fmt = (n: number) =>
     new Intl.NumberFormat('es-CR', { style: 'currency', currency, maximumFractionDigits: 0 }).format(n);
 
+  // "budgeted" SÍ se recalcula en el cliente a propósito: es el
+  // borrador sin guardar, un valor que por definición todavía no
+  // existe en el servidor. "executed" nunca se toca — es el mismo
+  // `totalExecuted` que ya calculó `getBudget`.
   const totals = useMemo(() => {
     const budgeted = Object.values(draft).reduce((s, v) => s + (Number(v) || 0), 0);
-    const executed = rows.reduce((s, r) => s + r.executed, 0);
-    return { budgeted, executed, percent: budgeted > 0 ? (executed / budgeted) * 100 : 0 };
-  }, [draft, rows]);
+    return { budgeted, executed: totalExecuted, percent: budgeted > 0 ? (totalExecuted / budgeted) * 100 : 0 };
+  }, [draft, totalExecuted]);
 
   const dirty = rows.some((r) => (draft[r.accountId] ?? 0) !== r.budgeted);
   const sinPresupuesto = totals.budgeted === 0;
@@ -219,9 +225,11 @@ export function BudgetBoard({
       </div>
 
       <p className="mt-3 text-xs leading-relaxed text-muted">
-        El ejecutado cuenta solo los gastos <b>aprobados o pagados</b>. Un gasto en borrador todavía no
-        compromete el presupuesto. El porcentaje del año transcurrido sirve de referencia: una partida en 90 %
-        a mitad de año va mal aunque no haya llegado a 100.
+        El ejecutado es el gasto <b>contabilizado</b> del año en cada partida: los gastos aprobados o pagados de
+        Finanzas, más el costo de los tickets de mantenimiento completados y la depreciación de los activos, que
+        también consumen presupuesto. Un gasto en borrador o por aprobar todavía no cuenta, y uno anulado deja de
+        contar. El porcentaje del año transcurrido sirve de referencia: una partida en 90 % a mitad de año va mal
+        aunque no haya llegado a 100.
       </p>
     </div>
   );

@@ -6,6 +6,8 @@ import { generateRecurringExpenses, refreshContractStatuses } from '@/lib/servic
 import { runCollectionLadder } from '@/lib/services/collections';
 import { generateMonthlyReports } from '@/lib/services/monthly-report';
 import { createFollowUpTasks } from '@/lib/services/violation-followup';
+import { runMonthlyDepreciationJob } from '@/lib/services/asset-depreciation';
+import { periodOf } from '@/lib/services/accounting-periods';
 import { JOB_REVISION } from '@/lib/services/system-health';
 
 const isoDay = (d: Date) => d.toISOString().slice(0, 10);
@@ -200,6 +202,36 @@ registerJob({
       summary:
         `${r.generated} informe(s) generado(s) de ${r.condominiums} condominio(s)` +
         (r.errors.length ? ` · ${r.errors.length} con error: ${r.errors.join('; ')}` : ''),
+      details: r as unknown as Record<string, unknown>,
+    };
+  },
+});
+
+/**
+ * Depreciación de activos — el día 1 de cada mes (mismo patrón que
+ * "informe-mensual": el job se registra todos los días, pero solo
+ * actúa el día 1; la clave de corrida es el período "YYYY-MM", así
+ * que aunque se dispare varias veces ese día, solo la primera trabaja).
+ *
+ * Salta en silencio (no es error) los activos sin datos completos, ya
+ * de baja, o que ya se depreciaron este período — ver
+ * `runAssetDepreciationForCondo`. El botón "Depreciar este período" de
+ * /app/activos usa el mismo servicio para ponerse al día a mano.
+ */
+registerJob({
+  name: 'depreciacion-activos',
+  description: 'Registra la depreciación mensual de los activos con datos completos',
+  runKey: (now) => `depreciacion:${periodOf(now)}`,
+  run: async (now, opts) => {
+    if (now.getDate() !== 1) {
+      return { summary: 'La depreciación se corre el día 1 de cada mes.' };
+    }
+    const r = await runMonthlyDepreciationJob(now, opts);
+    return {
+      summary:
+        r.evaluated === 0
+          ? 'Ningún activo registrado.'
+          : `${r.condominiums} condominio(s) · ${r.evaluated} activo(s) evaluado(s) · ${r.created} depreciación(es) registrada(s) · ${r.skipped} sin novedad`,
       details: r as unknown as Record<string, unknown>,
     };
   },

@@ -52,17 +52,23 @@ export default async function MantenimientoPage({ searchParams }: { searchParams
         <div id="activos" className="card scroll-mt-24 p-4 transition-all">
           <div className="flex items-center justify-between">
             <p className="text-xs font-bold uppercase tracking-wide text-muted">Activos ({assets.length})</p>
-            <QuickAddAsset condominiumId={condoId} categories={categories} />
+            <div className="flex items-center gap-2">
+              <a href={`/app/activos?condoId=${condoId}`} className="text-[.7rem] font-semibold text-royal hover:underline">
+                Ficha completa y depreciación →
+              </a>
+              <QuickAddAsset condominiumId={condoId} categories={categories} />
+            </div>
           </div>
           <AssetList
             condominiumId={condoId}
             categories={categories}
             assets={assets.map((a) => ({
               id: a.id,
+              code: a.code,
               name: a.name,
               category: a.category ? { id: a.category.id, name: a.category.name } : null,
               description: a.description,
-              approxCost: a.approxCost?.toString() ?? null,
+              acquisitionValue: a.acquisitionValue?.toString() ?? null,
               location: a.location,
               photoUrl: a.photoUrl,
             }))}
@@ -101,6 +107,8 @@ export default async function MantenimientoPage({ searchParams }: { searchParams
               detail: a.note ?? '',
               amount: Number(a.amount),
               author: a.createdBy?.fullName ?? null,
+              voidedAt: a.voidedAt ? a.voidedAt.toISOString() : null,
+              voidReason: a.voidReason,
             })
           )}
           expenses={cash.expenses.map(
@@ -112,6 +120,8 @@ export default async function MantenimientoPage({ searchParams }: { searchParams
               author: e.createdBy?.fullName ?? null,
               invoiceUrl: e.invoiceUrl,
               invoiceName: e.invoiceName,
+              voidedAt: e.voidedAt ? e.voidedAt.toISOString() : null,
+              voidReason: e.voidReason,
             })
           )}
         />

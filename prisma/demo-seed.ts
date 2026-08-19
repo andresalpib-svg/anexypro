@@ -215,10 +215,10 @@ async function main() {
     const categorias = await listAssetCategories(companyId, condoId);
     const categoriaId = (nombre: string) => categorias.find((c) => c.name === nombre)!.id;
 
-    const bomba = await createAsset(companyId, { condominiumId: condoId, name: 'Bomba de agua principal', categoryId: categoriaId('Bomba'), description: 'Pedrollo 2HP, caseta norte', approxCost: 850000, location: 'Caseta de máquinas', photoUrl: demoAssetPhoto });
-    const porton = await createAsset(companyId, { condominiumId: condoId, name: 'Portón eléctrico acceso principal', categoryId: categoriaId('Portón'), description: 'Motor CAME BX-74, instalado 2024', approxCost: 1200000 });
-    await createAsset(companyId, { condominiumId: condoId, name: 'Planta eléctrica de emergencia', categoryId: categoriaId('Generador'), description: 'Generac 22kW diésel', approxCost: 9500000 });
-    await createAsset(companyId, { condominiumId: condoId, name: 'Sistema de piscina', categoryId: categoriaId('Piscina'), description: 'Filtro de arena + clorinador salino', approxCost: 2300000 });
+    const bomba = await createAsset(companyId, { condominiumId: condoId, name: 'Bomba de agua principal', categoryId: categoriaId('Bomba'), description: 'Pedrollo 2HP, caseta norte', acquisitionValue: 850000, location: 'Caseta de máquinas', photoUrl: demoAssetPhoto });
+    const porton = await createAsset(companyId, { condominiumId: condoId, name: 'Portón eléctrico acceso principal', categoryId: categoriaId('Portón'), description: 'Motor CAME BX-74, instalado 2024', acquisitionValue: 1200000 });
+    await createAsset(companyId, { condominiumId: condoId, name: 'Planta eléctrica de emergencia', categoryId: categoriaId('Generador'), description: 'Generac 22kW diésel', acquisitionValue: 9500000 });
+    await createAsset(companyId, { condominiumId: condoId, name: 'Sistema de piscina', categoryId: categoriaId('Piscina'), description: 'Filtro de arena + clorinador salino', acquisitionValue: 2300000 });
 
     const provAcuatec = await createProvider(companyId, { condominiumId: condoId, name: 'Acuatec S.A.', serviceType: 'Bombas y riego', phone: '2440-1122', email: 'servicio@acuatec.cr' });
     const provPortones = await createProvider(companyId, { condominiumId: condoId, name: 'Portones Automáticos CR', serviceType: 'Portones', phone: '2225-8844', email: 'soporte@portonescr.com' });

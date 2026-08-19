@@ -4,7 +4,8 @@ import { getCashFlow } from '@/lib/services/cash-flow';
 import { getCollectionsView } from '@/lib/services/collections';
 import { getBudget, budgetAlert } from '@/lib/services/budget';
 import { listBankAccountsWithBalance } from '@/lib/services/bank-accounts';
-import { getReserveFund } from '@/lib/services/reserve-fund';
+import { listFunds } from '@/lib/services/funds';
+import { EXECUTED_EXPENSE_STATUSES } from '@/lib/services/expenses';
 
 /**
  * Panel financiero.
@@ -34,12 +35,12 @@ export async function getFinancialDashboard(companyId: string, condominiumId: st
   const monthStart = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
   const prevStart = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 1, 1));
 
-  const [cashFlow, collections, budget, banks, reserve, operational] = await Promise.all([
+  const [cashFlow, collections, budget, banks, funds, operational] = await Promise.all([
     getCashFlow(companyId, condominiumId, { history: 12, forecast: 6 }),
     getCollectionsView(companyId, condominiumId, today),
     getBudget(companyId, condominiumId, today.getUTCFullYear()),
     listBankAccountsWithBalance(companyId, condominiumId),
-    getReserveFund(companyId, condominiumId),
+    listFunds(companyId, condominiumId),
     withTenantContext(companyId, async (tx) => {
       const [income, prevIncome, expense, prevExpense, pendingApproval, payable, contracts, unreconciled] =
         await Promise.all([
@@ -54,7 +55,7 @@ export async function getFinancialDashboard(companyId: string, condominiumId: st
           tx.expense.aggregate({
             where: {
               condominiumId,
-              status: { in: ['aprobado', 'pagado'] },
+              status: { in: [...EXECUTED_EXPENSE_STATUSES] },
               issueDate: { gte: monthStart },
             },
             _sum: { total: true },
@@ -62,7 +63,7 @@ export async function getFinancialDashboard(companyId: string, condominiumId: st
           tx.expense.aggregate({
             where: {
               condominiumId,
-              status: { in: ['aprobado', 'pagado'] },
+              status: { in: [...EXECUTED_EXPENSE_STATUSES] },
               issueDate: { gte: prevStart, lt: monthStart },
             },
             _sum: { total: true },
@@ -170,7 +171,14 @@ export async function getFinancialDashboard(companyId: string, condominiumId: st
 
   // --- Indicadores con semáforo ---
   const liquidity = cashFlow.averageExpense > 0 ? bankBalance / cashFlow.averageExpense : null;
-  const reserveMonths = reserve?.summary.monthsCovered ?? null;
+  // Etapa 5: el fondo de reserva ahora es uno más entre los `Fund` del
+  // condominio (type = 'reserva'), no un modelo aparte. Se reusa
+  // `cashFlow.averageExpense` (ya calculado arriba) en vez de que cada
+  // consumidor promedie el gasto de los últimos 6 meses por su cuenta.
+  const reserveFund = funds.find((f) => f.type === 'reserva') ?? null;
+  const reserveBalance = reserveFund?.balance.total ?? null;
+  const reserveMonths =
+    reserveBalance !== null && cashFlow.averageExpense > 0 ? round2(reserveBalance / cashFlow.averageExpense) : null;
   const budgetPct =
     budget.totalBudgeted > 0 ? (budget.totalExecuted / budget.totalBudgeted) * 100 : null;
 
@@ -276,6 +284,16 @@ export async function getFinancialDashboard(companyId: string, condominiumId: st
     })),
     payable: payableWithBalance,
     unreconciled: operational.unreconciled,
-    reserve: reserve?.summary ?? null,
+    reserve: reserveFund
+      ? {
+          balance: reserveFund.balance.total,
+          targetAmount: reserveFund.targetAmount !== null ? Number(reserveFund.targetAmount) : null,
+          progress:
+            reserveFund.targetAmount !== null && Number(reserveFund.targetAmount) > 0
+              ? Math.min(1, reserveFund.balance.total / Number(reserveFund.targetAmount))
+              : null,
+          monthsCovered: reserveMonths,
+        }
+      : null,
   };
 }

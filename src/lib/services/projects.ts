@@ -1,15 +1,19 @@
 import { withTenantContext } from '@/lib/db';
 import { recordProjectExpense } from '@/lib/services/accounting';
 import { logActivity } from '@/lib/services/audit';
+import { EXECUTED_EXPENSE_STATUSES } from '@/lib/services/expenses';
 
 /**
  * Qué gastos de Finanzas cuentan como ejecución de un proyecto.
  *
  * Solo lo aprobado o pagado, igual que en Presupuesto: un borrador o
  * algo por aprobar todavía no compromete plata, y un gasto anulado
- * nunca la comprometió.
+ * nunca la comprometió. Es un alias de `EXECUTED_EXPENSE_STATUSES`,
+ * no una segunda lista: eran dos copias del mismo literal y, el día
+ * que una cambiara, Proyectos y Presupuesto habrían empezado a contar
+ * cosas distintas sin que nada fallara.
  */
-export const EXPENSE_EXECUTED = ['aprobado', 'pagado'] as const;
+export const EXPENSE_EXECUTED = EXECUTED_EXPENSE_STATUSES;
 
 export async function listProjects(companyId: string, condominiumId: string) {
   return withTenantContext(companyId, (tx) =>

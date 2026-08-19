@@ -4,14 +4,12 @@ import { can } from '@/lib/rbac';
 import { resolveCondoId } from '@/lib/active-condo';
 import { listCondominiumsForSession, getCondominium } from '@/lib/services/condominiums';
 import { getBudget, listBudgetYears } from '@/lib/services/budget';
-import { getReserveFund } from '@/lib/services/reserve-fund';
 import { PageHeader } from '@/components/ui/page-header';
 import { SinCondominio } from '@/components/ui/sin-condominio';
 import { CondoSelect } from '../../propiedades/condo-select';
 import { FinanceTabs } from '../finance-tabs';
 import { DescargarReporte } from '../descargar-reporte';
 import { BudgetBoard, type BudgetRowView } from './budget-board';
-import { ReservePanel, type FundView, type MovementView } from './reserve-panel';
 
 export default async function PresupuestoPage({
   searchParams,
@@ -33,11 +31,10 @@ export default async function PresupuestoPage({
   if (!condoId) return <SinCondominio companyId={session!.user.companyId} role={session!.user.role} />;
 
   const year = Number(searchParams.anio) || new Date().getUTCFullYear();
-  const [budget, years, condo, reserve] = await Promise.all([
+  const [budget, years, condo] = await Promise.all([
     getBudget(session!.user.companyId, condoId, year),
     listBudgetYears(session!.user.companyId, condoId),
     getCondominium(session!.user.companyId, condoId),
-    getReserveFund(session!.user.companyId, condoId),
   ]);
   const currency = condo?.currency ?? 'CRC';
 
@@ -61,39 +58,7 @@ export default async function PresupuestoPage({
         yearProgress={budget.yearProgress}
         canEdit={['admin_owner', 'contador'].includes(session!.user.role)}
         rows={budget.rows as BudgetRowView[]}
-      />
-
-      <ReservePanel
-        condominiumId={condoId}
-        currency={currency}
-        canManage={session!.user.role === 'admin_owner'}
-        fund={
-          reserve
-            ? ({
-                id: reserve.fund.id,
-                name: reserve.fund.name,
-                targetAmount: reserve.summary.targetAmount,
-                monthlyQuota: reserve.summary.monthlyQuota,
-                contributed: reserve.summary.contributed,
-                used: reserve.summary.used,
-                balance: reserve.summary.balance,
-                progress: reserve.summary.progress,
-                monthsCovered: reserve.summary.monthsCovered,
-              } satisfies FundView)
-            : null
-        }
-        movements={
-          reserve?.fund.movements.map(
-            (m): MovementView => ({
-              id: m.id,
-              movType: m.movType,
-              amount: Number(m.amount),
-              movDate: m.movDate.toISOString(),
-              description: m.description,
-              reference: m.reference,
-            })
-          ) ?? []
-        }
+        totalExecuted={budget.totalExecuted}
       />
     </div>
   );

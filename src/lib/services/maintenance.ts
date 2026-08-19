@@ -4,58 +4,125 @@ import { logActivity } from '@/lib/services/audit';
 
 export async function listAssets(companyId: string, condominiumId: string) {
   return withTenantContext(companyId, (tx) =>
-    tx.asset.findMany({ where: { condominiumId }, include: { category: true }, orderBy: { name: 'asc' } })
+    tx.asset.findMany({
+      where: { condominiumId },
+      include: { category: true, supplier: { select: { id: true, legalName: true, tradeName: true } } },
+      orderBy: { code: 'asc' },
+    })
   );
 }
 
 export type AssetInput = {
+  /** Opcional al crear: sin código, `createAsset` genera uno provisional (renombrable después). */
+  code?: string;
   name: string;
   categoryId?: string;
   description?: string;
-  approxCost?: number;
   location?: string;
+  purchaseDate?: Date | null;
+  supplierId?: string;
+  acquisitionValue?: number;
+  residualValue?: number;
+  usefulLifeMonths?: number;
+  depreciationMethod?: string;
+  depreciationStartDate?: Date | null;
   photoUrl?: string;
 };
 
 export async function createAsset(companyId: string, input: AssetInput & { condominiumId: string }) {
-  return withTenantContext(companyId, (tx) =>
-    tx.asset.create({
+  return withTenantContext(companyId, async (tx) => {
+    // Sin código (ej. el alta rápida de Mantenimiento, que no lo pide):
+    // se genera uno provisional, único, renombrable después desde
+    // /app/activos. El código NUNCA queda vacío — la unicidad por
+    // condominio (`@@unique([condominiumId, code])`) lo exige.
+    const code = input.code?.trim() || `ACT-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+
+    const existing = await tx.asset.findUnique({
+      where: { condominiumId_code: { condominiumId: input.condominiumId, code } },
+      select: { id: true },
+    });
+    if (existing) throw new Error(`Ya existe un activo con el código "${code}" en este condominio.`);
+
+    return tx.asset.create({
       data: {
         condominiumId: input.condominiumId,
+        code,
         name: input.name,
         categoryId: input.categoryId || null,
         description: input.description || null,
-        approxCost: input.approxCost ?? null,
         location: input.location || null,
+        purchaseDate: input.purchaseDate ?? null,
+        supplierId: input.supplierId || null,
+        acquisitionValue: input.acquisitionValue ?? null,
+        residualValue: input.residualValue ?? 0,
+        usefulLifeMonths: input.usefulLifeMonths ?? null,
+        depreciationMethod: (input.depreciationMethod as any) ?? null,
+        depreciationStartDate: input.depreciationStartDate ?? null,
         photoUrl: input.photoUrl ?? null,
       },
-    })
-  );
+    });
+  });
 }
 
 export async function updateAsset(companyId: string, assetId: string, input: AssetInput) {
-  return withTenantContext(companyId, (tx) =>
-    tx.asset.update({
+  return withTenantContext(companyId, async (tx) => {
+    const current = await tx.asset.findUniqueOrThrow({ where: { id: assetId }, select: { condominiumId: true } });
+
+    // Sin código en el input, se conserva el actual — no se toca. Con
+    // código, se valida que no choque con OTRO activo del condominio.
+    const code = input.code?.trim();
+    if (code) {
+      const dup = await tx.asset.findFirst({
+        where: { condominiumId: current.condominiumId, code, id: { not: assetId } },
+        select: { id: true },
+      });
+      if (dup) throw new Error(`Ya existe otro activo con el código "${code}" en este condominio.`);
+    }
+
+    return tx.asset.update({
       where: { id: assetId },
       data: {
+        ...(code ? { code } : {}),
         name: input.name,
         categoryId: input.categoryId || null,
         description: input.description || null,
-        approxCost: input.approxCost ?? null,
         location: input.location || null,
+        purchaseDate: input.purchaseDate ?? null,
+        supplierId: input.supplierId || null,
+        acquisitionValue: input.acquisitionValue ?? null,
+        residualValue: input.residualValue ?? 0,
+        usefulLifeMonths: input.usefulLifeMonths ?? null,
+        depreciationMethod: (input.depreciationMethod as any) ?? null,
+        depreciationStartDate: input.depreciationStartDate ?? null,
         // Sin foto nueva, se conserva la existente.
         ...(input.photoUrl ? { photoUrl: input.photoUrl } : {}),
       },
-    })
-  );
+    });
+  });
 }
 
+/**
+ * Solo borra de verdad un activo SIN ninguna historia (ni tickets, ni
+ * depreciación registrada, ni baja) — corrige un error de captura. En
+ * cuanto el activo tiene rastro real, "no eliminar históricamente" (Etapa
+ * 6) manda: hay que darlo de baja (`disposeAsset`, `asset-depreciation.ts`)
+ * en vez de borrarlo.
+ */
 export async function deleteAsset(companyId: string, assetId: string) {
   return withTenantContext(companyId, async (tx) => {
-    const ticketCount = await tx.maintenanceTicket.count({ where: { assetId } });
+    const [ticketCount, depreciationCount, disposal] = await Promise.all([
+      tx.maintenanceTicket.count({ where: { assetId } }),
+      tx.assetDepreciationEntry.count({ where: { assetId } }),
+      tx.assetDisposal.findUnique({ where: { assetId }, select: { id: true } }),
+    ]);
     if (ticketCount > 0) {
       throw new Error(
         `Este activo tiene ${ticketCount} ticket(s) asociados — no se puede eliminar sin perder ese historial. Puedes dejarlo fuera de servicio en su lugar.`
+      );
+    }
+    if (depreciationCount > 0 || disposal) {
+      throw new Error(
+        'Este activo ya tiene historial de depreciación o una baja registrada — no se puede eliminar. Es un registro contable, no un dato de captura.'
       );
     }
     return tx.asset.delete({ where: { id: assetId } });

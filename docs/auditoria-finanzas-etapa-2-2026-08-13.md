@@ -2,7 +2,7 @@
 
 **Fecha:** 13 de agosto de 2026  
 **Condominio de prueba:** CASA-14  
-**Alcance:** Morosidad, suspensión manual, agua potable, línea presupuestaria  
+**Alcance:** Morosidad, suspensión manual, agua potable, línea presupuestaria, reporte de antigüedad  
 **Metodología:** Análisis de código fuente + revisión de diseño + pruebas de lógica de negocio
 
 ---
@@ -15,10 +15,12 @@
 - ✅ **Validaciones en BD** (triggers, constraints, vistas SQL)
 - ✅ **Auditoría completa** (eventos, bitácora, logs de actividad)
 - ✅ **Permisos granulares** (agua_config, roles por área)
-- ⚠️ **3 hallazgos medios** de rendimiento y casos límite
+- ⚠️ **3 hallazgos medios** de rendimiento y casos límite (Fases 1-2)
 - ❌ **0 hallazgos críticos de seguridad o lógica**
 
-**Recomendación:** desplegar a producción; los hallazgos son optimizaciones, no bugs.
+**Fase 3 (Reporte de Antigüedad)** encontró algo distinto: el reporte de antigüedad en sí (`aging.ts` + `Finanzas → Cobranza`) está bien construido, probado y **ya existe** — contrario a lo que dice el plan de Etapa 3, que aún lo lista como pendiente. Pero `Reportes → Morosidad` calculaba el mismo dato con una lógica **duplicada e independiente**, y las dos pantallas daban cifras distintas para la misma filial el mismo día (Hallazgo 3.1, medio-alto). **Ya se corrigió y se verificó contra datos reales el mismo 13/8** (0 discrepancias en 12 filiales morosas de 2 condominios).
+
+**Recomendación:** desplegar Fases 1-3 a producción; con el Hallazgo 3.1 resuelto, la verificación "¿coincide el KPI con el saldo real?" del paso 2 más abajo ya no va a fallar por diseño.
 
 ---
 
@@ -357,6 +359,68 @@ Bajo riesgo porque solo aplica en Finanzas (área administrativo-restringida).
 
 ---
 
+## FASE 3: Reporte de Antigüedad de Saldos (Sesión 3)
+
+### Contexto
+
+El plan de Etapa 3 (`docs/plan-etapa-3-finanzas-2026-08-13.md`, sección 4) da por **no construido** el reporte de antigüedad (❌ "Sin estratificación por antigüedad"). Eso está desactualizado: el código YA tiene una implementación completa y probada —
+
+- `src/lib/domain/aging.ts` — `buildAging()`, con 5 tramos (`corriente`, `1-30`, `31-60`, `61-90`, `+90`) y 14 pruebas unitarias en `src/lib/__tests__/aging.test.ts`.
+- `src/lib/services/collections.ts` — `getCollectionsView()`, que arma el tablero de morosidad por filial.
+- **UI:** `Finanzas → Cobranza` (`src/app/app/finanzas/cobranza/`) — gráfico de barras por tramo + tabla de deudores + Excel.
+
+Esto es una **mejora sobre el spec original** (agrega el tramo "Al día" que separa lo que aún no vence del resto — es el formato estándar de un reporte de antigüedad de cuentas por cobrar). Bien implementado, con redondeo cuidado (`round2` explícito, con comentario propio explicando el bug de punto flotante que corrigió).
+
+**Recomendación aparte (documentación):** actualizar `plan-etapa-3-finanzas-2026-08-13.md` sección 4 para reflejar que esto ya existe; solo faltaría, si se quiere seguir el spec original al pie de la letra, partir el tramo `+90` en `91-120` / `120+`.
+
+### Hallazgo 3.1 (MEDIO-ALTO) — ✅ RESUELTO Y VERIFICADO — Dos implementaciones de morosidad que no coinciden
+
+Existe una **segunda** implementación, independiente, del mismo cálculo:
+
+- `src/lib/services/reports.ts:45-102` — `getDelinquencyReport()`, usada por **Reportes → Morosidad** (pantalla, Excel en `src/app/app/reportes/exportar/route.ts` y el botón "Explicar con IA" en `src/app/app/reportes/explain-actions.ts:32`).
+
+Esta función **reimplementa desde cero** el saldo y los días de atraso en vez de reusar `buildAging`/`daysOverdue`, y da resultados distintos a `Finanzas → Cobranza` para la MISMA filial el MISMO día:
+
+**a) El monto de "deuda" no es el mismo monto.**
+`Cobranza` (`aging.ts:74-95`) suma TODO el saldo pendiente de la filial, incluidos los cargos que aún no vencen (el tramo "Al día" del gráfico). `Reportes → Morosidad` (`reports.ts:62-69`) filtra `dueDate: { lt: new Date() }` — solo cuenta lo YA vencido.
+
+> Ejemplo: filial con ₡50.000 vencidos hace 11 días + la cuota de ₡75.000 del próximo mes (aún no vence).
+> — `Finanzas → Cobranza` muestra **"Debe: ₡125.000"**.
+> — `Reportes → Morosidad` muestra **"Saldo: ₡50.000"** para la misma filial, mismo día.
+
+**b) Un cargo que vence HOY se cuenta distinto.**
+`aging.ts` trata `bucketOf(0)` como `'corriente'` (al día) y excluye esas filiales de la lista de morosos (`.filter(p => p.oldestDays > 0)`, `collections.ts:115`). `reports.ts` usa `dueDate: { lt: new Date() }`: como `new Date()` siempre trae hora > 00:00, un cargo que vence justo hoy ya entra en el filtro (con 0 días de atraso calculados). Resultado: una filial puede aparecer como morosa en `Reportes` el mismo día en que en `Cobranza` todavía figura "al día" — un desfase de hasta 24 horas entre pantallas para el mismo evento.
+
+**c) Reaparece el bug de redondeo que ya se había corregido en otro lado.**
+`aging.ts` aplica `round2()` explícitamente a cada total, con un comentario propio (líneas 100-106) documentando que sumar `outstanding` sin redondear deja ruido de punto flotante visible en Excel (ej. `188.64000000000001`). `getDelinquencyReport` en `reports.ts` **no usa `round2` en ningún punto** — el mismo tipo de bug, ya identificado y arreglado una vez, puede reaparecer acá, en la columna "Saldo vencido" del Excel de `Reportes → Morosidad`.
+
+**Por qué importa:** un administrador o contador comparando `Finanzas → Cobranza` contra `Reportes → Morosidad` para la misma filial ve dos saldos distintos, sin ninguna nota en la UI que explique la diferencia — justo el tipo de discrepancia que el paso 2 de "Auditoría de Datos en Vivo" de este mismo documento (verificar que el KPI coincida con los saldos reales) está pensado para detectar. El botón "Explicar con IA" de Reportes también hereda y narra la cifra más baja (solo lo vencido), lo que puede hacer parecer la morosidad menor de lo que realmente es en el tablero de Cobranza.
+
+**Causa raíz:** lógica de negocio duplicada en vez de una sola fuente de verdad — el mismo patrón que ya se había señalado como riesgo en el Hallazgo 1.2.1 de este documento, aquí con impacto mayor porque los dos lados SÍ divergen (no es solo una ventana de segundos).
+
+**Recomendación:** reemplazar `getDelinquencyReport` para que consuma `getCollectionsView`/`buildAging` (agregado por cada condominio de `condoIds`), igual que la fuente de verdad que ya usa Cobranza. Esto también resuelve gratis el hallazgo de redondeo, porque hereda el `round2` ya aplicado.
+
+**Severidad:** MEDIA-ALTA. No es pérdida de dinero ni brecha de seguridad, pero es un defecto de integridad de datos visible al usuario final — dos reportes financieros de la misma empresa que no cuadran entre sí es exactamente lo primero que señala un contador o auditor externo.
+
+**Fix aplicado (13/8):** `getDelinquencyReport` (`src/lib/services/reports.ts`) ahora arma el mismo `AgingInput` que `getCollectionsView` (saldo por cargo pendiente/parcial, redondeado con `round2`) y lo pasa por `buildAging` — un solo cálculo de antigüedad en todo el sistema, ya probado por las 14 pruebas de `aging.test.ts`. También ordena con el mismo criterio (`daysOverdue` desc, desempate por `balance` desc), resolviendo de paso el hallazgo 3.2.
+
+**Verificado contra datos reales (script puntual con `forEachCompany`, no forma parte del repo):** de 17 condominios activos, 2 tenían morosidad real — Residencial Altamar (Demo) y Condominio Natura Viva, 12 filiales morosas en total. Comparando `getDelinquencyReport` contra `getCollectionsView` filial por filial: **0 discrepancias** en saldo ni en días de atraso. `tsc --noEmit` limpio y las 368 pruebas de la suite (incluidas las 12 de `aging.test.ts`) pasan.
+
+### Hallazgo 3.2 (BAJO) — ✅ RESUELTO — Orden sin desempate
+
+`getDelinquencyReport` ordenaba solo por `daysOverdue` descendente (`reports.ts:100`), sin el desempate por monto que sí tiene `buildAging` (`aging.ts:118`). Se resolvió como parte del fix del hallazgo 3.1 (mismo criterio de orden en ambos lados).
+
+### Hallazgos Fase 3
+
+| # | Tipo | Descripción | Impacto | Estado |
+|---|---|---|---|---|
+| **3.1** | Medio-Alto | `Reportes → Morosidad` y `Finanzas → Cobranza` calculaban saldo y días de atraso con lógica distinta e independiente — cifras distintas para la misma filial el mismo día | Confusión / pérdida de confianza en los reportes; ningún impacto en dinero real | ✅ Resuelto y verificado (13/8) |
+| **3.2** | Bajo | Sin desempate por monto al ordenar `Reportes → Morosidad` | Cosmético | ✅ Resuelto (13/8) |
+
+**Resumen Fase 3:** el reporte de antigüedad en sí (`aging.ts` + Cobranza) estaba bien construido y probado desde el inicio. El problema era que `Reportes → Morosidad` no lo reusaba y había quedado como una segunda fuente de verdad que divergía — ya unificado.
+
+---
+
 ## Temas Transversales
 
 ### Seguridad
@@ -383,7 +447,10 @@ Bajo riesgo porque solo aplica en Finanzas (área administrativo-restringida).
 ## Recomendaciones
 
 ### Críticas (Desplegar ya)
-🚀 Ninguna. El código está listo.
+🚀 Ninguna en Fases 1-2. El código está listo.
+
+### Antes de la auditoría de datos en vivo
+1. ~~**3.1:** Unificar `getDelinquencyReport` (`reports.ts`) sobre `buildAging`/`getCollectionsView`~~ — ✅ hecho y verificado el 13/8
 
 ### Medias (Próxima sesión)
 1. **2.2.1:** Validación de lectura duplicada — agregar check y mensaje en `registerWaterCharge`

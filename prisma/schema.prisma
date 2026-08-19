@@ -44,19 +44,19 @@ enum CompanyStatus {
 }
 
 model Company {
-  id            String        @id @default(uuid())
-  legalName     String        @map("legal_name")
-  tradeName     String?       @map("trade_name")
-  taxId         String?       @map("tax_id")
-  email         String?
-  phone         String?
-  logoUrl       String?       @map("logo_url")
+  id           String        @id @default(uuid())
+  legalName    String        @map("legal_name")
+  tradeName    String?       @map("trade_name")
+  taxId        String?       @map("tax_id")
+  email        String?
+  phone        String?
+  logoUrl      String?       @map("logo_url")
   /// Identidad visual de la empresa administradora. El panel de sus
   /// usuarios se pinta con estos colores; si están vacíos se usa el
   /// azul de ANEXYpro. Ver `src/lib/branding.ts`.
-  brandPrimary  String?       @map("brand_primary")
-  brandDeep     String?       @map("brand_deep")
-  status        CompanyStatus @default(activa)
+  brandPrimary String?       @map("brand_primary")
+  brandDeep    String?       @map("brand_deep")
+  status       CompanyStatus @default(activa)
 
   // ---------- Suscripción ----------
   planId                String?   @map("plan_id")
@@ -69,7 +69,7 @@ model Company {
   blockReason           String?   @map("block_reason")
   // Módulos del panel que el usuario master oculta para esta empresa.
   // Se guardan los href de nav-config (p. ej. "/app/proyectos").
-  hiddenModules String[]      @default([]) @map("hidden_modules")
+  hiddenModules         String[]  @default([]) @map("hidden_modules")
 
   // ---------- Demo ----------
   /// Empresa creada desde /demo para que un visitante la pruebe. Los
@@ -80,35 +80,35 @@ model Company {
   /// sobrevive entre invocaciones), aislada en su propio árbol de
   /// carpetas "DEMOS/DEMO_<id>" — ver `demoDriveFolderId` más abajo y
   /// `services/storage.ts` → `ensureCondoTree`.
-  isDemo        Boolean       @default(false) @map("is_demo")
+  isDemo                Boolean     @default(false) @map("is_demo")
   /// Ciclo de vida de la demo. NULL en cualquier empresa real — solo
   /// se usa cuando `isDemo = true`. No sustituye a `blockedAt`: el
   /// bloqueo real de acceso lo sigue decidiendo `blockedAt` (mismo
   /// mecanismo que una empresa en mora); este campo es para poder
   /// CONSULTAR y REPORTAR en qué etapa está una demo sin tener que
   /// derivarlo de las fechas cada vez.
-  demoStatus    DemoStatus?   @map("demo_status")
+  demoStatus            DemoStatus? @map("demo_status")
   /// Instante exacto en que se creó la demo — hora del SERVIDOR
   /// (`new Date()` en Node), nunca la del navegador. De aquí salen
   /// `demoExpiresAt` y `demoDeleteScheduledAt` (`domain/demo-lifecycle.ts`).
-  demoStartedAt DateTime?     @map("demo_started_at")
+  demoStartedAt         DateTime?   @map("demo_started_at")
   /// Cuándo vence el acceso de una empresa demo (inicio + 15 días). El
   /// job diario `demo-vencidos` la BLOQUEA al pasar esta fecha (el
   /// mismo mecanismo de `blockedAt` que usa cualquier empresa en
   /// mora) — nunca la borra.
-  demoExpiresAt DateTime?     @map("demo_expires_at")
+  demoExpiresAt         DateTime?   @map("demo_expires_at")
   /// Fecha a partir de la cual un futuro proceso de limpieza PODRÍA
   /// borrar esta demo (vencimiento + 3 días = inicio + 18 días). Solo
   /// programa la fecha — ningún proceso automático borra nada todavía.
-  demoDeleteScheduledAt DateTime? @map("demo_delete_scheduled_at")
+  demoDeleteScheduledAt DateTime?   @map("demo_delete_scheduled_at")
   /// Usuario `master` que creó esta demo, si la creó un master desde
   /// el panel (a diferencia del alta pública y anónima en /demo, que
   /// deja este campo en NULL — no hay ningún master detrás).
-  demoCreatedById String?     @map("demo_created_by_id")
+  demoCreatedById       String?     @map("demo_created_by_id")
   /// Cuándo se marcó esta demo como convertida a cliente real. NULL =
   /// nunca se convirtió. Es un hecho explícito (igual que
   /// `blockedAt`): no se infiere de nada, alguien lo registra.
-  demoConvertedAt DateTime?   @map("demo_converted_at")
+  demoConvertedAt       DateTime?   @map("demo_converted_at")
   /// Cuándo `purgeDemoDriveFiles` (PASO 9, `services/demo-cleanup.ts`)
   /// terminó de eliminar FÍSICAMENTE los archivos de esta demo y sus
   /// filas de `StorageFolder`/`StorageObject`. NULL = nunca se purgó
@@ -116,7 +116,7 @@ model Company {
   /// `demoStatus = DEMO_CLEANUP_FAILED`, este campo se llena recién
   /// cuando el resultado final es limpio). Mismo criterio que
   /// `demoConvertedAt`: un hecho explícito, nunca se infiere.
-  demoDeletedAt DateTime?   @map("demo_deleted_at")
+  demoDeletedAt         DateTime?   @map("demo_deleted_at")
 
   // ---------- Historial comercial permanente (PASO 11) ----------
   // Estos tres campos completan lo que `demoCreatedById`/`demoConvertedAt`
@@ -132,7 +132,7 @@ model Company {
   // sobrevive intacto a la purga de archivos.
   /// Usuario `master` que ejecutó `convertDemoToFormal`. NULL = nunca
   /// se convirtió (mismo criterio que `demoConvertedAt`).
-  demoConvertedById String? @map("demo_converted_by_id")
+  demoConvertedById     String? @map("demo_converted_by_id")
   /// Nombre del plan en el momento exacto de la conversión — copia
   /// fija, no una referencia viva a `SubscriptionPlan`. NULL = nunca
   /// se convirtió.
@@ -142,7 +142,7 @@ model Company {
   /// este bloque pensado para cambiar después de escrito). NUNCA
   /// contiene archivos ni datos operativos: es una libreta de ventas,
   /// no un respaldo del condominio.
-  demoCommercialNotes String? @map("demo_commercial_notes")
+  demoCommercialNotes   String? @map("demo_commercial_notes")
 
   // ---------- Carpeta exclusiva en Google Drive (PASO 8) ----------
   // "demo_id"/"tenant_id" NO se duplican en columnas nuevas: la propia
@@ -158,32 +158,33 @@ model Company {
   /// en producción). Puede quedar `local` en desarrollo si ese es el
   /// proveedor activo — el nombre del campo sigue el proveedor
   /// principal de la integración, no excluye a los demás.
-  demoDriveFolderId String? @map("demo_drive_folder_id")
+  demoDriveFolderId        String?   @map("demo_drive_folder_id")
   /// Nombre visible de esa carpeta ("DEMO_<id>") — solo para que un
   /// humano la reconozca en Drive. NUNCA se usa para identificar al
   /// dueño: eso lo decide `companyId`, no el texto del nombre.
-  demoDriveFolderName String? @map("demo_drive_folder_name")
+  demoDriveFolderName      String?   @map("demo_drive_folder_name")
   /// Cuándo se creó esa carpeta por primera vez. No se pisa si la
   /// carpeta se recrea al cambiar de proveedor (ver `ensureCondoTree`).
   demoDriveFolderCreatedAt DateTime? @map("demo_drive_folder_created_at")
 
-  createdAt     DateTime      @default(now()) @map("created_at")
-  updatedAt     DateTime      @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   plan                 SubscriptionPlan?     @relation(fields: [planId], references: [id])
   subscriptionPayments SubscriptionPayment[]
-  users         User[]
-  condominiums  Condominium[]
-  persons       Person[]
-  suppliers     Supplier[]
-  chartAccounts ChartOfAccount[]
-  auditEntries  SystemAuditEntry[]
-  activityLog   AuditLog[]
-  StorageFolder StorageFolder[]
-  StorageObject StorageObject[]
-  demoCreatedBy    User?              @relation("DemoCreatedBy", fields: [demoCreatedById], references: [id])
-  demoConvertedBy  User?              @relation("DemoConvertedBy", fields: [demoConvertedById], references: [id])
-  demoHistory      DemoHistoryEntry[]
+  users                User[]
+  condominiums         Condominium[]
+  persons              Person[]
+  suppliers            Supplier[]
+  chartAccounts        ChartOfAccount[]
+  auditEntries         SystemAuditEntry[]
+  activityLog          AuditLog[]
+  StorageFolder        StorageFolder[]
+  StorageObject        StorageObject[]
+  demoCreatedBy        User?                 @relation("DemoCreatedBy", fields: [demoCreatedById], references: [id])
+  demoConvertedBy      User?                 @relation("DemoConvertedBy", fields: [demoConvertedById], references: [id])
+  demoHistory          DemoHistoryEntry[]
+  fiscalDocuments        FiscalDocument[]
 
   @@map("companies")
 }
@@ -277,22 +278,22 @@ model User {
   createdAt        DateTime   @default(now()) @map("created_at")
   updatedAt        DateTime   @updatedAt @map("updated_at")
 
-  company              Company                 @relation(fields: [companyId], references: [id])
-  createdCondominiums  Condominium[]           @relation("CondoCreatedBy")
-  person               Person?                 @relation("PersonUser")
-  authLogs             AuthLog[]
-  systemAudits         SystemAuditEntry[]
-  activityLogs         AuditLog[]
-  assignedTasks        AdminTask[]             @relation("TaskAssignee")
-  pettyCashAllocations PettyCashAllocation[]   @relation("PettyCashAllocatedBy")
-  pettyCashExpenses    PettyCashExpense[]      @relation("PettyCashSpentBy")
-  createdExpenses      Expense[]               @relation("ExpenseCreatedBy")
-  approvedExpenses     Expense[]               @relation("ExpenseApprovedBy")
-  closedPeriods        AccountingPeriod[]      @relation("PeriodClosedBy")
-  supervisedCondos     CondominiumSupervisor[]
+  company                Company                 @relation(fields: [companyId], references: [id])
+  createdCondominiums    Condominium[]           @relation("CondoCreatedBy")
+  person                 Person?                 @relation("PersonUser")
+  authLogs               AuthLog[]
+  systemAudits           SystemAuditEntry[]
+  activityLogs           AuditLog[]
+  assignedTasks          AdminTask[]             @relation("TaskAssignee")
+  pettyCashAllocations   PettyCashAllocation[]   @relation("PettyCashAllocatedBy")
+  pettyCashExpenses      PettyCashExpense[]      @relation("PettyCashSpentBy")
+  createdExpenses        Expense[]               @relation("ExpenseCreatedBy")
+  approvedExpenses       Expense[]               @relation("ExpenseApprovedBy")
+  closedPeriods          AccountingPeriod[]      @relation("PeriodClosedBy")
+  supervisedCondos       CondominiumSupervisor[]
   createdDemoCompanies   Company[]               @relation("DemoCreatedBy")
   convertedDemoCompanies Company[]               @relation("DemoConvertedBy")
-  demoHistoryActions   DemoHistoryEntry[]
+  demoHistoryActions     DemoHistoryEntry[]
   // Relaciones "createdBy"/"receivedBy"/etc. de otros módulos se
   // omiten del lado User (unidireccionales) para no inflar este
   // modelo con decenas de relaciones inversas sin valor de consulta.
@@ -338,54 +339,60 @@ model Condominium {
   updatedAt   DateTime    @updatedAt @map("updated_at")
   deletedAt   DateTime?   @map("deleted_at")
 
-  company              Company                       @relation(fields: [companyId], references: [id])
-  violationTypes       ViolationType[]
-  violationSettings    ViolationSettings?
-  violationCases       ViolationCase[]
-  createdBy            User?                         @relation("CondoCreatedBy", fields: [createdById], references: [id])
-  structuralUnits      StructuralUnit[]
-  properties           Property[]
-  amenities            Amenity[]
-  financialSettings    CondominiumFinancialSettings?
-  documents            CondominiumDocument[]
-  feeBatches           FeeBatch[]
-  charges              Charge[]
-  payments             Payment[]
-  waterTariffTiers     WaterTariffTier[]
-  billingRunLogs       BillingRunLog[]
-  communications       Communication[]
-  reservations         Reservation[]
-  calendarEvents       CalendarEvent[]
-  visitAuthorizations  VisitAuthorization[]
-  incidents            Incident[]
-  packages             Package[]
-  contentItems         ContentItem[]
-  assets               Asset[]
-  assetCategoryOptions AssetCategoryOption[]
-  providers            Provider[]
-  maintenanceTickets   MaintenanceTicket[]
-  projects             Project[]
-  adminTasks           AdminTask[]
-  pettyCashAllocations PettyCashAllocation[]
-  pettyCashExpenses    PettyCashExpense[]
-  bankAccounts         BankAccount[]
-  expenses             Expense[]
-  accountingPeriods    AccountingPeriod[]
-  recurringExpenses    RecurringExpense[]
-  contracts            Contract[]
-  reserveFunds         ReserveFund[]
-  paymentPlans         PaymentPlan[]
-  collectionActions    CollectionAction[]
-  storageFolders       StorageFolder[]
-  storageObjects       StorageObject[]
-  chartOfAccounts      ChartOfAccount[]
-  journalEntries       JournalEntry[]
-  budgetLines          BudgetLine[]
-  assemblies           Assembly[]
-  docs                 Document[]
-  supervisors          CondominiumSupervisor[]
-  docRequests          DocumentRequest[]
-  docTemplates         DocumentTemplate[]
+  company                  Company                       @relation(fields: [companyId], references: [id])
+  violationTypes           ViolationType[]
+  violationSettings        ViolationSettings?
+  violationCases           ViolationCase[]
+  createdBy                User?                         @relation("CondoCreatedBy", fields: [createdById], references: [id])
+  structuralUnits          StructuralUnit[]
+  properties               Property[]
+  amenities                Amenity[]
+  financialSettings        CondominiumFinancialSettings?
+  fiscalSettings           CondominiumFiscalSettings?
+  documents                CondominiumDocument[]
+  feeBatches               FeeBatch[]
+  charges                  Charge[]
+  payments                 Payment[]
+  waterTariffTiers         WaterTariffTier[]
+  billingRunLogs           BillingRunLog[]
+  communications           Communication[]
+  reservations             Reservation[]
+  calendarEvents           CalendarEvent[]
+  visitAuthorizations      VisitAuthorization[]
+  incidents                Incident[]
+  packages                 Package[]
+  contentItems             ContentItem[]
+  assets                   Asset[]
+  assetCategoryOptions     AssetCategoryOption[]
+  assetDepreciationEntries AssetDepreciationEntry[]
+  assetDisposals           AssetDisposal[]
+  providers                Provider[]
+  maintenanceTickets       MaintenanceTicket[]
+  projects                 Project[]
+  adminTasks               AdminTask[]
+  pettyCashAllocations     PettyCashAllocation[]
+  pettyCashExpenses        PettyCashExpense[]
+  bankAccounts             BankAccount[]
+  expenses                 Expense[]
+  accountingPeriods        AccountingPeriod[]
+  recurringExpenses        RecurringExpense[]
+  contracts                Contract[]
+  reserveFunds             ReserveFund[]
+  funds                    Fund[]
+  investments              Investment[]
+  investmentInterests      InvestmentInterest[]
+  paymentPlans             PaymentPlan[]
+  collectionActions        CollectionAction[]
+  storageFolders           StorageFolder[]
+  storageObjects           StorageObject[]
+  chartOfAccounts          ChartOfAccount[]
+  journalEntries           JournalEntry[]
+  budgetLines              BudgetLine[]
+  assemblies               Assembly[]
+  docs                     Document[]
+  supervisors              CondominiumSupervisor[]
+  docRequests              DocumentRequest[]
+  docTemplates             DocumentTemplate[]
 
   @@unique([companyId, code])
   @@index([companyId])
@@ -622,6 +629,10 @@ enum AuditAction {
   crear
   actualizar
   eliminar
+  // Etapa 8: un movimiento financiero no se elimina, se anula — deja de
+  // sumar pero sigue estando. `eliminar` queda para lo que sí se borra
+  // de verdad (catálogos, adjuntos).
+  anular
 }
 
 model SystemAuditEntry {
@@ -958,16 +969,16 @@ model Charge {
   interestBaseChargeId String?      @map("interest_base_charge_id")
   interestThroughDate  DateTime?    @map("interest_through_date") @db.Date
 
-  condominium     Condominium         @relation(fields: [condominiumId], references: [id])
-  property        Property            @relation(fields: [propertyId], references: [id])
-  batch           FeeBatch?           @relation(fields: [batchId], references: [id])
-  interestBase    Charge?             @relation("ChargeInterest", fields: [interestBaseChargeId], references: [id])
-  interestCharges Charge[]            @relation("ChargeInterest")
-  allocations     PaymentAllocation[]
+  condominium      Condominium         @relation(fields: [condominiumId], references: [id])
+  property         Property            @relation(fields: [propertyId], references: [id])
+  batch            FeeBatch?           @relation(fields: [batchId], references: [id])
+  interestBase     Charge?             @relation("ChargeInterest", fields: [interestBaseChargeId], references: [id])
+  interestCharges  Charge[]            @relation("ChargeInterest")
+  allocations      PaymentAllocation[]
   violationActions ViolationAction[]
-  waterReading    WaterReading?
-  reservation     Reservation?
-  journalEntries  JournalEntry[]
+  waterReading     WaterReading?
+  reservation      Reservation?
+  journalEntries   JournalEntry[]
 
   @@index([propertyId, dueDate])
   @@index([condominiumId, period])
@@ -1550,6 +1561,16 @@ enum AssetStatus {
   operativo
   en_mantenimiento
   fuera_servicio
+  // Etapa 6: el activo se dio de baja — ver `AssetDisposal`. NUNCA se
+  // borra la fila del activo, solo cambia a este estado.
+  baja
+}
+
+// Etapa 6 — Activos y depreciaciones: solo lineal por ahora ("inicialmente
+// depreciación lineal" pide la spec) — el enum admite agregar métodos
+// después con un ADD VALUE puro, sin migrar nada existente.
+enum DepreciationMethod {
+  lineal
 }
 
 // Categoría de activo, propia de cada condominio. Arranca con las
@@ -1577,27 +1598,97 @@ model AssetCategoryOption {
 }
 
 model Asset {
-  id            String      @id @default(uuid())
-  condominiumId String      @map("condominium_id")
-  name          String
-  categoryId    String?     @map("category_id")
-  description   String?
-  approxCost    Decimal?    @map("approx_cost") @db.Decimal(14, 2)
-  photoUrl      String?     @map("photo_url")
-  location      String?
-  purchaseDate  DateTime?   @map("purchase_date") @db.Date
-  warrantyUntil DateTime?   @map("warranty_until") @db.Date
-  manualUrl     String?     @map("manual_url")
-  status        AssetStatus @default(operativo)
-  notes         String?
-  createdAt     DateTime    @default(now()) @map("created_at")
+  id                    String              @id @default(uuid())
+  condominiumId         String              @map("condominium_id")
+  // Código de inventario del activo — único POR CONDOMINIO, no global
+  // (dos condominios de la misma empresa pueden repetir "ACT-001").
+  code                  String
+  name                  String
+  categoryId            String?             @map("category_id")
+  description           String?
+  location              String?
+  purchaseDate          DateTime?           @map("purchase_date") @db.Date
+  // Proveedor que vendió el activo — reusa el catálogo financiero de
+  // Gastos (`Supplier`, a nivel empresa), no `Provider` de
+  // Mantenimiento: comprar un activo fijo es una compra comercial, no
+  // un contrato de servicio.
+  supplierId            String?             @map("supplier_id")
+  // Antes `approxCost` ("informal"). Etapa 6 lo formaliza como el valor
+  // que alimenta la depreciación — un solo número, no dos parecidos.
+  acquisitionValue      Decimal?            @map("acquisition_value") @db.Decimal(14, 2)
+  residualValue         Decimal?            @default(0) @map("residual_value") @db.Decimal(14, 2)
+  usefulLifeMonths      Int?                @map("useful_life_months")
+  depreciationMethod    DepreciationMethod? @map("depreciation_method")
+  depreciationStartDate DateTime?           @map("depreciation_start_date") @db.Date
+  photoUrl              String?             @map("photo_url")
+  warrantyUntil         DateTime?           @map("warranty_until") @db.Date
+  manualUrl             String?             @map("manual_url")
+  status                AssetStatus         @default(operativo)
+  notes                 String?
+  createdAt             DateTime            @default(now()) @map("created_at")
+  updatedAt             DateTime            @updatedAt @map("updated_at")
 
-  condominium Condominium          @relation(fields: [condominiumId], references: [id])
-  category    AssetCategoryOption? @relation(fields: [categoryId], references: [id])
-  tickets     MaintenanceTicket[]
+  condominium         Condominium              @relation(fields: [condominiumId], references: [id])
+  category            AssetCategoryOption?     @relation(fields: [categoryId], references: [id])
+  supplier            Supplier?                @relation(fields: [supplierId], references: [id])
+  tickets             MaintenanceTicket[]
+  depreciationEntries AssetDepreciationEntry[]
+  disposal            AssetDisposal?
 
+  @@unique([condominiumId, code])
   @@index([condominiumId])
   @@map("assets")
+}
+
+// Un renglón por activo por período — el "estado de cuenta" de la
+// depreciación, mismo espíritu que `FundMovement`/`ExpensePayment`: el
+// saldo (acumulado, valor en libros) siempre se puede recalcular desde
+// aquí, nunca se guarda como único número mutable.
+//
+// `@@unique([assetId, period])` ES la barrera contra depreciación
+// duplicada que pide la spec — un activo no puede tener dos renglones
+// para el mismo "YYYY-MM".
+model AssetDepreciationEntry {
+  id               String   @id @default(uuid())
+  companyId        String   @map("company_id")
+  condominiumId    String   @map("condominium_id")
+  assetId          String   @map("asset_id")
+  period           String // "YYYY-MM", mismo formato que periodOf() en accounting-periods.ts
+  amount           Decimal  @db.Decimal(14, 2)
+  accumulatedAfter Decimal  @map("accumulated_after") @db.Decimal(14, 2)
+  bookValueAfter   Decimal  @map("book_value_after") @db.Decimal(14, 2)
+  createdById      String?  @map("created_by")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  condominium Condominium @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
+  asset       Asset       @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([assetId, period])
+  @@index([condominiumId])
+  @@map("asset_depreciation_entries")
+}
+
+// Baja de un activo — 1:1 (una vez dado de baja no se repite). El
+// activo NUNCA se borra: esta es la forma de "eliminarlo" que pide la
+// spec, y `Asset.status` pasa a `baja`.
+model AssetDisposal {
+  id                  String   @id @default(uuid())
+  companyId           String   @map("company_id")
+  condominiumId       String   @map("condominium_id")
+  assetId             String   @unique @map("asset_id")
+  date                DateTime @db.Date
+  reason              String
+  bookValueAtDisposal Decimal  @map("book_value_at_disposal") @db.Decimal(14, 2)
+  documentUrl         String?  @map("document_url")
+  documentName        String?  @map("document_name")
+  createdById         String?  @map("created_by")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  condominium Condominium @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
+  asset       Asset       @relation(fields: [assetId], references: [id])
+
+  @@index([condominiumId])
+  @@map("asset_disposals")
 }
 
 model Provider {
@@ -1766,17 +1857,19 @@ model Project {
   createdById   String?       @map("created_by")
   createdAt     DateTime      @default(now()) @map("created_at")
 
-  condominium Condominium            @relation(fields: [condominiumId], references: [id])
-  provider    Provider?              @relation(fields: [providerId], references: [id])
-  milestones  ProjectMilestone[]
-  checklist   ProjectChecklistItem[]
+  condominium     Condominium            @relation(fields: [condominiumId], references: [id])
+  provider        Provider?              @relation(fields: [providerId], references: [id])
+  milestones      ProjectMilestone[]
+  checklist       ProjectChecklistItem[]
   // `expenses` es el módulo retirado (ya no se alimenta, pero su
   // historial sigue contando); `financeExpenses` son los gastos de
   // Finanzas imputados al proyecto, que es la vía actual.
-  expenses    ProjectExpense[]
+  expenses        ProjectExpense[]
   financeExpenses Expense[]
-  updates     ProjectUpdate[]
-  feeBatches  FeeBatch[] // financiamiento real vía cuota extraordinaria, si se genera
+  updates         ProjectUpdate[]
+  feeBatches      FeeBatch[] // financiamiento real vía cuota extraordinaria, si se genera
+  // Fondo(s) tipo "proyecto" ligados a este proyecto (Etapa 5 — Fondos).
+  funds           Fund[]
 
   @@index([condominiumId, createdAt(sort: Desc)])
   @@map("projects")
@@ -1910,6 +2003,12 @@ enum JournalSource {
   gasto_proyecto
   ia
   ajuste
+  // Etapa 5: interés ganado por una inversión — ingreso financiero,
+  // nunca una cuota condominal (ver services/investments.ts).
+  inversion
+  // Etapa 6: depreciación periódica de un activo (ver
+  // services/asset-depreciation.ts).
+  depreciacion
 }
 
 enum JournalStatus {
@@ -2424,6 +2523,10 @@ model PettyCashAllocation {
   note          String?
   createdById   String?  @map("created_by")
   createdAt     DateTime @default(now()) @map("created_at")
+  // Anulación en vez de borrado (Etapa 8) — ver FundMovement.
+  voidedAt      DateTime? @map("voided_at")
+  voidReason    String?   @map("void_reason")
+  voidedById    String?   @map("voided_by")
 
   condominium Condominium @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
   createdBy   User?       @relation("PettyCashAllocatedBy", fields: [createdById], references: [id])
@@ -2444,6 +2547,10 @@ model PettyCashExpense {
   invoiceName   String?  @map("invoice_name")
   createdById   String?  @map("created_by")
   createdAt     DateTime @default(now()) @map("created_at")
+  // Anulación en vez de borrado (Etapa 8) — ver FundMovement.
+  voidedAt      DateTime? @map("voided_at")
+  voidReason    String?   @map("void_reason")
+  voidedById    String?   @map("voided_by")
 
   condominium Condominium @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
   createdBy   User?       @relation("PettyCashSpentBy", fields: [createdById], references: [id])
@@ -2532,6 +2639,7 @@ model BankAccount {
   condominium      Condominium       @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
   bankTransactions BankTransaction[]
   payments         ExpensePayment[]
+  investments      Investment[]
 
   @@index([companyId, condominiumId])
   @@map("bank_accounts")
@@ -2569,6 +2677,7 @@ model Supplier {
   expenses          Expense[]
   recurringExpenses RecurringExpense[]
   contracts         Contract[]
+  assets            Asset[]
 
   @@index([companyId])
   @@map("suppliers")
@@ -2884,6 +2993,185 @@ model ReserveFundMovement {
 }
 
 // ============================================================
+// ETAPA 5 — Fondos, reservas e inversiones
+// ============================================================
+//
+// Generaliza `ReserveFund` (arriba, FASE 4) a varios tipos de fondo por
+// condominio. `ReserveFund`/`ReserveFundMovement` se dejan intactos a
+// propósito — hay datos reales de producción ahí — y se migran a estos
+// modelos nuevos con un script aparte (ver `docs/`); el corte de la
+// aplicación es total, pero el DROP de las tablas viejas queda para una
+// fase posterior, deliberadamente separada.
+
+enum FundType {
+  operativo
+  reserva
+  especial
+  proyecto
+  otro
+}
+
+enum FundMovementType {
+  aporte
+  uso
+  // Aparta dinero para un fin conocido sin moverlo de sitio: no
+  // cambia el TOTAL del fondo, solo reclasifica cuánto de ese total
+  // sigue disponible. Ver `domain/fund-balance.ts`.
+  compromiso
+  liberacion
+  // Solo los crea el sistema (servicio `investments.ts`), nunca el
+  // usuario a mano — ver `addFundMovement` en `services/funds.ts`.
+  inversion
+  retorno
+}
+
+// Fondo del condominio: operativo, de reserva, especial, de proyecto u
+// otro configurable. El saldo NO se guarda — se deriva de sus
+// movimientos con `domain/fund-balance.ts`, igual que el resto del
+// sistema (bancos, fondo de reserva legado).
+model Fund {
+  id            String   @id @default(uuid())
+  companyId     String   @map("company_id")
+  condominiumId String   @map("condominium_id")
+  type          FundType
+  name          String
+  // Meta a la que se quiere llegar. null = sin meta definida.
+  targetAmount  Decimal? @map("target_amount") @db.Decimal(14, 2)
+  // Cuota mensual que la asamblea acordó aportar (si aplica).
+  monthlyQuota  Decimal  @default(0) @map("monthly_quota") @db.Decimal(14, 2)
+  // Cuenta contable espejo del plan de cuentas — se valida contra
+  // ChartOfAccount tipo 'activo' al crear el fondo, igual que BankAccount.
+  accountCode   String   @map("account_code")
+  // Solo tiene sentido cuando type = proyecto.
+  projectId     String?  @map("project_id")
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  condominium     Condominium          @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
+  project         Project?             @relation(fields: [projectId], references: [id])
+  movements       FundMovement[]
+  investments     Investment[]
+  interestRecords InvestmentInterest[]
+
+  @@index([companyId, condominiumId])
+  @@index([condominiumId, type])
+  @@map("funds")
+}
+
+model FundMovement {
+  id           String           @id @default(uuid())
+  companyId    String           @map("company_id")
+  fundId       String           @map("fund_id")
+  movType      FundMovementType @map("mov_type")
+  amount       Decimal          @db.Decimal(14, 2)
+  movDate      DateTime         @map("mov_date") @db.Date
+  description  String
+  // Acuerdo de asamblea o documento que respalda el movimiento.
+  reference    String?
+  documentUrl  String?          @map("document_url")
+  // Seteado SOLO cuando movType es inversion/retorno — trazabilidad
+  // hacia la inversión que originó el movimiento.
+  investmentId String?          @map("investment_id")
+  createdById  String?          @map("created_by")
+  createdAt    DateTime         @default(now()) @map("created_at")
+  // Anulación en vez de borrado: un movimiento financiero que
+  // desaparece se lleva consigo la explicación del saldo. Anulado deja
+  // de sumar pero sigue estando, con quién y por qué (Etapa 8).
+  voidedAt     DateTime?        @map("voided_at")
+  voidReason   String?          @map("void_reason")
+  voidedById   String?          @map("voided_by")
+
+  fund       Fund        @relation(fields: [fundId], references: [id], onDelete: Cascade)
+  investment Investment? @relation(fields: [investmentId], references: [id])
+
+  @@index([fundId, movDate(sort: Desc)])
+  @@map("fund_movements")
+}
+
+enum InvestmentType {
+  plazo_fijo
+  fondo_inversion
+  bono
+  certificado
+  otro
+}
+
+enum InvestmentStatus {
+  activa
+  vencida
+  liquidada
+  cancelada
+}
+
+// Inversión financiera de un condominio (certificado a plazo, fondo de
+// inversión, bono...). SIEMPRE pertenece a un único condominio — nunca
+// puede aparecer en otro (Etapa 5, requisito de aislamiento).
+model Investment {
+  id             String           @id @default(uuid())
+  companyId      String           @map("company_id")
+  condominiumId  String           @map("condominium_id")
+  // Fondo de origen: de dónde salió el dinero invertido.
+  fundId         String           @map("fund_id")
+  // Texto libre — no hay catálogo de instituciones financieras en el
+  // sistema, mismo criterio que BankAccount.bankName.
+  institution    String
+  investmentType InvestmentType   @map("investment_type")
+  amount         Decimal          @db.Decimal(14, 2)
+  startDate      DateTime         @map("start_date") @db.Date
+  maturityDate   DateTime?        @map("maturity_date") @db.Date
+  // Tasa anual, en porcentaje (6.75 = 6.75 %).
+  rate           Decimal          @db.Decimal(5, 2)
+  status         InvestmentStatus @default(activa)
+  // De qué cuenta bancaria propia salió / a cuál vuelve el efectivo —
+  // opcional, mismo patrón que ExpensePayment.bankAccountId.
+  bankAccountId  String?          @map("bank_account_id")
+  documentUrl    String?          @map("document_url")
+  documentName   String?          @map("document_name")
+  notes          String?
+  createdById    String?          @map("created_by")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  condominium     Condominium          @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
+  fund            Fund                 @relation(fields: [fundId], references: [id])
+  bankAccount     BankAccount?         @relation(fields: [bankAccountId], references: [id])
+  movements       FundMovement[]
+  interestRecords InvestmentInterest[]
+
+  @@index([companyId, condominiumId])
+  @@index([condominiumId, status])
+  @@map("investments")
+}
+
+// Interés ganado por una inversión. Se registra SIEMPRE como ingreso
+// financiero (ver `services/investments.ts` → `recordInvestmentInterest`,
+// cuenta contable 4902) — NUNCA como cuota condominal: no toca `Charge`
+// ni `Property` en ningún punto.
+model InvestmentInterest {
+  id            String   @id @default(uuid())
+  companyId     String   @map("company_id")
+  // Denormalizado desde Investment: permite aislar/filtrar directo por
+  // condominio sin tener que atravesar la inversión.
+  condominiumId String   @map("condominium_id")
+  investmentId  String   @map("investment_id")
+  // Denormalizado desde Investment.fundId al momento del registro.
+  fundId        String   @map("fund_id")
+  amount        Decimal  @db.Decimal(14, 2)
+  date          DateTime @db.Date
+  createdById   String?  @map("created_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  condominium Condominium @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
+  investment  Investment  @relation(fields: [investmentId], references: [id], onDelete: Cascade)
+  fund        Fund        @relation(fields: [fundId], references: [id])
+
+  @@index([investmentId, date(sort: Desc)])
+  @@index([condominiumId, date(sort: Desc)])
+  @@map("investment_interests")
+}
+
+// ============================================================
 // FASE 5 — Cobranza y convenios
 // ============================================================
 
@@ -3187,18 +3475,18 @@ model ViolationSettings {
 /// Expediente: una filial y un tipo de incumplimiento. Todas las
 /// acciones del escalamiento cuelgan de aquí.
 model ViolationCase {
-  id              String @id @default(uuid())
-  condominiumId   String @map("condominium_id")
-  propertyId      String @map("property_id")
-  violationTypeId String @map("violation_type_id")
+  id              String  @id @default(uuid())
+  condominiumId   String  @map("condominium_id")
+  propertyId      String  @map("property_id")
+  violationTypeId String  @map("violation_type_id")
   /// Propietario notificado en el momento de abrir el caso.
   personId        String? @map("person_id")
 
-  caseNumber String              @map("case_number")
-  status     ViolationCaseStatus @default(abierto)
+  caseNumber     String              @map("case_number")
+  status         ViolationCaseStatus @default(abierto)
   /// Advertencias ya emitidas. La multa no incrementa este contador.
-  warningsIssued Int             @default(0) @map("warnings_issued")
-  fineIssued     Boolean         @default(false) @map("fine_issued")
+  warningsIssued Int                 @default(0) @map("warnings_issued")
+  fineIssued     Boolean             @default(false) @map("fine_issued")
 
   openedAt        DateTime  @default(now()) @map("opened_at")
   lastActionAt    DateTime? @map("last_action_at")
@@ -3231,15 +3519,15 @@ model ViolationAction {
   /// 1ª, 2ª… advertencia. La multa siempre lleva 1.
   sequence Int                 @default(1)
 
-  issuedAt      DateTime @default(now()) @map("issued_at")
-  issuedById    String?  @map("issued_by")
-  issuedByName  String?  @map("issued_by_name")
-  supervisorName String? @map("supervisor_name")
-  adminName     String?  @map("admin_name")
-  observation   String?
+  issuedAt       DateTime @default(now()) @map("issued_at")
+  issuedById     String?  @map("issued_by")
+  issuedByName   String?  @map("issued_by_name")
+  supervisorName String?  @map("supervisor_name")
+  adminName      String?  @map("admin_name")
+  observation    String?
 
   /// Texto que quedó en el documento, ya con las variables resueltas.
-  bodyText String? @map("body_text")
+  bodyText    String? @map("body_text")
   /// Referencia al PDF en el repositorio: /api/archivo/<id>.
   documentRef String? @map("document_ref")
 
@@ -3309,20 +3597,20 @@ enum SubscriptionPeriod {
 
 /// Catálogo de planes que el master ofrece.
 model SubscriptionPlan {
-  id          String             @id @default(uuid())
-  name        String             @unique
-  description String?
-  price       Decimal            @db.Decimal(12, 2)
-  currency    String             @default("CRC")
-  period      SubscriptionPeriod @default(mensual)
+  id              String             @id @default(uuid())
+  name            String             @unique
+  description     String?
+  price           Decimal            @db.Decimal(12, 2)
+  currency        String             @default("CRC")
+  period          SubscriptionPeriod @default(mensual)
   /// Condominios que permite crear. 0 = sin tope.
-  maxCondominiums Int            @default(0) @map("max_condominiums")
+  maxCondominiums Int                @default(0) @map("max_condominiums")
   /// Días HÁBILES de gracia antes de que corresponda bloquear.
-  graceDays   Int                @default(5) @map("grace_days")
-  isActive    Boolean            @default(true) @map("is_active")
-  sortOrder   Int                @default(0) @map("sort_order")
-  createdAt   DateTime           @default(now()) @map("created_at")
-  updatedAt   DateTime           @updatedAt @map("updated_at")
+  graceDays       Int                @default(5) @map("grace_days")
+  isActive        Boolean            @default(true) @map("is_active")
+  sortOrder       Int                @default(0) @map("sort_order")
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
 
   companies Company[]
   payments  SubscriptionPayment[]
@@ -3332,25 +3620,385 @@ model SubscriptionPlan {
 
 /// Pago registrado de una suscripción. Es el historial de la cuenta.
 model SubscriptionPayment {
-  id          String   @id @default(uuid())
-  companyId   String   @map("company_id")
-  planId      String?  @map("plan_id")
-  amount      Decimal  @db.Decimal(12, 2)
-  currency    String   @default("CRC")
+  id               String   @id @default(uuid())
+  companyId        String   @map("company_id")
+  planId           String?  @map("plan_id")
+  amount           Decimal  @db.Decimal(12, 2)
+  currency         String   @default("CRC")
   /// Período que cubre este pago.
-  periodStart DateTime @map("period_start") @db.Date
-  periodEnd   DateTime @map("period_end") @db.Date
-  paidAt      DateTime @default(now()) @map("paid_at")
-  method      String?
-  reference   String?
-  note        String?
-  registeredById   String? @map("registered_by")
-  registeredByName String? @map("registered_by_name")
-  createdAt   DateTime @default(now()) @map("created_at")
+  periodStart      DateTime @map("period_start") @db.Date
+  periodEnd        DateTime @map("period_end") @db.Date
+  paidAt           DateTime @default(now()) @map("paid_at")
+  method           String?
+  reference        String?
+  note             String?
+  registeredById   String?  @map("registered_by")
+  registeredByName String?  @map("registered_by_name")
+  createdAt        DateTime @default(now()) @map("created_at")
 
   company Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
   plan    SubscriptionPlan? @relation(fields: [planId], references: [id])
 
   @@index([companyId, periodEnd])
   @@map("subscription_payments")
+}
+
+// ============================================================
+// FACTURACIÓN ELECTRÓNICA (Costa Rica) — ETAPA 9: PREPARACIÓN
+//
+// NADA DE ESTO ESTÁ ACTIVO. No se emite ningún comprobante, no se
+// genera XML, no se habla con Hacienda y no hay credenciales reales.
+// Este bloque existe para que, cuando se implemente, no haya que
+// rehacer Finanzas ni migrar datos históricos.
+//
+// DOS DECISIONES QUE EXPLICAN TODO EL DISEÑO:
+//
+// 1. NO se codifica ninguna estructura tributaria de memoria. Los
+//    tipos de identificación, los tipos de comprobante, las
+//    condiciones y regímenes tributarios y las actividades económicas
+//    son CATÁLOGOS DE HACIENDA que cambian por resolución. Guardarlos
+//    como `enum` de Prisma obligaría a una migración cada vez que
+//    Hacienda publique una versión — y, peor, congelaría de memoria
+//    unos valores que hay que tomar de la especificación vigente. Van
+//    en `FiscalCatalogEntry`, una tabla que se llena al implementar,
+//    leyendo el documento oficial de ese momento. Hoy está VACÍA a
+//    propósito.
+//
+// 2. Los `enum` que sí existen acá son estados de ANEXYpro, no de
+//    Hacienda: el ciclo de vida de un documento en nuestro sistema y
+//    el flujo de activación del módulo. Esos sí son nuestros.
+// ============================================================
+
+/// En qué punto del camino a la facturación electrónica está ESTE
+/// condominio. El flujo es lineal y cada paso exige el anterior:
+/// configurar → validar los datos → probar la conexión → confirmar →
+/// activar. `inactivo` es el único valor que existe hoy en la base.
+enum EInvoicingStatus {
+  /// No se ha tocado nada. Estado de TODOS los condominios hoy.
+  inactivo
+  /// Hay datos fiscales cargados, sin validar.
+  configurado
+  /// Los datos fiscales pasaron la validación de forma.
+  validado
+  /// Se hizo una prueba de conexión contra el ambiente de pruebas.
+  probado
+  /// La administración confirmó y el módulo emite de verdad.
+  activo
+  /// Estuvo activo y se detuvo (vencimiento de certificado, cambio de
+  /// proveedor, decisión de la administración). No se borra nada.
+  suspendido
+}
+
+/// Ambiente contra el que se trabaja. Nunca se asume producción.
+enum FiscalEnvironment {
+  pruebas
+  produccion
+}
+
+/// Cómo se conectará ANEXYpro. Cambiar de opción NO debe obligar a
+/// tocar Finanzas: todo pasa por el puerto `src/lib/einvoicing/provider.ts`.
+enum EInvoicingProviderKind {
+  /// Todavía sin decidir. Valor de hoy.
+  ninguno
+  /// ANEXYpro firma y transmite por su cuenta.
+  integracion_propia
+  /// Un proveedor autorizado de facturación electrónica.
+  proveedor_externo
+}
+
+/// Ciclo de vida de un comprobante DENTRO de ANEXYpro.
+enum FiscalDocumentStatus {
+  borrador
+  generado
+  enviado
+  aceptado
+  rechazado
+  anulado
+  error
+}
+
+/// Catálogo oficial de Hacienda, cargado al implementar — NUNCA de
+/// memoria. `kind` dice de qué catálogo se trata (tipo de
+/// identificación, tipo de comprobante, condición tributaria, régimen,
+/// actividad económica, moneda…); `code` y `label` son los valores
+/// oficiales, y `specVersion` deja constancia de QUÉ versión de la
+/// estructura se usó para cargarlos.
+///
+/// Es una tabla global (sin `company_id`): los catálogos de Hacienda
+/// son los mismos para todo el país. Lo que NO se comparte entre
+/// condominios es la CONFIGURACIÓN — eso vive en
+/// `CondominiumFiscalSettings`.
+model FiscalCatalogEntry {
+  id          String    @id @default(uuid())
+  kind        String
+  code        String
+  label       String
+  /// Versión de la estructura oficial de la que se tomó (p. ej. la que
+  /// esté vigente al implementar). Sin esto no se puede auditar de
+  /// dónde salió un valor.
+  specVersion String    @map("spec_version")
+  validFrom   DateTime? @map("valid_from") @db.Date
+  validTo     DateTime? @map("valid_to") @db.Date
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@unique([kind, code, specVersion])
+  @@index([kind, isActive])
+  @@map("fiscal_catalog_entries")
+}
+
+/// Configuración fiscal de UN condominio. Uno a uno, igual que
+/// `CondominiumFinancialSettings`.
+///
+/// NUNCA se copia entre condominios: dos condominios de la misma
+/// administradora son dos contribuyentes distintos, con su propia
+/// cédula jurídica, su propia actividad económica y —esto es lo que
+/// más se olvida— su propia condición y régimen tributario. No se
+/// asume que sean iguales ni se heredan de la empresa administradora.
+///
+/// Los campos de catálogo se guardan como CÓDIGO (`String`), no como
+/// enum: su lista vive en `FiscalCatalogEntry` y se valida contra ella
+/// al implementar. Se guarda también la etiqueta vigente al momento de
+/// configurar, para que un cambio de catálogo no deje la pantalla
+/// mostrando un código pelado.
+model CondominiumFiscalSettings {
+  condominiumId String @id @map("condominium_id")
+
+  // ---------- Identificación del contribuyente ----------
+  identificationTypeCode  String? @map("identification_type_code")
+  identificationTypeLabel String? @map("identification_type_label")
+  identificationNumber    String? @map("identification_number")
+  legalName               String? @map("legal_name")
+  tradeName               String? @map("trade_name")
+
+  // ---------- Actividad económica ----------
+  economicActivityCode  String? @map("economic_activity_code")
+  economicActivityLabel String? @map("economic_activity_label")
+
+  // ---------- Contacto fiscal ----------
+  email String?
+  phone String?
+
+  // ---------- Ubicación ----------
+  /// Los códigos de provincia/cantón/distrito de Hacienda NO son los
+  /// nombres: son códigos numéricos de su catálogo. Se guardan los dos.
+  provinceCode String? @map("province_code")
+  cantonCode   String? @map("canton_code")
+  districtCode String? @map("district_code")
+  province     String?
+  canton       String?
+  district     String?
+  addressLine  String? @map("address_line")
+
+  // ---------- Situación tributaria ----------
+  /// Condición y régimen NO se asumen: cada condominio declara el suyo.
+  taxConditionCode  String? @map("tax_condition_code")
+  taxConditionLabel String? @map("tax_condition_label")
+  taxRegimeCode     String? @map("tax_regime_code")
+  taxRegimeLabel    String? @map("tax_regime_label")
+
+  // ---------- Estado del módulo ----------
+  status       EInvoicingStatus       @default(inactivo)
+  environment  FiscalEnvironment      @default(pruebas)
+  providerKind EInvoicingProviderKind @default(ninguno)
+  /// Identificador opaco del condominio ante el proveedor elegido. No
+  /// se interpreta nunca — mismo criterio que los ids del repositorio
+  /// de documentos.
+  providerAccountRef String? @map("provider_account_ref")
+
+  /// Versión de la estructura oficial contra la que se configuró. Se
+  /// llena al implementar, leyendo la especificación vigente.
+  specVersion String? @map("spec_version")
+
+  // ---------- Rastro del flujo de activación ----------
+  validatedAt   DateTime? @map("validated_at")
+  testedAt      DateTime? @map("tested_at")
+  activatedAt   DateTime? @map("activated_at")
+  activatedById String?   @map("activated_by")
+  suspendedAt   DateTime? @map("suspended_at")
+  suspendReason String?   @map("suspend_reason")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  condominium Condominium               @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
+  credentials EInvoicingCredential[]
+  sequences   FiscalSequence[]
+  documents   FiscalDocument[]
+
+  @@map("condominium_fiscal_settings")
+}
+
+/// Referencia a un mecanismo de autenticación. **NO guarda el secreto.**
+///
+/// Acá no hay ni puede haber una columna con la contraseña de Hacienda,
+/// la llave del certificado ni el token del proveedor. Lo único que se
+/// guarda es `secretRef`: un identificador OPACO de dónde vive el
+/// secreto de verdad (variable de entorno, gestor de secretos del
+/// hosting, o el repositorio cifrado). El valor lo resuelve el servidor
+/// en el momento de usarlo y NUNCA viaja al navegador.
+///
+/// El resto de columnas existe para poder administrar el mecanismo sin
+/// verlo: de qué tipo es, cuándo vence, y los últimos caracteres para
+/// que un humano reconozca cuál es sin exponerlo.
+model EInvoicingCredential {
+  id            String   @id @default(uuid())
+  condominiumId String   @map("condominium_id")
+  /// Qué mecanismo es. Genérico a propósito: el certificado, el usuario
+  /// del ambiente de Hacienda y la llave de un proveedor externo son
+  /// cosas distintas y no se sabe todavía cuál se usará.
+  kind          String
+  label         String?
+  /// Puntero al secreto. NUNCA el secreto.
+  secretRef     String   @map("secret_ref")
+  /// Para reconocerlo sin exponerlo (p. ej. los últimos 4 caracteres o
+  /// la huella del certificado). Nunca el valor completo.
+  hint          String?
+  expiresAt     DateTime? @map("expires_at")
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  fiscalSettings CondominiumFiscalSettings @relation(fields: [condominiumId], references: [condominiumId], onDelete: Cascade)
+
+  @@unique([condominiumId, kind])
+  @@index([expiresAt])
+  @@map("einvoicing_credentials")
+}
+
+/// Consecutivo por condominio y tipo de comprobante.
+///
+/// UN CONSECUTIVO DE UN CONDOMINIO JAMÁS SE USA EN OTRO: la clave
+/// única lleva `condominium_id` adelante, así que ni por error de
+/// programación se pueden cruzar.
+///
+/// El número se reparte con un UPDATE atómico que devuelve el valor
+/// (ver `services/einvoicing-sequence.ts`), NO con un `MAX + 1` leído
+/// antes: dos emisiones simultáneas con `MAX + 1` sacan el mismo
+/// número, y en un comprobante fiscal eso no es un bug cosmético.
+///
+/// `branch` y `terminal` existen porque la numeración oficial se
+/// compone por sucursal y terminal; sus valores y su formato salen de
+/// la especificación vigente al implementar, no de acá.
+model FiscalSequence {
+  id            String @id @default(uuid())
+  condominiumId String @map("condominium_id")
+  /// Código de tipo de comprobante del catálogo (`FiscalCatalogEntry`).
+  documentType  String @map("document_type")
+  branch        String @default("001")
+  terminal      String @default("00001")
+  /// Último número entregado. Empieza en 0: el primero entregado es 1.
+  lastNumber    BigInt @default(0) @map("last_number")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  fiscalSettings CondominiumFiscalSettings @relation(fields: [condominiumId], references: [condominiumId], onDelete: Cascade)
+
+  @@unique([condominiumId, documentType, branch, terminal])
+  @@map("fiscal_sequences")
+}
+
+/// Un comprobante electrónico. HOY NO SE CREA NINGUNO.
+///
+/// Los XML no se guardan en columnas: se guardan en el repositorio de
+/// documentos (que ya existe, con su control de acceso y su proveedor
+/// intercambiable) y acá queda la REFERENCIA. Un XML firmado puede
+/// pesar y no tiene por qué inflar la base ni salir en cada consulta.
+///
+/// INMUTABILIDAD: una vez que el documento sale de `borrador`, sus
+/// campos fiscales no se editan. No es una convención — hay un
+/// disparador en la base que rechaza el UPDATE (ver
+/// `prisma/sql/04_facturacion_electronica.sql`). Corregir un
+/// comprobante emitido se hace como manda la normativa: con una nota
+/// de crédito o de débito que lo referencia, nunca reescribiendo el
+/// original.
+model FiscalDocument {
+  id            String @id @default(uuid())
+  companyId     String @map("company_id")
+  condominiumId String @map("condominium_id")
+
+  /// Código de tipo de comprobante del catálogo. String, no enum: la
+  /// lista es de Hacienda.
+  documentType String               @map("document_type")
+  status       FiscalDocumentStatus @default(borrador)
+  environment  FiscalEnvironment    @default(pruebas)
+
+  /// Clave y consecutivo asignados al generar. Únicos por empresa para
+  /// que un duplicado sea imposible incluso ante un reintento.
+  clave      String? @unique
+  consecutive String? @map("consecutive")
+
+  /// De dónde nació el comprobante, sin acoplar: hoy sería un `Charge`
+  /// o un `Payment`, mañana otra cosa. Mismo patrón que ya usan los
+  /// asientos contables (`sourceTable`/`sourceId`).
+  sourceTable String? @map("source_table")
+  sourceId    String? @map("source_id")
+
+  /// Referencias en el repositorio de documentos. Nunca el contenido.
+  xmlGeneratedRef String? @map("xml_generated_ref")
+  xmlSignedRef    String? @map("xml_signed_ref")
+  xmlSentRef      String? @map("xml_sent_ref")
+  responseRef     String? @map("response_ref")
+
+  /// Respuesta de Hacienda o del proveedor, en crudo pero acotada.
+  responseCode    String?   @map("response_code")
+  responseMessage String?   @map("response_message")
+
+  issuedAt    DateTime? @map("issued_at")
+  sentAt      DateTime? @map("sent_at")
+  respondedAt DateTime? @map("responded_at")
+
+  /// Nota de crédito / débito → documento original. Autorreferencia:
+  /// un comprobante puede corregir a otro y hay que poder navegar la
+  /// cadena en los dos sentidos.
+  referencedDocumentId String? @map("referenced_document_id")
+  /// Código de la razón de referencia, del catálogo oficial.
+  referenceCode        String? @map("reference_code")
+  referenceReason      String? @map("reference_reason")
+
+  providerKind       EInvoicingProviderKind @default(ninguno) @map("provider_kind")
+  /// Identificador del documento ante el proveedor. Opaco.
+  providerDocumentRef String?               @map("provider_document_ref")
+
+  /// Versión de la estructura oficial con la que se construyó.
+  specVersion String? @map("spec_version")
+
+  totalAmount Decimal? @map("total_amount") @db.Decimal(14, 2)
+  currency    String   @default("CRC")
+
+  createdById String?  @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  company        Company                   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  fiscalSettings CondominiumFiscalSettings @relation(fields: [condominiumId], references: [condominiumId], onDelete: Cascade)
+  referencedDocument FiscalDocument?       @relation("FiscalDocumentReference", fields: [referencedDocumentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  references         FiscalDocument[]      @relation("FiscalDocumentReference")
+  events             FiscalDocumentEvent[]
+
+  @@unique([condominiumId, documentType, consecutive])
+  @@index([condominiumId, status])
+  @@index([companyId, createdAt(sort: Desc)])
+  @@map("fiscal_documents")
+}
+
+/// Historial de estados de un comprobante. Solo se agrega, nunca se
+/// modifica ni se borra: es la trazabilidad que exige poder explicar
+/// por qué un comprobante terminó rechazado tres semanas después.
+model FiscalDocumentEvent {
+  id         String               @id @default(uuid())
+  documentId String               @map("document_id")
+  fromStatus FiscalDocumentStatus? @map("from_status")
+  toStatus   FiscalDocumentStatus @map("to_status")
+  /// Quién lo provocó. Null = proceso automático.
+  userId     String?              @map("user_id")
+  detail     String?
+  /// Respuesta cruda del proveedor, si la hubo, en el repositorio.
+  payloadRef String?              @map("payload_ref")
+  occurredAt DateTime             @default(now()) @map("occurred_at")
+
+  document FiscalDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId, occurredAt])
+  @@map("fiscal_document_events")
 }

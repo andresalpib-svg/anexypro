@@ -60,7 +60,7 @@ async function createJournalEntry(
     condominiumId: string;
     date: Date;
     description: string;
-    source: 'manual' | 'cuota' | 'pago' | 'gasto_mantenimiento' | 'gasto_proyecto' | 'ia' | 'ajuste';
+    source: 'manual' | 'cuota' | 'pago' | 'gasto_mantenimiento' | 'gasto_proyecto' | 'ia' | 'ajuste' | 'inversion' | 'depreciacion';
     sourceTable?: string;
     sourceId?: string;
     lines: JournalLineInput[];

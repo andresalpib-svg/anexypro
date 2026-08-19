@@ -2,10 +2,17 @@ import { History, Lock } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { can } from '@/lib/rbac';
 import { listAuditLog, AUDIT_MODULES } from '@/lib/services/audit';
+import { listRecentChanges, ENTIDAD_LABEL, ACCION_LABEL } from '@/lib/services/audit-trail';
 import { PageHeader } from '@/components/ui/page-header';
 import { ModuleFilter } from './module-filter';
+import { AuditTabs } from './tabs';
+import { ChangesTable } from './changes-table';
 
-export default async function AuditoriaPage({ searchParams }: { searchParams: { module?: string } }) {
+export default async function AuditoriaPage({
+  searchParams,
+}: {
+  searchParams: { module?: string; tab?: string };
+}) {
   const session = await auth();
 
   // Auditoría NUNCA se otorga a la Junta Directiva bajo ninguna
@@ -22,11 +29,39 @@ export default async function AuditoriaPage({ searchParams }: { searchParams: { 
     );
   }
 
+  const tab = searchParams.tab === 'cambios' ? 'cambios' : 'actividad';
+
+  // La pestaña de cambios responde lo que la de actividad no puede:
+  // qué decía el registro ANTES. Son dos bitácoras distintas a
+  // propósito —una legible para el día a día, otra con el detalle del
+  // dato— y por eso no se mezclan en una sola tabla.
+  if (tab === 'cambios') {
+    const cambios = await listRecentChanges(session!.user.companyId);
+    return (
+      <div>
+        <PageHeader title="Auditoría" subtitle="Historial de cambios — qué decía antes y qué dice ahora" />
+        <AuditTabs tab={tab} />
+        <ChangesTable
+          rows={cambios.map((c) => ({
+            id: String(c.id),
+            createdAt: c.createdAt.toISOString(),
+            userName: c.user?.fullName ?? 'Sistema (proceso automático)',
+            entity: ENTIDAD_LABEL[c.entity] ?? c.entity,
+            entityId: c.entityId,
+            action: ACCION_LABEL[c.action] ?? c.action,
+            changes: c.changes as Record<string, unknown> | null,
+          }))}
+        />
+      </div>
+    );
+  }
+
   const entries = await listAuditLog(session!.user.companyId, searchParams.module);
 
   return (
     <div>
       <PageHeader title="Auditoría" subtitle="Historial de actividad — quién hizo qué, cuándo" />
+      <AuditTabs tab={tab} />
       <ModuleFilter modules={AUDIT_MODULES} selected={searchParams.module} />
 
       <div className="card mt-4 overflow-x-auto">

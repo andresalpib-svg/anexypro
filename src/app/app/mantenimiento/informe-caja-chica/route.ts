@@ -172,19 +172,30 @@ export async function GET(req: Request) {
     space(20);
     if (y === page.getHeight() - MARGIN) header();
 
-    const n = e.invoiceUrl ? anexos.length + 1 : 0;
-    if (e.invoiceUrl) anexos.push({ n, detail: e.detail, url: e.invoiceUrl, name: e.invoiceName ?? 'Factura' });
+    // Un gasto anulado sigue en el informe —el auditor tiene que ver
+    // que existió y por qué se quitó— pero no suma al total ni arrastra
+    // su factura a los anexos.
+    const anulado = Boolean(e.voidedAt);
+    const n = e.invoiceUrl && !anulado ? anexos.length + 1 : 0;
+    if (n) anexos.push({ n, detail: e.detail, url: e.invoiceUrl!, name: e.invoiceName ?? 'Factura' });
 
-    page.drawText(fecha(e.spentOn), { x: cols.fecha, y, size: 9 });
-    page.drawText(fit(e.detail, font, 9, 220), { x: cols.detalle, y, size: 9 });
-    page.drawText(n ? `Anexo ${n}` : 'Sin factura', {
+    page.drawText(fecha(e.spentOn), { x: cols.fecha, y, size: 9, color: anulado ? MUTED : INK });
+    const detalle = anulado ? `${e.detail} — ANULADO: ${e.voidReason ?? ''}`.trim() : e.detail;
+    page.drawText(fit(detalle, font, 9, 220), { x: cols.detalle, y, size: 9, color: anulado ? MUTED : INK });
+    page.drawText(anulado ? 'Anulado' : n ? `Anexo ${n}` : 'Sin factura', {
       x: cols.factura,
       y,
       size: 9,
       color: n ? ROYAL : MUTED,
     });
     const amount = money(Number(e.amount), currency);
-    page.drawText(amount, { x: cols.monto - bold.widthOfTextAtSize(amount, 9), y, size: 9, font: bold });
+    page.drawText(amount, {
+      x: cols.monto - bold.widthOfTextAtSize(amount, 9),
+      y,
+      size: 9,
+      font: bold,
+      color: anulado ? MUTED : INK,
+    });
     y -= 15;
   }
 
@@ -207,10 +218,23 @@ export async function GET(req: Request) {
   }
   for (const a of cash.allocations) {
     space(18);
-    page.drawText(fecha(a.allocatedOn), { x: cols.fecha, y, size: 9 });
-    page.drawText(fit(a.note ?? 'Asignación de caja chica', font, 9, 220), { x: cols.detalle, y, size: 9 });
+    const anulada = Boolean(a.voidedAt);
+    page.drawText(fecha(a.allocatedOn), { x: cols.fecha, y, size: 9, color: anulada ? MUTED : INK });
+    const nota = a.note ?? 'Asignación de caja chica';
+    page.drawText(fit(anulada ? `${nota} — ANULADA: ${a.voidReason ?? ''}`.trim() : nota, font, 9, 220), {
+      x: cols.detalle,
+      y,
+      size: 9,
+      color: anulada ? MUTED : INK,
+    });
     const amount = money(Number(a.amount), currency);
-    page.drawText(amount, { x: cols.monto - bold.widthOfTextAtSize(amount, 9), y, size: 9, font: bold });
+    page.drawText(amount, {
+      x: cols.monto - bold.widthOfTextAtSize(amount, 9),
+      y,
+      size: 9,
+      font: bold,
+      color: anulada ? MUTED : INK,
+    });
     y -= 15;
   }
 

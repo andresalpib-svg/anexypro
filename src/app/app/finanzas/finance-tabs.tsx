@@ -22,6 +22,8 @@ export function FinanceTabs() {
     { href: '/app/finanzas/bancos', label: 'Bancos' },
     { href: '/app/finanzas/flujo', label: 'Flujo de caja' },
     { href: '/app/finanzas/presupuesto', label: 'Presupuesto' },
+    { href: '/app/finanzas/fondos', label: 'Fondos' },
+    { href: '/app/finanzas/inversiones', label: 'Inversiones' },
     { href: '/app/finanzas/cobranza', label: 'Cobranza' },
     { href: '/app/finanzas/cierre', label: 'Cierre' },
     { href: '/app/finanzas/asistente', label: 'Asistente IA' },

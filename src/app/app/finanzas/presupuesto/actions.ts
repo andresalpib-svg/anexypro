@@ -17,7 +17,10 @@ export async function saveBudgetAction(
   if (!(await canAccessCondo(session, condominiumId))) return { ok: false, error: 'Sin acceso a ese condominio.' };
 
   try {
-    await saveBudget(session.user.companyId, condominiumId, year, amounts);
+    await saveBudget(session.user.companyId, condominiumId, year, amounts, {
+      id: session.user.id,
+      name: session.user.name ?? 'Usuario',
+    });
   } catch (e: any) {
     return { ok: false, error: e?.message ?? 'No se pudo guardar el presupuesto.' };
   }

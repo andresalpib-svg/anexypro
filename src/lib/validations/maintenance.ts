@@ -1,13 +1,23 @@
 import { z } from 'zod';
 import { telefonoOpcional } from '@/lib/validations/comunes';
 
+/** @db.Date: mediodía para que no se corra de día por zona horaria. */
+const asDateOpt = (s: string | undefined) => (s ? new Date(`${s}T12:00:00`) : null);
+
 export const assetSchema = z.object({
   condominiumId: z.string().uuid(),
+  code: z.string().max(40).optional().or(z.literal('')),
   name: z.string().min(2, 'El nombre es muy corto').max(100),
   categoryId: z.string().uuid().optional().or(z.literal('')),
   description: z.string().max(500).optional().or(z.literal('')),
-  approxCost: z.coerce.number().min(0).optional(),
   location: z.string().max(100).optional().or(z.literal('')),
+  purchaseDate: z.string().optional().or(z.literal('')).transform(asDateOpt),
+  supplierId: z.string().uuid().optional().or(z.literal('')),
+  acquisitionValue: z.coerce.number().min(0).optional(),
+  residualValue: z.coerce.number().min(0).optional(),
+  usefulLifeMonths: z.coerce.number().int().positive().optional(),
+  depreciationMethod: z.enum(['lineal']).optional().or(z.literal('')),
+  depreciationStartDate: z.string().optional().or(z.literal('')).transform(asDateOpt),
 });
 
 export const updateAssetSchema = assetSchema.omit({ condominiumId: true }).extend({

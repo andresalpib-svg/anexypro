@@ -1,6 +1,7 @@
 import { withTenantContext } from '@/lib/db';
 import { recordChargeAccrual, recordPaymentEntry } from '@/lib/services/accounting';
 import { logActivity } from '@/lib/services/audit';
+import { logChange } from '@/lib/services/audit-trail';
 import { allocatePaymentOldestFirst } from '@/lib/domain/payment-allocation';
 import { fechaSolo } from '@/lib/fecha-local';
 
@@ -603,6 +604,26 @@ export async function cancelCharge(
     const updated = await tx.charge.update({
       where: { id: charge.id },
       data: { status: 'anulado' },
+    });
+
+    // Rastro con el estado anterior y el nuevo, más una copia del cargo
+    // tal como estaba: es un movimiento financiero que deja de contar
+    // y hay que poder reconstruirlo después (Etapa 8).
+    await logChange(tx, companyId, {
+      entity: 'charges',
+      entityId: charge.id,
+      condominiumId: input.condominiumId,
+      action: 'anular',
+      userId: user.id,
+      motivo: input.reason,
+      cambios: [{ campo: 'status', antes: charge.status, despues: 'anulado' }],
+      snapshot: {
+        filial: charge.property.code,
+        tipo: charge.chargeType,
+        descripcion: charge.description,
+        monto: charge.amount,
+        vencimiento: charge.dueDate,
+      },
     });
 
     // Registrar la reversión del asiento (débito/crédito invertidos)

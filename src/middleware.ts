@@ -71,18 +71,31 @@ function seAutorizaSola(pathname: string): boolean {
  * cada petición — un valor fijo en la config no protegería nada.
  */
 function construirCsp(nonce: string): string {
+  // En DESARROLLO —y solo ahí— la política se afloja en dos puntos, o
+  // la aplicación no arranca en la máquina de quien programa:
+  //
+  //  · `'unsafe-eval'`: el recargado en caliente de Next evalúa código
+  //    como texto. Sin esto la hidratación muere con "Evaluating a
+  //    string as JavaScript violates..." y la pantalla se queda en el
+  //    logo para siempre — no se puede probar nada localmente.
+  //  · `upgrade-insecure-requests`: manda todo a https, y el servidor
+  //    de desarrollo habla http en localhost.
+  //
+  // `next dev` no se ejecuta en producción, así que el despliegue
+  // conserva la política estricta intacta.
+  const dev = process.env.NODE_ENV === 'development';
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${dev ? " 'unsafe-eval'" : ''}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' blob: data:",
     "font-src 'self' data:",
-    "connect-src 'self'",
+    dev ? "connect-src 'self' ws: wss:" : "connect-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
     "frame-ancestors 'none'",
-    'upgrade-insecure-requests',
+    ...(dev ? [] : ['upgrade-insecure-requests']),
   ].join('; ');
 }
 

@@ -2,6 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { auth } from '@/lib/auth';
+import { can } from '@/lib/rbac';
+import { PANEL_ROLES } from '@/lib/guard';
 import { canAccessCondo } from '@/lib/services/condominiums';
 import {
   actorFromSession,
@@ -32,6 +34,14 @@ async function guard(condominiumId: string) {
   // Antes el bypass explícito dejaba a `master` subir/borrar/renombrar
   // documentos de CUALQUIER condominio de CUALQUIER empresa desde acá
   // (auditoría de seguridad 2026-08-11, hallazgo #10).
+  // La grilla de permisos solo gobierna a los roles del panel: el
+  // oficial de caseta llega acá por su rol, no por un área otorgada
+  // (`can` siempre le diría que no). Sin esta línea, revocarle
+  // Documentos a un supervisor le cerraba la pantalla pero no estas
+  // acciones (hallazgo 8.2).
+  if (PANEL_ROLES.includes(session.user.role as (typeof PANEL_ROLES)[number]) && !can(session, 'documentos')) {
+    return null;
+  }
   if (!(await canAccessCondo(session, condominiumId))) return null;
   return session;
 }

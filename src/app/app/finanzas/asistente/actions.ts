@@ -1,6 +1,7 @@
 'use server';
 
 import { auth } from '@/lib/auth';
+import { can } from '@/lib/rbac';
 import { canAccessCondo } from '@/lib/services/condominiums';
 import { ask, type AssistantAnswer } from '@/lib/services/financial-assistant';
 import { hitRateLimit } from '@/lib/rate-limit';
@@ -11,6 +12,12 @@ export async function askAction(condominiumId: string, question: string): Promis
   const session = await auth();
   if (!session?.user || !['admin_owner', 'admin_staff', 'contador'].includes(session.user.role)) {
     return { ok: false, error: 'Sin permiso.' };
+  }
+  // Mismo motivo que el resto de Finanzas (hallazgo 8.2): sin esto, un
+  // supervisor con Finanzas revocada seguía pudiendo preguntarle al
+  // asistente por las cifras del condominio.
+  if (!can(session, 'finanzas')) {
+    return { ok: false, error: 'Sin acceso a Finanzas.' };
   }
   if (!(await canAccessCondo(session, condominiumId))) {
     return { ok: false, error: 'No tenés acceso a ese condominio.' };

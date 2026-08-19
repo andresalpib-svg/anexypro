@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
-import { canAccessCondo } from '@/lib/services/condominiums';
+import { requirePanel } from '@/lib/guard';
 import {
   logCollectionAction,
   createPaymentPlan,
@@ -18,11 +18,21 @@ export type ActionState = { errors?: Record<string, string[]>; formError?: strin
 
 const asDate = (s: string) => new Date(`${s}T12:00:00`);
 
+/**
+ * Delega en `requirePanel` en vez de reimplementarlo.
+ *
+ * Este archivo tenía su propio guard con la lista de roles y el
+ * `canAccessCondo`, pero le faltaban dos cosas que `requirePanel` sí
+ * hace: consultar la grilla de permisos (`can`) y cerrar el paso a una
+ * empresa demo vencida. Revocarle Finanzas a un supervisor en
+ * Configuración le quitaba el módulo del menú y le cerraba la
+ * pantalla, pero no le cerraba estas acciones — y una Server Action es
+ * un endpoint HTTP que se llama sin pasar por la pantalla (hallazgo
+ * 8.2). Dos implementaciones del mismo permiso siempre terminan
+ * separándose; ahora hay una sola.
+ */
 async function guard(condominiumId: string) {
-  const session = await auth();
-  if (!session?.user || !['admin_owner', 'admin_staff'].includes(session.user.role)) return null;
-  if (!(await canAccessCondo(session, condominiumId))) return null;
-  return session;
+  return requirePanel({ area: 'finanzas', roles: ['admin_owner', 'admin_staff'], condominiumId });
 }
 
 export async function logActionAction(input: {

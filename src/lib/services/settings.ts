@@ -1,5 +1,6 @@
 import { withTenantContext } from '@/lib/db';
 import { logActivity } from '@/lib/services/audit';
+import { logChange } from '@/lib/services/audit-trail';
 import bcrypt from 'bcryptjs';
 
 export const PERMISSION_AREAS = [
@@ -65,6 +66,17 @@ export async function toggleStaffPermission(
     const current = (user.staffPermissions as Record<string, boolean> | null) ?? {};
     const updated = { ...current, [area]: allowed };
     await tx.user.update({ where: { id: user.id }, data: { staffPermissions: updated } });
+    // Un cambio de permisos es de lo más sensible que se hace acá: hay
+    // que poder decir qué tenía antes esa persona, no solo qué tiene
+    // ahora. `current[area]` ausente significa "permitido" — es la
+    // semántica de `can()` — y así se registra (Etapa 8).
+    await logChange(tx, companyId, {
+      entity: 'users.staff_permissions',
+      entityId: user.id,
+      action: 'actualizar',
+      userId: actorId,
+      cambios: [{ campo: area, antes: current[area] ?? true, despues: allowed }],
+    });
     await logActivity(tx, companyId, {
       userId: actorId,
       userName: actorName,
@@ -176,9 +188,17 @@ export async function toggleBoardArea(companyId: string, actorId: string, actorN
   return withTenantContext(companyId, async (tx) => {
     const person = await tx.person.findUniqueOrThrow({ where: { id: personId } });
     const areas = new Set(person.boardAreas);
+    const tenia = areas.has(area);
     if (allowed) areas.add(area);
     else areas.delete(area);
     await tx.person.update({ where: { id: personId }, data: { boardAreas: Array.from(areas) } });
+    await logChange(tx, companyId, {
+      entity: 'persons.board_areas',
+      entityId: personId,
+      action: 'actualizar',
+      userId: actorId,
+      cambios: [{ campo: area, antes: tenia, despues: allowed }],
+    });
     await logActivity(tx, companyId, {
       userId: actorId,
       userName: actorName,

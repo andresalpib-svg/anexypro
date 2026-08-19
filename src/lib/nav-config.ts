@@ -25,6 +25,7 @@ import {
   FileCheck2,
   FolderTree,
   Gavel,
+  Boxes,
 } from 'lucide-react';
 
 export type NavItem = {
@@ -67,6 +68,7 @@ export const NAV_CATEGORIES: NavCategory[] = [
       { label: 'Seguridad', href: '/app/seguridad', icon: Shield, area: 'seguridad' },
       { label: 'Gestión de Incumplimientos', href: '/app/incumplimientos', icon: Gavel, area: 'incumplimientos' },
       { label: 'Mantenimientos de Áreas Comunes', href: '/app/mantenimiento', icon: Wrench, area: 'mantenimientos' },
+      { label: 'Activos y Depreciaciones', href: '/app/activos', icon: Boxes, area: 'mantenimientos' },
       { label: 'Proyectos', href: '/app/proyectos', icon: FolderKanban, area: 'proyectos' },
     ],
   },

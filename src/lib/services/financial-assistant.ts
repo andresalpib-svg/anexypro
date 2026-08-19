@@ -6,7 +6,7 @@ import { getCollectionsView } from '@/lib/services/collections';
 import { getBudget } from '@/lib/services/budget';
 import { getCashFlow } from '@/lib/services/cash-flow';
 import { listBankAccountsWithBalance } from '@/lib/services/bank-accounts';
-import { CATEGORY_LABEL } from '@/lib/services/expenses';
+import { CATEGORY_LABEL, EXECUTED_EXPENSE_STATUSES } from '@/lib/services/expenses';
 
 /**
  * Asistente financiero.
@@ -98,7 +98,7 @@ async function analyzeExpenses(companyId: string, condominiumId: string) {
     const expenses = await tx.expense.findMany({
       where: {
         condominiumId,
-        status: { in: ['aprobado', 'pagado'] },
+        status: { in: [...EXECUTED_EXPENSE_STATUSES] },
         issueDate: { gte: sixMonthsAgo },
       },
       select: {
@@ -152,7 +152,7 @@ async function analyzeSuppliers(companyId: string, condominiumId: string) {
 
   return withTenantContext(companyId, async (tx) => {
     const expenses = await tx.expense.findMany({
-      where: { condominiumId, status: { in: ['aprobado', 'pagado'] }, issueDate: { gte: from } },
+      where: { condominiumId, status: { in: [...EXECUTED_EXPENSE_STATUSES] }, issueDate: { gte: from } },
       select: { total: true, supplier: { select: { legalName: true, tradeName: true } } },
     });
 

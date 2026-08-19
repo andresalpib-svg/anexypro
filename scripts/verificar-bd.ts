@@ -45,6 +45,12 @@ const SIN_RLS_A_PROPOSITO = new Set([
   'subscription_payments',
   'job_runs',
   'fx_rates', // tipos de cambio del BCCR: referencia, sin empresa
+  // Catálogos oficiales de Hacienda (tipos de identificación, tipos de
+  // comprobante, condición y régimen tributario...). Son públicos y los
+  // mismos para todo el país — mismo criterio que `fx_rates`. Lo que sí
+  // se aísla es la configuración fiscal de cada condominio, que vive en
+  // `condominium_fiscal_settings` y sí lleva RLS.
+  'fiscal_catalog_entries',
   'storage_settings', // una única fila global (id = "global")
   // Freno de tasa por IP (auditoría de seguridad 2026-08-11): se
   // consulta ANTES de saber a qué empresa pertenece nadie (login,

@@ -2,14 +2,14 @@
 
 import { useRef, useEffect, useState, useTransition } from 'react';
 import { useFormState, useFormStatus } from 'react-dom';
-import { Wallet, Plus, Trash2, Paperclip, TrendingDown, Banknote } from 'lucide-react';
+import { Wallet, Plus, Ban, Paperclip, TrendingDown, Banknote } from 'lucide-react';
 import { toast } from 'sonner';
 import { isLegacyPublicRef } from '@/lib/rutas-archivo';
 import {
   allocateAction,
   addExpenseAction,
-  deleteExpenseAction,
-  deleteAllocationAction,
+  voidExpenseAction,
+  voidAllocationAction,
   type ActionState,
 } from './petty-cash-actions';
 import { enTransicion } from '@/lib/accion-segura';
@@ -23,10 +23,29 @@ export type CashMovement = {
   author: string | null;
   invoiceUrl?: string | null;
   invoiceName?: string | null;
+  /** Anulado: sigue en el informe, marcado, pero no cuenta para el saldo. */
+  voidedAt?: string | null;
+  voidReason?: string | null;
 };
 
 const fmt = (n: number, currency: string) =>
   new Intl.NumberFormat('es-CR', { style: 'currency', currency, maximumFractionDigits: 2 }).format(n);
+
+/**
+ * Un movimiento de caja chica no se borra: se anula, y hay que decir
+ * por qué. Devuelve `null` si la persona se arrepiente o no escribe un
+ * motivo utilizable — el servidor exige lo mismo, esto solo evita el
+ * viaje.
+ */
+function pedirMotivo(titulo: string): string | null {
+  const motivo = window.prompt(`${titulo}. Queda registrado como anulado, no desaparece.\n\n¿Por qué se anula?`);
+  if (motivo === null) return null;
+  if (motivo.trim().length < 5) {
+    toast.error('Escribí el motivo de la anulación (al menos 5 caracteres).');
+    return null;
+  }
+  return motivo;
+}
 
 const fecha = (iso: string) =>
   new Date(iso).toLocaleDateString('es-CR', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
@@ -231,10 +250,14 @@ export function PettyCash({
               expenses.map((e) => (
                 <li key={e.id} className="flex items-center gap-3 px-4 py-3 text-sm">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-ink">{e.detail}</p>
+                    <p className={`truncate font-medium text-ink ${e.voidedAt ? 'line-through opacity-60' : ''}`}>
+                      {e.detail}
+                      {e.voidedAt && <span className="ml-2 text-xs font-semibold text-danger">ANULADO</span>}
+                    </p>
                     <p className="text-xs text-muted">
                       {fecha(e.date)}
                       {e.author && ` · ${e.author}`}
+                      {e.voidReason && ` · Anulado: ${e.voidReason}`}
                     </p>
                     {/*
                       Las subidas anteriores al repositorio privado
@@ -262,23 +285,28 @@ export function PettyCash({
                         </a>
                       ))}
                   </div>
-                  <p className="flex-none font-sans font-bold text-ink">{fmt(e.amount, currency)}</p>
-                  <button
-                    type="button"
-                    disabled={pending}
-                    title="Eliminar gasto"
-                    onClick={() => {
-                      if (!window.confirm(`¿Eliminar el gasto "${e.detail}"?`)) return;
-                      enTransicion(startTransition, async () => {
-                        const r = await deleteExpenseAction(e.id, condominiumId);
-                        if (r.ok) toast.success('Gasto eliminado.');
-                        else toast.error(r.error);
-                      });
-                    }}
-                    className="flex-none text-muted transition hover:text-danger"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                  <p className={`flex-none font-sans font-bold ${e.voidedAt ? 'text-muted line-through' : 'text-ink'}`}>
+                    {fmt(e.amount, currency)}
+                  </p>
+                  {!e.voidedAt && (
+                    <button
+                      type="button"
+                      disabled={pending}
+                      title="Anular gasto"
+                      onClick={() => {
+                        const motivo = pedirMotivo(`Anular el gasto "${e.detail}"`);
+                        if (motivo === null) return;
+                        enTransicion(startTransition, async () => {
+                          const r = await voidExpenseAction(e.id, condominiumId, motivo);
+                          if (r.ok) toast.success('Gasto anulado.');
+                          else toast.error(r.error);
+                        });
+                      }}
+                      className="flex-none text-muted transition hover:text-danger"
+                    >
+                      <Ban size={14} />
+                    </button>
+                  )}
                 </li>
               ))
             )}
@@ -298,29 +326,36 @@ export function PettyCash({
               allocations.map((a) => (
                 <li key={a.id} className="flex items-center gap-3 px-4 py-3 text-sm">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-ink">{a.detail || 'Asignación'}</p>
+                    <p className={`truncate font-medium text-ink ${a.voidedAt ? 'line-through opacity-60' : ''}`}>
+                      {a.detail || 'Asignación'}
+                      {a.voidedAt && <span className="ml-2 text-xs font-semibold text-danger">ANULADA</span>}
+                    </p>
                     <p className="text-xs text-muted">
                       {fecha(a.date)}
                       {a.author && ` · ${a.author}`}
+                      {a.voidReason && ` · Anulada: ${a.voidReason}`}
                     </p>
                   </div>
-                  <p className="flex-none font-sans font-bold text-ok">+{fmt(a.amount, currency)}</p>
-                  {canAllocate && (
+                  <p className={`flex-none font-sans font-bold ${a.voidedAt ? 'text-muted line-through' : 'text-ok'}`}>
+                    +{fmt(a.amount, currency)}
+                  </p>
+                  {canAllocate && !a.voidedAt && (
                     <button
                       type="button"
                       disabled={pending}
-                      title="Eliminar asignación"
+                      title="Anular asignación"
                       onClick={() => {
-                        if (!window.confirm('¿Eliminar esta asignación? El saldo disponible se reducirá.')) return;
+                        const motivo = pedirMotivo('Anular esta asignación. El saldo disponible se reducirá');
+                        if (motivo === null) return;
                         enTransicion(startTransition, async () => {
-                          const r = await deleteAllocationAction(a.id, condominiumId);
-                          if (r.ok) toast.success('Asignación eliminada.');
+                          const r = await voidAllocationAction(a.id, condominiumId, motivo);
+                          if (r.ok) toast.success('Asignación anulada.');
                           else toast.error(r.error);
                         });
                       }}
                       className="flex-none text-muted transition hover:text-danger"
                     >
-                      <Trash2 size={14} />
+                      <Ban size={14} />
                     </button>
                   )}
                 </li>

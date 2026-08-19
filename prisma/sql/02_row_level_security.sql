@@ -52,6 +52,8 @@ ALTER TABLE incidents                      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE packages                       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE content_items                  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE assets                         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE asset_depreciation_entries     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE asset_disposals                ENABLE ROW LEVEL SECURITY;
 ALTER TABLE providers                      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE maintenance_tickets            ENABLE ROW LEVEL SECURITY;
 ALTER TABLE maintenance_photos             ENABLE ROW LEVEL SECURITY;
@@ -151,6 +153,12 @@ DROP POLICY IF EXISTS tenant_content ON content_items;
 CREATE POLICY tenant_content ON content_items USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
 DROP POLICY IF EXISTS tenant_assets ON assets;
 CREATE POLICY tenant_assets ON assets USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
+-- Etapa 6: ambas tienen condominium_id propio (asset_disposals además
+-- es 1:1 con el activo) — política directa, mismo patrón que assets.
+DROP POLICY IF EXISTS tenant_asset_depreciation ON asset_depreciation_entries;
+CREATE POLICY tenant_asset_depreciation ON asset_depreciation_entries USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_asset_disposal ON asset_disposals;
+CREATE POLICY tenant_asset_disposal ON asset_disposals USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
 DROP POLICY IF EXISTS tenant_providers ON providers;
 CREATE POLICY tenant_providers ON providers USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
 DROP POLICY IF EXISTS tenant_maint ON maintenance_tickets;
@@ -311,3 +319,25 @@ DROP POLICY IF EXISTS tenant_folders ON storage_folders;
 CREATE POLICY tenant_folders ON storage_folders USING (company_id IS NULL OR company_id = current_setting('app.current_company_id'));
 DROP POLICY IF EXISTS tenant_objects ON storage_objects;
 CREATE POLICY tenant_objects ON storage_objects USING (company_id = current_setting('app.current_company_id'));
+
+-- Etapa 5 — Fondos, reservas e inversiones.
+--
+-- ENDURECIDO desde el principio (no hace falta un archivo 03 aparte):
+-- `funds` e `investments` tienen `condominium_id` propio, igual que
+-- `bank_accounts`/`expenses`. `investment_interests` TAMBIÉN lleva
+-- `condominium_id` propio (denormalizado desde la inversión, ver
+-- schema.prisma) así que su política es directa, no transitiva.
+-- `fund_movements` no tiene `condominium_id` propio —se resuelve por el
+-- fondo al que pertenece, mismo criterio que `reserve_fund_movements`—.
+ALTER TABLE funds                  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE fund_movements         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE investments            ENABLE ROW LEVEL SECURITY;
+ALTER TABLE investment_interests   ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_funds ON funds;
+CREATE POLICY tenant_funds ON funds USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_fundmov ON fund_movements;
+CREATE POLICY tenant_fundmov ON fund_movements USING (fund_id IN (SELECT id FROM funds WHERE condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id'))));
+DROP POLICY IF EXISTS tenant_investments ON investments;
+CREATE POLICY tenant_investments ON investments USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));
+DROP POLICY IF EXISTS tenant_investment_interests ON investment_interests;
+CREATE POLICY tenant_investment_interests ON investment_interests USING (condominium_id IN (SELECT id FROM condominiums WHERE company_id = current_setting('app.current_company_id')));

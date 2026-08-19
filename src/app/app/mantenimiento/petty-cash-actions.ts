@@ -3,13 +3,13 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
-import { canAccessCondo } from '@/lib/services/condominiums';
+import { requirePanel } from '@/lib/guard';
 import { condoOfPettyCashExpense, condoOfPettyCashAllocation } from '@/lib/services/entity-scope';
 import {
   allocatePettyCash,
   addPettyCashExpense,
-  deletePettyCashExpense,
-  deletePettyCashAllocation,
+  voidPettyCashExpense,
+  voidPettyCashAllocation,
 } from '@/lib/services/petty-cash';
 import { pickFile } from '@/lib/upload';
 import { saveToRepository, decodeUploadName } from '@/lib/services/file-refs';
@@ -36,12 +36,25 @@ const expenseSchema = z.object({
 /** Las fechas son @db.Date: se fijan a mediodía para no correrse de día. */
 const asDate = (s: string) => new Date(`${s}T12:00:00`);
 
+/**
+ * Delega en `requirePanel` en vez de reimplementarlo.
+ *
+ * Este archivo tenía su propio guard con la lista de roles y el
+ * `canAccessCondo`, pero le faltaban dos cosas que `requirePanel` sí
+ * hace: consultar la grilla de permisos (`can`) y cerrar el paso a una
+ * empresa demo vencida. Revocarle Mantenimientos a un supervisor en
+ * Configuración le quitaba el módulo del menú y le cerraba la
+ * pantalla, pero no le cerraba estas acciones — y una Server Action es
+ * un endpoint HTTP que se llama sin pasar por la pantalla (hallazgo
+ * 8.2). Dos implementaciones del mismo permiso siempre terminan
+ * separándose; ahora hay una sola.
+ */
 async function guard(condominiumId: string, opts: { ownerOnly?: boolean } = {}) {
-  const session = await auth();
-  if (!session?.user || !['admin_owner', 'admin_staff'].includes(session.user.role)) return null;
-  if (opts.ownerOnly && session.user.role !== 'admin_owner') return null;
-  if (!(await canAccessCondo(session, condominiumId))) return null;
-  return session;
+  return requirePanel({
+    area: 'mantenimientos',
+    roles: opts.ownerOnly ? ['admin_owner'] : ['admin_owner', 'admin_staff'],
+    condominiumId,
+  });
 }
 
 /** Solo la administración define cuánto dinero tiene disponible el supervisor. */
@@ -111,17 +124,19 @@ export async function addExpenseAction(_prev: ActionState, formData: FormData): 
   return { success: true };
 }
 
-export async function deleteExpenseAction(
+/** Anula el gasto (no lo borra) y exige un motivo — ver `voidPettyCashExpense`. */
+export async function voidExpenseAction(
   id: string,
-  condominiumId: string
+  condominiumId: string,
+  reason: string
 ): Promise<{ ok: boolean; error?: string }> {
   const session = await guard(condominiumId);
   if (!session) return { ok: false, error: 'Sin permiso.' };
 
   // `guard()` solo comprobó el condominio DECLARADO por quien llama;
-  // hay que comprobar también que el gasto que se va a borrar sea de
+  // hay que comprobar también que el gasto que se va a anular sea de
   // ESE condominio — si no, un supervisor con acceso al condominio A
-  // podría borrar un gasto real del condominio B con solo mandar el
+  // podría anular un gasto real del condominio B con solo mandar el
   // `id` ajeno mientras declara `condominiumId=A` (IDOR confirmado en
   // la auditoría del módulo de Finanzas, 2026-08-13).
   try {
@@ -134,7 +149,10 @@ export async function deleteExpenseAction(
   }
 
   try {
-    await deletePettyCashExpense(session.user.companyId, id);
+    await voidPettyCashExpense(session.user.companyId, id, reason, {
+      id: session.user.id,
+      name: session.user.name ?? 'Usuario',
+    });
   } catch (e: any) {
     return { ok: false, error: e?.message ?? 'No se pudo eliminar el gasto.' };
   }
@@ -142,12 +160,14 @@ export async function deleteExpenseAction(
   return { ok: true };
 }
 
-export async function deleteAllocationAction(
+/** Anula la asignación (no la borra) y exige un motivo. */
+export async function voidAllocationAction(
   id: string,
-  condominiumId: string
+  condominiumId: string,
+  reason: string
 ): Promise<{ ok: boolean; error?: string }> {
   const session = await guard(condominiumId, { ownerOnly: true });
-  if (!session) return { ok: false, error: 'Solo la administración puede eliminar una asignación.' };
+  if (!session) return { ok: false, error: 'Solo la administración puede anular una asignación.' };
 
   // Mismo motivo que en `deleteExpenseAction`: el `id` de la asignación
   // podría ser de otro condominio de la misma empresa. El rol exigido
@@ -164,7 +184,10 @@ export async function deleteAllocationAction(
   }
 
   try {
-    await deletePettyCashAllocation(session.user.companyId, id);
+    await voidPettyCashAllocation(session.user.companyId, id, reason, {
+      id: session.user.id,
+      name: session.user.name ?? 'Usuario',
+    });
   } catch (e: any) {
     return { ok: false, error: e?.message ?? 'No se pudo eliminar la asignación.' };
   }

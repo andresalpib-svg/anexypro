@@ -1,4 +1,11 @@
 import { withTenantContext } from '@/lib/db';
+import { buildAging } from '@/lib/domain/aging';
+import { projectSpent, EXPENSE_EXECUTED } from '@/lib/services/projects';
+import { getExpenseLedger } from '@/lib/services/expense-ledger';
+import { EXECUTED_EXPENSE_STATUSES } from '@/lib/services/expenses';
+import { getEstadoResultadosRango } from '@/lib/services/accounting';
+import type { ExpenseStatus } from '@prisma/client';
+import { round2 } from '@/lib/domain/late-interest';
 
 /**
  * Reportes consolidados multi-condominio. Reutiliza los mismos
@@ -51,53 +58,45 @@ export async function getDelinquencyReport(companyId: string, condoIds?: string[
       },
       include: { condominium: { select: { name: true, currency: true } } },
     });
-    // `condoIds`, cuando viene, ya recorta `properties` arriba — pero
-    // estas dos consultas seguían trayendo TODOS los cargos/pagos
-    // pendientes de la EMPRESA entera sin importar el recorte, y el
-    // filtro final (`properties.filter(p => byProperty.has(p.id))`)
-    // solo descarta el resultado ya calculado. No es una fuga de datos
-    // (el resultado final queda igual de correcto), pero desperdicia
-    // trabajo que crece con la antigüedad de la empresa cuando un
-    // supervisor con pocos condominios asignados pide el reporte.
-    const charges = await tx.charge.findMany({
-      where: {
-        status: { in: ['pendiente', 'parcial'] },
-        dueDate: { lt: new Date() },
-        ...(condoIds ? { condominiumId: { in: condoIds } } : {}),
-      },
-      select: { id: true, propertyId: true, amount: true, dueDate: true },
-    });
-    const allocations = await tx.paymentAllocation.findMany({
-      where: {
-        charge: {
-          status: { in: ['pendiente', 'parcial'] },
-          ...(condoIds ? { condominiumId: { in: condoIds } } : {}),
-        },
-        payment: { status: 'aplicado' },
-      },
-      select: { chargeId: true, amount: true },
-    });
-    const paidByCharge = new Map<string, number>();
-    for (const a of allocations) paidByCharge.set(a.chargeId, (paidByCharge.get(a.chargeId) ?? 0) + Number(a.amount));
 
-    const byProperty = new Map<string, { balance: number; oldestDueDate: Date }>();
-    for (const c of charges) {
-      const owed = Number(c.amount) - (paidByCharge.get(c.id) ?? 0);
-      if (owed <= 0) continue;
-      const cur = byProperty.get(c.propertyId) ?? { balance: 0, oldestDueDate: c.dueDate };
-      cur.balance += owed;
-      if (c.dueDate < cur.oldestDueDate) cur.oldestDueDate = c.dueDate;
-      byProperty.set(c.propertyId, cur);
-    }
+    // Antes esta función reimplementaba desde cero el saldo y los días
+    // de atraso (sumando solo lo YA vencido, sin `round2`), y daba una
+    // cifra DISTINTA a `Finanzas → Cobranza` para la misma filial el
+    // mismo día — hasta ₡ de diferencia si la filial tenía además un
+    // cargo próximo a vencer, y hasta un día de diferencia en si una
+    // filial con vencimiento HOY ya contaba como morosa (auditoría de
+    // Finanzas Etapa 2, Fase 3, hallazgo 3.1). Ahora usa `buildAging`,
+    // la misma fuente de verdad que `getCollectionsView` — un solo
+    // cálculo de morosidad en todo el sistema, ya probado en
+    // `aging.test.ts`.
+    const propertyIds = properties.map((p) => p.id);
+    const charges = await tx.charge.findMany({
+      where: { propertyId: { in: propertyIds }, status: { in: ['pendiente', 'parcial'] } },
+      select: {
+        propertyId: true,
+        amount: true,
+        dueDate: true,
+        allocations: { where: { payment: { status: 'aplicado' } }, select: { amount: true } },
+      },
+    });
+
+    const aging = buildAging(
+      charges.map((c) => ({
+        propertyId: c.propertyId,
+        outstanding: round2(Number(c.amount) - c.allocations.reduce((s, a) => s + Number(a.amount), 0)),
+        dueDate: c.dueDate,
+      })),
+      new Date()
+    );
+    const byProperty = new Map(aging.byProperty.map((p) => [p.propertyId, p]));
 
     return properties
-      .filter((p) => byProperty.has(p.id))
+      .filter((p) => (byProperty.get(p.id)?.oldestDays ?? 0) > 0)
       .map((p) => {
-        const d = byProperty.get(p.id)!;
-        const daysOverdue = Math.floor((Date.now() - d.oldestDueDate.getTime()) / 86400000);
-        return { propertyCode: p.code, condoName: p.condominium.name, currency: p.condominium.currency, balance: d.balance, daysOverdue };
+        const a = byProperty.get(p.id)!;
+        return { propertyCode: p.code, condoName: p.condominium.name, currency: p.condominium.currency, balance: a.total, daysOverdue: a.oldestDays };
       })
-      .sort((a, b) => b.daysOverdue - a.daysOverdue);
+      .sort((a, b) => b.daysOverdue - a.daysOverdue || b.balance - a.balance);
   });
 }
 
@@ -120,6 +119,18 @@ export async function getMaintenanceReport(companyId: string, condoIds?: string[
   });
 }
 
+/**
+ * Lo gastado de cada proyecto sale de `projectSpent`, la MISMA función
+ * que usa el tablero de Proyectos — no de una suma propia.
+ *
+ * Antes este reporte sumaba únicamente `ProjectExpense`, el módulo de
+ * gastos de proyecto que se retiró cuando ese trabajo pasó a Finanzas
+ * (ver `Expense.projectId` en el esquema). Resultado: un proyecto
+ * financiado por la vía actual —un gasto de Finanzas imputado al
+ * proyecto— aparecía con "Gastado ₡0" en Reportes mientras el módulo
+ * de Proyectos mostraba el monto real, para el mismo proyecto el mismo
+ * día (auditoría de la Etapa 7, hallazgo 7.1).
+ */
 export async function getProjectsReport(companyId: string, condoIds?: string[]) {
   return withTenantContext(companyId, async (tx) => {
     const projects = await tx.project.findMany({
@@ -127,7 +138,14 @@ export async function getProjectsReport(companyId: string, condoIds?: string[]) 
         condominium: { status: 'activo', deletedAt: null },
         ...(condoIds ? { condominiumId: { in: condoIds } } : {}),
       },
-      include: { condominium: { select: { name: true, currency: true } }, expenses: { select: { amount: true } } },
+      include: {
+        condominium: { select: { name: true, currency: true } },
+        // Las dos fuentes que reconoce el módulo: el historial heredado
+        // y los gastos de Finanzas imputados al proyecto (solo los que
+        // ya cuentan como ejecución — `EXPENSE_EXECUTED`).
+        expenses: { select: { amount: true } },
+        financeExpenses: { where: { status: { in: [...EXPENSE_EXECUTED] } }, select: { total: true } },
+      },
     });
     return projects.map((p) => ({
       name: p.name,
@@ -135,7 +153,81 @@ export async function getProjectsReport(companyId: string, condoIds?: string[]) 
       currency: p.condominium.currency,
       status: p.status,
       budget: Number(p.budget),
-      spent: p.expenses.reduce((s, e) => s + Number(e.amount), 0),
+      spent: round2(projectSpent(p)),
     }));
   });
+}
+
+/**
+ * Egresos de un condominio en un año — el reporte y su cuadre.
+ *
+ * Devuelve tres cosas que tienen que ser consistentes entre sí:
+ *
+ *   · `lines`  — el detalle factura por factura del módulo de Gastos,
+ *                exactamente las mismas filas que `Finanzas → Gastos`.
+ *   · `ledger` — TODO el gasto contabilizado del año, desglosado por
+ *                origen (`expense-ledger.ts`): el módulo de Gastos más
+ *                la depreciación, los tickets de mantenimiento y los
+ *                gastos de proyecto, que también son gasto del
+ *                condominio y nunca pasaron por el módulo.
+ *   · `descuadre` — la diferencia entre el detalle y lo que el libro
+ *                diario le atribuye al módulo de Gastos. Debe ser 0;
+ *                si no lo es, hay un gasto sin asiento (o al revés) y
+ *                la pantalla lo dice en vez de callarlo.
+ *
+ * `ledger.total` es el número que usan tanto esta pestaña como
+ * "Resumen financiero" para los egresos del año: uno solo, no dos.
+ */
+export async function getEgresosReport(companyId: string, condominiumId: string, year: number) {
+  return withTenantContext(companyId, async (tx) => {
+    const from = new Date(Date.UTC(year, 0, 1));
+    const to = new Date(Date.UTC(year, 11, 31, 23, 59, 59));
+
+    const [ledger, lines] = await Promise.all([
+      getExpenseLedger(tx, condominiumId, from, to),
+      tx.expense.findMany({
+        where: {
+          condominiumId,
+          status: { in: EXECUTED_EXPENSE_STATUSES as unknown as ExpenseStatus[] },
+          issueDate: { gte: from, lte: to },
+        },
+        orderBy: [{ issueDate: 'desc' }, { expenseNumber: 'desc' }],
+        include: { supplier: { select: { legalName: true, tradeName: true } } },
+      }),
+    ]);
+
+    const totalLines = round2(lines.reduce((s, e) => s + Number(e.total), 0));
+    return {
+      year,
+      lines,
+      totalLines,
+      ledger,
+      descuadre: round2(ledger.totalModulo - totalLines),
+    };
+  });
+}
+
+/**
+ * Resumen financiero de un condominio en un año: ingresos y egresos
+ * del libro diario — la MISMA fuente para los dos lados, para que el
+ * resultado sea el resultado contable y no una resta entre dos
+ * orígenes distintos.
+ */
+export async function getResumenFinanciero(companyId: string, condominiumId: string, year: number) {
+  const from = new Date(Date.UTC(year, 0, 1));
+  const to = new Date(Date.UTC(year, 11, 31, 23, 59, 59));
+  const [resultados, egresos] = await Promise.all([
+    getEstadoResultadosRango(companyId, condominiumId, from, to),
+    getEgresosReport(companyId, condominiumId, year),
+  ]);
+  const ingresosRows = resultados.filter((r) => r.type === 'ingreso');
+  const totalIngresos = round2(ingresosRows.reduce((s, r) => s + Number(r.balance), 0));
+  return {
+    year,
+    ingresosRows,
+    totalIngresos,
+    totalEgresos: egresos.ledger.total,
+    egresosPorOrigen: egresos.ledger.byOrigin,
+    resultado: round2(totalIngresos - egresos.ledger.total),
+  };
 }

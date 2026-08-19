@@ -5,7 +5,16 @@ import { clsx } from 'clsx';
 
 const TABS = [
   { key: 'financiero', label: 'Financiero' },
+  { key: 'resumen', label: 'Resumen financiero' },
+  { key: 'ingresos', label: 'Ingresos' },
+  { key: 'egresos', label: 'Egresos' },
   { key: 'morosidad', label: 'Morosidad' },
+  { key: 'fondos', label: 'Fondos' },
+  { key: 'inversiones', label: 'Inversiones' },
+  { key: 'intereses', label: 'Intereses' },
+  { key: 'activos', label: 'Activos' },
+  { key: 'depreciaciones', label: 'Depreciaciones' },
+  { key: 'presupuesto', label: 'Presupuesto' },
   { key: 'mantenimiento', label: 'Mantenimiento' },
   { key: 'proyectos', label: 'Proyectos' },
   { key: 'incumplimientos', label: 'Gestión de Incumplimientos' },
@@ -13,7 +22,7 @@ const TABS = [
 
 export function ReportTabsNav({ tab }: { tab: string }) {
   return (
-    <div className="mt-4 flex gap-1 border-b border-line">
+    <div className="mt-4 flex flex-wrap gap-1 border-b border-line">
       {TABS.map((t) => (
         <Link
           key={t.key}

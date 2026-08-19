@@ -35,8 +35,8 @@ export function QuickAddAsset({ condominiumId, categories }: { condominiumId: st
         <input name="description" placeholder="Marca, modelo, detalles…" className="field-input w-56" />
       </div>
       <div>
-        <label className="field-label">Costo aproximado</label>
-        <input name="approxCost" type="number" step="0.01" className="field-input w-28" />
+        <label className="field-label">Valor de adquisición</label>
+        <input name="acquisitionValue" type="number" step="0.01" className="field-input w-28" />
       </div>
       <div>
         <label className="field-label">Fotografía</label>

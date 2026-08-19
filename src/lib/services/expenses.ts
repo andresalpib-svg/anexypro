@@ -1,6 +1,7 @@
 import type { Prisma } from '@prisma/client';
 import { withTenantContext } from '@/lib/db';
 import { logActivity } from '@/lib/services/audit';
+import { logChange } from '@/lib/services/audit-trail';
 import { round2 } from '@/lib/domain/late-interest';
 
 /**
@@ -11,6 +12,15 @@ import { round2 } from '@/lib/domain/late-interest';
  * del agua y los honorarios del contador no tenían dónde registrarse,
  * y el Estado de Resultados quedaba incompleto.
  */
+
+/**
+ * Estados que cuentan como "gasto real" del condominio — un borrador
+ * puede cambiar de monto y `por_aprobar` todavía puede rechazarse. Es
+ * el mismo criterio que ya usaba `getBudget` para "ejecutado"; se
+ * exporta para que Reportes (Etapa 7) filtre exactamente igual y
+ * nunca dé un total de Egresos distinto al de Presupuesto.
+ */
+export const EXECUTED_EXPENSE_STATUSES = ['aprobado', 'pagado'] as const;
 
 /** Cuenta contable por categoría — el administrador nunca la escribe. */
 /**
@@ -272,6 +282,38 @@ export async function voidExpense(
       where: { id: expenseId },
       data: { status: 'anulado', voidedAt: new Date(), voidReason: reason.trim() },
     });
+
+    // Si el gasto ya estaba aprobado, `recordExpenseEntry` le había
+    // contabilizado un asiento (Débito Gasto / Crédito Cuentas por
+    // Pagar) — anularlo aquí SIN anular ese asiento lo deja fantasma
+    // para siempre en `v_estado_resultados`/`v_balance_general`: el
+    // gasto ya no existe para la aplicación, pero sigue sumando en
+    // cualquier reporte contable (hallazgo de la Etapa 7, al construir
+    // Reportes → Egresos sobre el libro diario y no reconciliar con
+    // Finanzas → Gastos). Se marca `anulado` — las vistas ya filtran
+    // `status = 'confirmado'` — nunca se edita ni se borra el asiento.
+    await tx.journalEntry.updateMany({
+      where: { sourceTable: 'expenses', sourceId: expenseId, status: 'confirmado' },
+      data: { status: 'anulado' },
+    });
+
+    await logChange(tx, companyId, {
+      entity: 'expenses',
+      entityId: expenseId,
+      condominiumId: expense.condominiumId,
+      action: 'anular',
+      userId: user.id,
+      motivo: reason.trim(),
+      cambios: [{ campo: 'status', antes: expense.status, despues: 'anulado' }],
+      snapshot: {
+        numero: expense.expenseNumber,
+        descripcion: expense.description,
+        cuenta: expense.accountCode,
+        total: expense.total,
+        fecha: expense.issueDate,
+      },
+    });
+
     await logActivity(tx, companyId, {
       userId: user.id,
       userName: user.name,
