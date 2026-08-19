@@ -106,7 +106,6 @@ export async function listStatementMovements(companyId: string, propertyId: stri
             reference: '',
             charge: Number(c.amount),
             credit: 0,
-            linkedTo: '',
             // Solo presente en líneas de COBRO — la columna "Pago" del
             // estado de cuenta administrativo usa esto para decidir si
             // esa línea todavía admite un pago dirigido (chargeId) y
@@ -119,26 +118,31 @@ export async function listStatementMovements(companyId: string, propertyId: stri
         }),
       ...payments
         .filter((p) => p.status === 'aplicado')
-        .map((p) => ({
-          rowKey: `payment-${p.id}`,
-          date: p.paymentDate,
-          desc: `Pago recibido · ${p.method}`,
-          reference: p.reference ?? '',
-          charge: 0,
-          credit: Number(p.amount),
-          linkedTo:
-            p.allocations.length > 0
-              ? p.allocations.map((a) => a.charge.description).join(' · ')
-              : 'Saldo a favor',
-          // Una línea de PAGO nunca vuelve a admitir un pago dirigido
-          // — se deja sin definir a propósito, mismas claves que la
-          // rama de cargos para que ambos lados del arreglo compartan
-          // forma (ver más abajo).
-          chargeId: undefined as string | undefined,
-          chargeStatus: undefined as string | undefined,
-          chargeOwed: undefined as number | undefined,
-          receiptUrl: p.receiptUrl,
-        })),
+        .map((p) => {
+          // La descripción de una línea de pago cuenta A QUÉ se aplicó,
+          // no cómo llegó el dinero: "Pago por <cargo>" en vez de "Pago
+          // recibido · sinpe" — el método sigue eligiéndose al aplicar
+          // el pago, solo que ya no hacía falta repetirlo acá. Sin
+          // asignación (adelanto sin cargo, "Saldo a favor") no hay a
+          // qué apuntar, así que ahí sí se conserva el método.
+          const linkedTo = p.allocations.length > 0 ? p.allocations.map((a) => a.charge.description).join(' · ') : '';
+          return {
+            rowKey: `payment-${p.id}`,
+            date: p.paymentDate,
+            desc: linkedTo ? `Pago por ${linkedTo}` : `Pago recibido · ${p.method}`,
+            reference: p.reference ?? '',
+            charge: 0,
+            credit: Number(p.amount),
+            // Una línea de PAGO nunca vuelve a admitir un pago dirigido
+            // — se deja sin definir a propósito, mismas claves que la
+            // rama de cargos para que ambos lados del arreglo compartan
+            // forma (ver más abajo).
+            chargeId: undefined as string | undefined,
+            chargeStatus: undefined as string | undefined,
+            chargeOwed: undefined as number | undefined,
+            receiptUrl: p.receiptUrl,
+          };
+        }),
     ].sort((a, b) => a.date.getTime() - b.date.getTime());
 
     return rows;

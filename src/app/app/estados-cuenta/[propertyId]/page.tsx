@@ -239,11 +239,10 @@ export default async function EstadoCuentaFilialPage({ params }: { params: { pro
                       ) : r.credit > 0 ? (
                         <div className="text-right">
                           <span className="block text-ok">{fmt(r.credit)}</span>
-                          {/* Antes era la columna "Asociado a" aparte — se
-                              trae acá para que quede junto al pago que
-                              describe, y la fila gana ancho para la
-                              casilla de aplicar pago + comprobante. */}
-                          {r.linkedTo && <span className="block text-[11px] text-muted">{r.linkedTo}</span>}
+                          {/* El cargo a que se aplicó ya no se repite acá
+                              (columna "Asociado a" eliminada): ahora es
+                              parte de la Descripción de esta misma fila
+                              ("Pago por <cargo>") — ver listStatementMovements. */}
                           {r.receiptUrl && (
                             <a
                               href={r.receiptUrl}
