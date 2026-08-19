@@ -82,3 +82,77 @@ export function welcomeEmailHtml(input: {
     </p>
   </div>`;
 }
+
+/**
+ * Estado de cuenta de UNA filial, enviado por administración/supervisión
+ * desde el módulo "Estados de Cuenta". El correo lleva la foto
+ * financiera completa (no un enlace) porque el destinatario puede no
+ * tener cuenta en el portal todavía — igual que la notificación de
+ * incumplimientos (`violations.ts`).
+ */
+export function accountStatementEmailHtml(input: {
+  condominiumName: string;
+  propertyCode: string;
+  currency: string;
+  snapshot: { charged: number; paid: number; balance: number; overdueCount: number; overdueAmount: number; isCurrent: boolean };
+  movements: { date: string; desc: string; charge: number; credit: number }[];
+}): string {
+  const fmt = (n: number) =>
+    new Intl.NumberFormat('es-CR', { style: 'currency', currency: input.currency, maximumFractionDigits: 2 }).format(n);
+
+  let running = 0;
+  const rows = input.movements
+    .map((m) => {
+      running += m.charge - m.credit;
+      return `
+      <tr>
+        <td style="padding:6px 8px;border-bottom:1px solid #eef0f4;color:#5b6472">${m.date}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #eef0f4;color:#1e2a3a">${m.desc}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #eef0f4;text-align:right;color:#1e2a3a">${m.charge > 0 ? fmt(m.charge) : ''}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #eef0f4;text-align:right;color:#1d9a6c">${m.credit > 0 ? fmt(m.credit) : ''}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #eef0f4;text-align:right;font-weight:600;color:#1e2a3a">${fmt(running)}</td>
+      </tr>`;
+    })
+    .join('');
+
+  const estadoColor = input.snapshot.isCurrent ? '#1d9a6c' : '#d1453b';
+  const estadoTexto = input.snapshot.isCurrent ? 'AL DÍA' : 'EN ATRASO';
+
+  return `
+  <div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:640px;margin:0 auto;padding:24px;color:#1e2a3a">
+    <div style="margin-bottom:20px"><b style="font-size:18px">Anexy<span style="color:#3b6ef5">PRO</span></b></div>
+    <h2 style="margin:0 0 4px;font-size:20px">Estado de cuenta</h2>
+    <p style="margin:0 0 16px;color:#5b6472">${input.propertyCode} · ${input.condominiumName}</p>
+
+    <div style="background:#f4f6fb;border-radius:10px;padding:16px;margin:0 0 16px">
+      <p style="margin:0 0 6px">
+        Situación:
+        <b style="color:${estadoColor}">${estadoTexto}</b>
+        ${!input.snapshot.isCurrent ? ` — ${input.snapshot.overdueCount} cobro(s) vencido(s) por ${fmt(input.snapshot.overdueAmount)}` : ''}
+      </p>
+      <p style="margin:0 0 4px"><b>Monto cobrado:</b> ${fmt(input.snapshot.charged)}</p>
+      <p style="margin:0 0 4px"><b>Monto pagado:</b> ${fmt(input.snapshot.paid)}</p>
+      <p style="margin:0"><b>Saldo actual:</b> <span style="color:${input.snapshot.balance > 0 ? '#d1453b' : '#1d9a6c'}">${fmt(input.snapshot.balance)}</span></p>
+    </div>
+
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead>
+        <tr style="text-align:left;color:#8a94a6;text-transform:uppercase;font-size:11px">
+          <th style="padding:6px 8px">Fecha</th>
+          <th style="padding:6px 8px">Descripción</th>
+          <th style="padding:6px 8px;text-align:right">Cobro</th>
+          <th style="padding:6px 8px;text-align:right">Pago</th>
+          <th style="padding:6px 8px;text-align:right">Saldo</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows || '<tr><td colspan="5" style="padding:16px 8px;color:#8a94a6;text-align:center">Sin movimientos todavía.</td></tr>'}
+      </tbody>
+    </table>
+
+    <p style="margin:24px 0 0;font-size:12px;color:#8a94a6">
+      Este estado de cuenta corresponde únicamente a la filial ${input.propertyCode} de ${input.condominiumName}.
+      Ante cualquier duda, contacte a la administración de su condominio.
+    </p>
+  </div>`;
+}

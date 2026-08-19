@@ -26,6 +26,7 @@ import {
   FolderTree,
   Gavel,
   Boxes,
+  Receipt,
 } from 'lucide-react';
 
 export type NavItem = {
@@ -83,7 +84,10 @@ export const NAV_CATEGORIES: NavCategory[] = [
   {
     label: 'Gestión Financiera',
     icon: Wallet,
-    items: [{ label: 'Finanzas y Contabilidad', href: '/app/finanzas', icon: Wallet, area: 'finanzas' }],
+    items: [
+      { label: 'Finanzas y Contabilidad', href: '/app/finanzas', icon: Wallet, area: 'finanzas' },
+      { label: 'Estados de Cuenta', href: '/app/estados-cuenta', icon: Receipt, area: 'finanzas' },
+    ],
   },
   {
     label: 'Documentación',
