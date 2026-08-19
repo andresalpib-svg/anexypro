@@ -1,12 +1,13 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, AlertTriangle, Clock, ExternalLink } from 'lucide-react';
 import { requirePanel, allowsCondo } from '@/lib/guard';
 import { condoOfProperty } from '@/lib/services/entity-scope';
 import { getStatementHeader, listStatementMovements } from '@/lib/services/account-statements';
-import { getAccountSnapshot } from '@/lib/services/document-requests';
+import { getAccountSnapshot, listRequestsByProperty } from '@/lib/services/document-requests';
 import { fechaSolo } from '@/lib/fecha-local';
 import { PageHeader } from '@/components/ui/page-header';
+import { StatusChip } from '@/components/ui/status-chip';
 import { ApplyPaymentForm } from '../apply-payment-form';
 import { SendStatementForm } from '../send-statement-form';
 
@@ -18,6 +19,17 @@ const TYPE_LABEL: Record<string, string> = {
   parqueo: 'Parqueo',
   bodega: 'Bodega',
 };
+
+// Mismas etiquetas que `portal/estado-cuenta/request-docs.tsx` — es la
+// misma tabla, solo que aquí de solo lectura (administración gestiona
+// la solicitud desde Emisión de Documentos, no desde acá).
+const DOC_LABEL: Record<string, string> = {
+  certificacion_cuotas_al_dia: 'Certificación de cuotas al día',
+  estado_cuenta: 'Estado de cuenta',
+};
+const STATUS_LABEL: Record<string, string> = { solicitada: 'En trámite', aprobada: 'Emitido', rechazada: 'Rechazada' };
+const STATUS_VARIANT: Record<string, 'warn' | 'ok' | 'danger'> = { solicitada: 'warn', aprobada: 'ok', rechazada: 'danger' };
+const fechaCorta = (d: Date) => d.toLocaleDateString('es-CR', { day: 'numeric', month: 'short', year: 'numeric' });
 
 /**
  * Estado de cuenta administrativo de UNA filial.
@@ -40,10 +52,11 @@ export default async function EstadoCuentaFilialPage({ params }: { params: { pro
   const condominiumId = await condoOfProperty(session.user.companyId, params.propertyId).catch(() => null);
   if (!condominiumId || !(await allowsCondo(session, condominiumId))) notFound();
 
-  const [header, movements, snapshot] = await Promise.all([
+  const [header, movements, snapshot, requests] = await Promise.all([
     getStatementHeader(session.user.companyId, params.propertyId),
     listStatementMovements(session.user.companyId, params.propertyId),
     getAccountSnapshot(session.user.companyId, params.propertyId),
+    listRequestsByProperty(session.user.companyId, params.propertyId),
   ]);
 
   const currency = header.condominium.currency;
@@ -120,12 +133,82 @@ export default async function EstadoCuentaFilialPage({ params }: { params: { pro
         </div>
       </div>
 
+      {/*
+        Mismo bloque "Mis documentos y solicitudes" que ve el residente
+        en `portal/estado-cuenta` — acá de solo lectura: quien aprueba
+        o rechaza una solicitud lo hace desde Emisión de Documentos, no
+        desde este módulo, para no duplicar ese flujo con sus propias
+        reglas (plazo, plantilla, firma).
+      */}
+      {requests.length > 0 && (
+        <div className="card mt-4 p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-xs font-bold uppercase tracking-wide text-muted">Documentos y solicitudes</p>
+            <Link
+              href={`/app/emision-documentos?condoId=${condominiumId}`}
+              className="text-xs font-semibold text-royal hover:underline"
+            >
+              Gestionar en Emisión de Documentos
+            </Link>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
+                <tr>
+                  <th className="py-2 pr-4">Documento</th>
+                  <th className="py-2 pr-4">Fecha de solicitud</th>
+                  <th className="py-2 pr-4">Fecha de aprobación</th>
+                  <th className="py-2 pr-4">Estado</th>
+                  <th className="py-2" />
+                </tr>
+              </thead>
+              <tbody>
+                {requests.map((r) => (
+                  <tr key={r.id} className="border-b border-line last:border-0">
+                    <td className="py-2.5 pr-4 font-medium text-ink">{DOC_LABEL[r.docType] ?? r.docType}</td>
+                    <td className="py-2.5 pr-4 text-muted">{fechaCorta(r.requestedAt)}</td>
+                    <td className="py-2.5 pr-4 text-muted">
+                      {r.status === 'aprobada' && r.decidedAt ? (
+                        fechaCorta(r.decidedAt)
+                      ) : r.status === 'solicitada' ? (
+                        <span className="inline-flex items-center gap-1 text-xs text-warn">
+                          <Clock size={11} /> estimada {fechaCorta(r.dueBy)}
+                        </span>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
+                    <td className="py-2.5 pr-4">
+                      <StatusChip variant={STATUS_VARIANT[r.status]}>{STATUS_LABEL[r.status]}</StatusChip>
+                      {r.status === 'rechazada' && r.rejectReason && (
+                        <span className="ml-2 text-xs text-danger">{r.rejectReason}</span>
+                      )}
+                    </td>
+                    <td className="py-2.5 text-right">
+                      {r.status === 'aprobada' && (
+                        <Link
+                          href={`/documento/${r.id}`}
+                          target="_blank"
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-royal hover:underline"
+                        >
+                          <ExternalLink size={12} /> Ver documento
+                        </Link>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       <p className="mb-2 mt-5 text-xs font-bold uppercase tracking-wide text-muted">Histórico de cobros y pagos</p>
       <div className="card overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="border-b border-line bg-canvas text-left text-xs uppercase tracking-wide text-muted">
             <tr>
-              <th className="px-4 py-3">Fecha</th>
+              <th className="px-4 py-3">Fecha de registro</th>
               <th className="px-4 py-3">Descripción</th>
               <th className="px-4 py-3">N.º de referencia</th>
               <th className="px-4 py-3 text-right">Cobro</th>
