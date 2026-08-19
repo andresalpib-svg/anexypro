@@ -60,7 +60,14 @@ export async function listStatementMovements(companyId: string, propertyId: stri
       tx.charge.findMany({
         where: { propertyId },
         orderBy: { dueDate: 'desc' },
-        select: { id: true, dueDate: true, description: true, amount: true, status: true },
+        select: {
+          id: true,
+          dueDate: true,
+          description: true,
+          amount: true,
+          status: true,
+          allocations: { select: { amount: true } },
+        },
       }),
       tx.payment.findMany({
         where: { propertyId },
@@ -72,6 +79,7 @@ export async function listStatementMovements(companyId: string, propertyId: stri
           reference: true,
           amount: true,
           status: true,
+          receiptUrl: true,
           allocations: { select: { amount: true, charge: { select: { description: true } } } },
         },
       }),
@@ -80,17 +88,39 @@ export async function listStatementMovements(companyId: string, propertyId: stri
     const rows = [
       ...charges
         .filter((c) => c.status !== 'anulado')
-        .map((c) => ({
-          date: c.dueDate,
-          desc: c.description,
-          reference: '',
-          charge: Number(c.amount),
-          credit: 0,
-          linkedTo: '',
-        })),
+        .map((c) => {
+          const alreadyPaid = c.allocations.reduce((s, a) => s + Number(a.amount), 0);
+          return {
+            // Identificador ESTABLE de la fila — lo usa `key` en la
+            // tabla del detalle. Antes se usaba el índice del arreglo
+            // como `key`, y como un pago aplicado inserta una fila
+            // nueva y cambia el orden, React reciclaba el estado del
+            // formulario (`useFormState`) de una fila para OTRA en el
+            // siguiente render: el mensaje "Pago aplicado" y el pago
+            // mismo terminaban en la línea vecina, no en la que el
+            // administrador tocó. Con un id real por fila, React no
+            // vuelve a mezclar componentes de filas distintas.
+            rowKey: `charge-${c.id}`,
+            date: c.dueDate,
+            desc: c.description,
+            reference: '',
+            charge: Number(c.amount),
+            credit: 0,
+            linkedTo: '',
+            // Solo presente en líneas de COBRO — la columna "Pago" del
+            // estado de cuenta administrativo usa esto para decidir si
+            // esa línea todavía admite un pago dirigido (chargeId) y
+            // con cuánto prellenar la casilla (chargeOwed).
+            chargeId: c.id as string | undefined,
+            chargeStatus: c.status as string | undefined,
+            chargeOwed: Math.max(0, Number(c.amount) - alreadyPaid),
+            receiptUrl: undefined as string | null | undefined,
+          };
+        }),
       ...payments
         .filter((p) => p.status === 'aplicado')
         .map((p) => ({
+          rowKey: `payment-${p.id}`,
           date: p.paymentDate,
           desc: `Pago recibido · ${p.method}`,
           reference: p.reference ?? '',
@@ -100,6 +130,14 @@ export async function listStatementMovements(companyId: string, propertyId: stri
             p.allocations.length > 0
               ? p.allocations.map((a) => a.charge.description).join(' · ')
               : 'Saldo a favor',
+          // Una línea de PAGO nunca vuelve a admitir un pago dirigido
+          // — se deja sin definir a propósito, mismas claves que la
+          // rama de cargos para que ambos lados del arreglo compartan
+          // forma (ver más abajo).
+          chargeId: undefined as string | undefined,
+          chargeStatus: undefined as string | undefined,
+          chargeOwed: undefined as number | undefined,
+          receiptUrl: p.receiptUrl,
         })),
     ].sort((a, b) => a.date.getTime() - b.date.getTime());
 

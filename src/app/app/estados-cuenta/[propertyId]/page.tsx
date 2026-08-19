@@ -8,7 +8,7 @@ import { getAccountSnapshot, listRequestsByProperty } from '@/lib/services/docum
 import { fechaSolo } from '@/lib/fecha-local';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatusChip } from '@/components/ui/status-chip';
-import { ApplyPaymentForm } from '../apply-payment-form';
+import { ChargePaymentCell } from '../charge-payment-cell';
 import { SendStatementForm } from '../send-statement-form';
 
 const TYPE_LABEL: Record<string, string> = {
@@ -118,19 +118,15 @@ export default async function EstadoCuentaFilialPage({ params }: { params: { pro
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-4 max-lg:grid-cols-1">
-        <div className="card p-5">
-          <p className="mb-3 text-xs font-bold uppercase tracking-wide text-muted">Aplicar pago</p>
-          <ApplyPaymentForm condominiumId={condominiumId} propertyId={header.id} />
-        </div>
-        <div className="card p-5">
-          <p className="mb-3 text-xs font-bold uppercase tracking-wide text-muted">Enviar por correo</p>
-          <SendStatementForm
-            condominiumId={condominiumId}
-            propertyId={header.id}
-            defaultTo={header.ownerEmail}
-          />
-        </div>
+      {/*
+        "Aplicar pago" ya no es un formulario aparte: la casilla vive
+        en la propia línea del cobro, columna "Pago" del histórico de
+        abajo (`ChargePaymentCell`) — así el monto que se escribe se
+        asigna a ESE cargo, no al más antiguo de la filial.
+      */}
+      <div className="card mt-4 p-5">
+        <p className="mb-3 text-xs font-bold uppercase tracking-wide text-muted">Enviar por correo</p>
+        <SendStatementForm condominiumId={condominiumId} propertyId={header.id} defaultTo={header.ownerEmail} />
       </div>
 
       {/*
@@ -225,15 +221,38 @@ export default async function EstadoCuentaFilialPage({ params }: { params: { pro
                 </td>
               </tr>
             ) : (
-              movements.map((r, i) => {
+              movements.map((r) => {
                 running += r.charge - r.credit;
                 return (
-                  <tr key={i} className="border-b border-line last:border-0">
+                  <tr key={r.rowKey} className="border-b border-line align-top last:border-0">
                     <td className="px-4 py-2.5 text-muted">{fechaSolo(r.date)}</td>
                     <td className="px-4 py-2.5 text-ink">{r.desc}</td>
                     <td className="px-4 py-2.5 font-mono text-xs text-muted">{r.reference || '—'}</td>
                     <td className="px-4 py-2.5 text-right">{r.charge > 0 ? fmt(r.charge) : ''}</td>
-                    <td className="px-4 py-2.5 text-right text-ok">{r.credit > 0 ? fmt(r.credit) : ''}</td>
+                    <td className="px-4 py-2.5">
+                      {r.chargeId && (r.chargeStatus === 'pendiente' || r.chargeStatus === 'parcial') ? (
+                        <ChargePaymentCell
+                          condominiumId={condominiumId}
+                          propertyId={header.id}
+                          chargeId={r.chargeId}
+                          owed={r.chargeOwed ?? r.charge}
+                        />
+                      ) : r.credit > 0 ? (
+                        <div className="text-right">
+                          <span className="block text-ok">{fmt(r.credit)}</span>
+                          {r.receiptUrl && (
+                            <a
+                              href={r.receiptUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-[11px] font-semibold text-royal hover:underline"
+                            >
+                              Ver comprobante
+                            </a>
+                          )}
+                        </div>
+                      ) : null}
+                    </td>
                     <td className="px-4 py-2.5 text-right font-medium">{fmt(running)}</td>
                     <td className="px-4 py-2.5 text-xs text-muted">{r.linkedTo || '—'}</td>
                   </tr>

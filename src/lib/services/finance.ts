@@ -361,6 +361,21 @@ export async function makePayment(
      * cuenta del condómino miente sobre cuándo pagó.
      */
     paymentDate?: Date;
+    /**
+     * Aplica el pago a ESTE cargo puntual en vez de barrer todos los
+     * cargos pendientes de la filial más antiguo primero. Lo usa el
+     * estado de cuenta administrativo cuando el pago se registra desde
+     * la línea de un cobro concreto (columna "Pago" de su histórico):
+     * el monto que se escribe en esa línea se asigna a ESA línea, no a
+     * la más vieja. Se reutiliza `allocatePaymentOldestFirst` igual —
+     * con un solo cargo en la lista se comporta como "todo o lo que
+     * alcance a este cargo, el resto queda como adelanto", que es
+     * exactamente la misma regla de excedente que ya tenía el pago
+     * general, solo que acotada a un cargo.
+     */
+    chargeId?: string;
+    /** Referencia al comprobante adjunto (repositorio privado), si se subió uno. */
+    receiptUrl?: string;
   },
   userId: string,
   userName: string
@@ -390,11 +405,24 @@ export async function makePayment(
       }
     }
 
-    const pendingCharges = await tx.charge.findMany({
-      where: { propertyId: input.propertyId, status: { in: ['pendiente', 'parcial'] } },
-      orderBy: { dueDate: 'asc' },
-      include: { allocations: { select: { amount: true } } },
-    });
+    const pendingCharges = input.chargeId
+      ? await tx.charge.findMany({
+          where: { id: input.chargeId, propertyId: input.propertyId, status: { in: ['pendiente', 'parcial'] } },
+          include: { allocations: { select: { amount: true } } },
+        })
+      : await tx.charge.findMany({
+          where: { propertyId: input.propertyId, status: { in: ['pendiente', 'parcial'] } },
+          orderBy: { dueDate: 'asc' },
+          include: { allocations: { select: { amount: true } } },
+        });
+
+    // Si se pidió un cargo puntual y ya no calificó (se pagó entre que
+    // se cargó la pantalla y se envió el formulario, o no es de esta
+    // filial), es mejor decirlo claro que aplicar el pago a otro cargo
+    // que el administrador no eligió.
+    if (input.chargeId && pendingCharges.length === 0) {
+      throw new Error('Este cobro ya no tiene saldo pendiente, o no pertenece a esta filial.');
+    }
 
     const payment = await tx.payment.create({
       data: {
@@ -405,6 +433,7 @@ export async function makePayment(
         ...(input.paymentDate ? { paymentDate: input.paymentDate } : {}),
         reference: input.reference || null,
         notes: input.notes || null,
+        receiptUrl: input.receiptUrl || null,
         receivedById: userId,
       },
     });

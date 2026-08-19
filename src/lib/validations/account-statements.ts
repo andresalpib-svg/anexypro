@@ -15,3 +15,19 @@ export const sendStatementSchema = z.object({
   propertyId: z.string().uuid(),
   to: z.string().trim().email('Ingresa un correo válido'),
 });
+
+/**
+ * Aplicar pago desde la línea de UN cobro puntual del histórico
+ * (columna "Pago" del estado de cuenta administrativo) — a diferencia
+ * de `paymentSchema` (Finanzas → Cuotas y pagos), que aplica al
+ * cargo pendiente más antiguo de la filial, este siempre lleva
+ * `chargeId`: el monto se asigna a esa línea, nunca a otra.
+ */
+export const chargePaymentSchema = z.object({
+  condominiumId: z.string().uuid(),
+  propertyId: z.string().uuid(),
+  chargeId: z.string().uuid(),
+  amount: z.coerce.number().positive('El monto debe ser mayor a cero'),
+  method: z.enum(['transferencia', 'sinpe', 'efectivo', 'tarjeta', 'deposito', 'comprobante']),
+  reference: z.string().max(80).optional().or(z.literal('')),
+});

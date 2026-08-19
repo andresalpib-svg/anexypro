@@ -3,17 +3,18 @@
 import { revalidatePath } from 'next/cache';
 import { requirePanel } from '@/lib/guard';
 import { condoOfProperty } from '@/lib/services/entity-scope';
-import { paymentSchema } from '@/lib/validations/finance';
-import { sendStatementSchema } from '@/lib/validations/account-statements';
+import { chargePaymentSchema, sendStatementSchema } from '@/lib/validations/account-statements';
 import { makePayment } from '@/lib/services/finance';
 import { sendAccountStatementEmail } from '@/lib/services/account-statements';
+import { saveToRepository } from '@/lib/services/file-refs';
+import { pickFile } from '@/lib/upload';
 
 export type ActionState = { errors?: Record<string, string[]>; formError?: string; success?: boolean };
 
 const SIN_PERMISO = { formError: 'No tienes permiso para esta acción.' };
 
 /**
- * Ambas acciones repiten el mismo par de comprobaciones, a propósito
+ * Las tres acciones repiten el mismo par de comprobaciones, a propósito
  * (mismo patrón que `finanzas/actions.ts`):
  *
  *  1. `requirePanel` — sesión + rol de panel + permiso del área
@@ -31,8 +32,17 @@ const SIN_PERMISO = { formError: 'No tienes permiso para esta acción.' };
  *     solo editar el campo oculto.
  */
 
-export async function applyStatementPaymentAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const parsed = paymentSchema.safeParse(Object.fromEntries(formData.entries()));
+/**
+ * Aplica un pago a UN cobro puntual — la casilla vive en la propia
+ * línea del histórico (columna "Pago"), así que el monto que se
+ * escriba ahí se asigna a ESE cargo, nunca al más antiguo de la
+ * filial (eso lo sigue haciendo el pago general de Finanzas →
+ * Cuotas y pagos, que no cambió). `makePayment` vuelve a comprobar
+ * que el cargo siga perteneciendo a esta filial y siga pendiente
+ * antes de aplicar nada.
+ */
+export async function applyChargePaymentAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const parsed = chargePaymentSchema.safeParse(Object.fromEntries(formData.entries()));
   if (!parsed.success) return { errors: parsed.error.flatten().fieldErrors as Record<string, string[]> };
 
   const session = await requirePanel({ module: '/app/estados-cuenta', condominiumId: parsed.data.condominiumId });
@@ -42,9 +52,26 @@ export async function applyStatementPaymentAction(_prev: ActionState, formData: 
     const realCondo = await condoOfProperty(session.user.companyId, parsed.data.propertyId);
     if (realCondo !== parsed.data.condominiumId) return SIN_PERMISO;
 
-    await makePayment(session.user.companyId, parsed.data, session.user.id, session.user.name ?? session.user.email ?? 'Usuario');
+    // El comprobante es opcional: si no se adjunta nada, el pago se
+    // aplica igual (mismo comportamiento de siempre), solo que sin
+    // archivo asociado.
+    const receiptFile = pickFile(formData, 'receipt');
+    const receiptUrl = receiptFile
+      ? await saveToRepository(receiptFile, {
+          kind: 'condo',
+          condominiumId: parsed.data.condominiumId,
+          slug: 'administracion/estados-de-cuenta',
+        })
+      : undefined;
+
+    await makePayment(
+      session.user.companyId,
+      { ...parsed.data, receiptUrl },
+      session.user.id,
+      session.user.name ?? session.user.email ?? 'Usuario'
+    );
   } catch (err: any) {
-    return { formError: err?.message ?? 'No se pudo registrar el pago.' };
+    return { formError: err?.message ?? 'No se pudo aplicar el pago.' };
   }
 
   revalidatePath(`/app/estados-cuenta/${parsed.data.propertyId}`);
