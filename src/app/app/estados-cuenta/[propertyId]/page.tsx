@@ -210,13 +210,12 @@ export default async function EstadoCuentaFilialPage({ params }: { params: { pro
               <th className="px-4 py-3 text-right">Cobro</th>
               <th className="px-4 py-3 text-right">Pago</th>
               <th className="px-4 py-3 text-right">Saldo</th>
-              <th className="px-4 py-3">Asociado a</th>
             </tr>
           </thead>
           <tbody>
             {movements.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-muted">
+                <td colSpan={6} className="px-4 py-10 text-center text-muted">
                   Sin movimientos todavía.
                 </td>
               </tr>
@@ -240,6 +239,11 @@ export default async function EstadoCuentaFilialPage({ params }: { params: { pro
                       ) : r.credit > 0 ? (
                         <div className="text-right">
                           <span className="block text-ok">{fmt(r.credit)}</span>
+                          {/* Antes era la columna "Asociado a" aparte — se
+                              trae acá para que quede junto al pago que
+                              describe, y la fila gana ancho para la
+                              casilla de aplicar pago + comprobante. */}
+                          {r.linkedTo && <span className="block text-[11px] text-muted">{r.linkedTo}</span>}
                           {r.receiptUrl && (
                             <a
                               href={r.receiptUrl}
@@ -254,7 +258,6 @@ export default async function EstadoCuentaFilialPage({ params }: { params: { pro
                       ) : null}
                     </td>
                     <td className="px-4 py-2.5 text-right font-medium">{fmt(running)}</td>
-                    <td className="px-4 py-2.5 text-xs text-muted">{r.linkedTo || '—'}</td>
                   </tr>
                 );
               })
