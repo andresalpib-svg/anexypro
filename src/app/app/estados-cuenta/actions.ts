@@ -92,6 +92,10 @@ export async function sendStatementEmailAction(_prev: ActionState, formData: For
     await sendAccountStatementEmail(session.user.companyId, parsed.data, {
       id: session.user.id,
       name: session.user.name ?? session.user.email ?? 'Usuario',
+      companyId: session.user.companyId,
+      role: session.user.role,
+      personId: session.user.personId,
+      isBoardMember: session.user.isBoardMember,
     });
   } catch (err: any) {
     return { formError: err?.message ?? 'No se pudo enviar el correo.' };

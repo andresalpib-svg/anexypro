@@ -1,8 +1,11 @@
-import { withTenantContext } from '@/lib/db';
+import path from 'node:path';
+import { withTenantContext, prisma } from '@/lib/db';
 import { logActivity } from '@/lib/services/audit';
-import { getAccountSnapshot } from '@/lib/services/document-requests';
+import { getAccountSnapshot, getTemplate } from '@/lib/services/document-requests';
 import { sendEmail, isEmailConfigured, accountStatementEmailHtml } from '@/lib/email';
-import { fechaSolo } from '@/lib/fecha-local';
+import { objectIdFromRef } from '@/lib/services/file-refs';
+import { actorFromSession, readObject } from '@/lib/services/storage';
+import { buildAccountStatementPdf, type AccountStatementLogo } from '@/lib/pdf/account-statement';
 
 /**
  * Módulo "Estados de Cuenta" — vista administrativa en lote sobre lo
@@ -150,11 +153,38 @@ export async function listStatementMovements(companyId: string, propertyId: stri
 }
 
 /**
+ * Resuelve una referencia de logo (`/api/archivo/<id>` del repositorio
+ * privado) a los bytes reales, para poder incrustarla en el PDF.
+ * Nunca lanza: un logo faltante, con una referencia externa (no del
+ * repositorio) o ilegible no puede impedir que salga el estado de
+ * cuenta — mismo criterio que `violations.ts` con el logo de
+ * incumplimientos.
+ */
+async function resolveLogo(
+  actor: Awaited<ReturnType<typeof actorFromSession>>,
+  ref: string | null | undefined
+): Promise<AccountStatementLogo | null> {
+  if (!ref) return null;
+  const objectId = objectIdFromRef(ref);
+  if (!objectId) return null;
+  try {
+    const obj = await readObject(actor, objectId);
+    return { data: obj.data, ext: path.extname(obj.name).toLowerCase() };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Envía el estado de cuenta de UNA filial por correo al destinatario
- * indicado. La foto financiera se recalcula al momento de enviar (no
- * se reutiliza nada que haya llegado del navegador): es lo mismo que
- * ve el correo el destinatario y lo que la administración tenía
- * enfrente al pulsar "Enviar".
+ * indicado, como PDF adjunto — el correo mismo es solo una nota de
+ * aviso (`accountStatementEmailHtml`), el documento formal completo
+ * (histórico, logos del condominio y de la administradora) va en el
+ * PDF (`buildAccountStatementPdf`).
+ *
+ * La foto financiera se recalcula al momento de enviar (no se
+ * reutiliza nada que haya llegado del navegador): es lo mismo que ve
+ * el PDF y lo que la administración tenía enfrente al pulsar "Enviar".
  *
  * `condominiumId` ya viene validado por quien llama (actions.ts,
  * contra `condoOfProperty`) — aquí se vuelve a comprobar como defensa
@@ -164,7 +194,7 @@ export async function listStatementMovements(companyId: string, propertyId: stri
 export async function sendAccountStatementEmail(
   companyId: string,
   input: { condominiumId: string; propertyId: string; to: string },
-  user: { id: string; name: string }
+  actor: { id: string; name: string; companyId: string; role: string; personId?: string | null; isBoardMember?: boolean }
 ): Promise<void> {
   if (!isEmailConfigured()) {
     throw new Error('El envío de correos no está configurado en este ambiente.');
@@ -175,36 +205,59 @@ export async function sendAccountStatementEmail(
     throw new Error('La filial no pertenece a ese condominio.');
   }
 
-  const [movements, snapshot] = await Promise.all([
+  const [movements, snapshot, template, company] = await Promise.all([
     listStatementMovements(companyId, input.propertyId),
     getAccountSnapshot(companyId, input.propertyId),
+    // El logo del condominio sale de la MISMA plantilla que ya usa el
+    // documento formal que ve el residente (`documento/[id]/page.tsx`)
+    // — si nunca se configuró una plantilla propia, `getTemplate` cae
+    // sola al logo crudo del condominio. Un solo lugar decide "cuál es
+    // el logo del condominio", no dos.
+    getTemplate(companyId, input.condominiumId, 'estado_cuenta'),
+    prisma.company.findUnique({ where: { id: companyId }, select: { logoUrl: true } }),
   ]);
+
+  // ÚNICAMENTE estos dos logos van al documento — el del condominio y
+  // el de la empresa administradora (el "usuario administrador" es
+  // personal de esa empresa). Ningún otro elemento de marca.
+  const actorCtx = await actorFromSession({ user: actor });
+  const [condoLogo, companyLogo] = await Promise.all([
+    resolveLogo(actorCtx, template.logoUrl),
+    resolveLogo(actorCtx, company?.logoUrl),
+  ]);
+
+  const pdfBytes = await buildAccountStatementPdf({
+    condominiumName: header.condominium.name,
+    propertyCode: header.code,
+    ownerName: header.ownerName,
+    currency: header.condominium.currency,
+    issuedAt: new Date(),
+    snapshot,
+    movements,
+    condoLogo,
+    companyLogo,
+  });
 
   const html = accountStatementEmailHtml({
     condominiumName: header.condominium.name,
     propertyCode: header.code,
     currency: header.condominium.currency,
     snapshot,
-    movements: movements.map((m) => ({
-      date: fechaSolo(m.date),
-      desc: m.desc,
-      charge: m.charge,
-      credit: m.credit,
-    })),
   });
 
   await sendEmail({
     to: input.to,
     subject: `Estado de cuenta · ${header.code} · ${header.condominium.name}`,
     html,
+    attachments: [{ filename: `estado-de-cuenta-${header.code}.pdf`, content: pdfBytes }],
   });
 
   await withTenantContext(companyId, (tx) =>
     logActivity(tx, companyId, {
-      userId: user.id,
-      userName: user.name,
+      userId: actor.id,
+      userName: actor.name,
       module: 'Estados de Cuenta',
-      action: 'Estado de cuenta enviado por correo',
+      action: 'Estado de cuenta enviado por correo (PDF adjunto)',
       target: `${header.code} → ${input.to}`,
     })
   );

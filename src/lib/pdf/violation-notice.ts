@@ -21,9 +21,12 @@ import { isSafePng, isSafeJpeg, embedSafeImage } from '@/lib/image-safety';
  *    antes por `isSafePng`/`isSafeJpeg`.
  */
 
-const A4: [number, number] = [595.28, 841.89];
-const MARGIN = 52;
-const ANCHO = A4[0] - MARGIN * 2;
+// A4/MARGIN/ANCHO y `wrap` se exportan: los reutiliza cualquier otro
+// generador de PDF del sistema (ver `src/lib/pdf/account-statement.ts`)
+// para que dos documentos formales no midan la página distinto.
+export const A4: [number, number] = [595.28, 841.89];
+export const MARGIN = 52;
+export const ANCHO = A4[0] - MARGIN * 2;
 
 const INK = rgb(0.09, 0.11, 0.16);
 const MUTED = rgb(0.45, 0.48, 0.55);
@@ -117,7 +120,7 @@ export function money(n: number, currency: string): string {
 }
 
 /** Parte el texto en líneas que caben en `maxWidth`. Respeta los saltos escritos. */
-function wrap(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
+export function wrap(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
   const out: string[] = [];
   for (const parrafo of winAnsi(text).split('\n')) {
     if (!parrafo.trim()) {
