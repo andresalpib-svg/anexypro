@@ -4,17 +4,40 @@ import { exigirSslEnConexion } from './db-ssl-guard';
 
 exigirSslEnConexion();
 
+/**
+ * Aviso de consultas lentas — la única forma barata de "monitorear la
+ * base" sin agregar un servicio de observabilidad aparte. Se registra
+ * la consulta CON los `$1, $2...` de Prisma, NUNCA `e.params` — ese
+ * campo trae los valores YA vinculados (una contraseña antes del
+ * hash, un número de cuenta, lo que sea), y dejarlo llegar a los logs
+ * de Vercel sería sacar el dato de la base sin ninguna de las
+ * protecciones que tiene adentro (RLS, cifrado de campos). Registrar
+ * el SQL sin los valores basta para encontrar el índice que falta o el
+ * `findMany` sin `take` que trae de más.
+ */
+const UMBRAL_MS_CONSULTA_LENTA = 1000;
+
+function crearPrismaClient(): PrismaClient {
+  const client = new PrismaClient({
+    log: [
+      { emit: 'event', level: 'query' },
+      { emit: 'stdout', level: 'error' },
+      { emit: 'stdout', level: 'warn' },
+    ],
+  });
+  client.$on('query' as never, (e: Prisma.QueryEvent) => {
+    if (e.duration >= UMBRAL_MS_CONSULTA_LENTA) {
+      console.warn(`[db] consulta lenta (${e.duration}ms): ${e.query}`);
+    }
+  });
+  return client;
+}
+
 // Singleton estándar de Next.js para evitar agotar el pool de
 // conexiones con cada hot-reload en desarrollo.
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
-export const prisma =
-  globalForPrisma.prisma ??
-  conCifradoDeCamposSensibles(
-    new PrismaClient({
-      log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
-    })
-  );
+export const prisma = globalForPrisma.prisma ?? conCifradoDeCamposSensibles(crearPrismaClient());
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 

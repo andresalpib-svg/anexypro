@@ -13,6 +13,7 @@ import { objectIdFromRef, refFromObjectId } from '@/lib/services/file-refs';
 import { actorFromSession, folderBySlug, readObject, uploadToFolder } from '@/lib/services/storage';
 import { addManualCharge } from '@/lib/services/finance';
 import { isEmailConfigured, sendEmail, appUrl } from '@/lib/email';
+import { escapeHtml as e } from '@/lib/html-escape';
 import path from 'node:path';
 
 /**
@@ -819,16 +820,16 @@ function noticeEmailHtml(i: {
   <div style="max-width:560px;margin:24px auto;background:#fff;border-radius:14px;overflow:hidden;border:1px solid #e6e8ec">
     <div style="background:${i.kind === 'multa' ? '#b32626' : '#3B6EF5'};padding:18px 22px;color:#fff">
       <p style="margin:0;font-size:17px;font-weight:700">${titulo}</p>
-      <p style="margin:4px 0 0;font-size:13px;opacity:.9">${i.condominiumName}</p>
+      <p style="margin:4px 0 0;font-size:13px;opacity:.9">${e(i.condominiumName)}</p>
     </div>
     <div style="padding:22px">
-      <p style="margin:0 0 12px;font-size:14px;color:#111">Estimado(a) ${i.ownerName}:</p>
+      <p style="margin:0 0 12px;font-size:14px;color:#111">Estimado(a) ${e(i.ownerName)}:</p>
       <p style="margin:0 0 14px;font-size:14px;color:#333;line-height:1.55">
         La Administración le comunica una ${i.kind === 'multa' ? 'resolución de multa' : 'notificación de incumplimiento'}
-        correspondiente a la filial <strong>${i.propertyCode}</strong> por <strong>${i.violationName}</strong>.
+        correspondiente a la filial <strong>${e(i.propertyCode)}</strong> por <strong>${e(i.violationName)}</strong>.
       </p>
-      ${i.amount ? `<p style="margin:0 0 14px;font-size:15px;color:#b32626;font-weight:700">Monto: ${i.amount}</p>` : ''}
-      <p style="margin:0 0 18px;font-size:13px;color:#555">Expediente ${i.caseNumber}</p>
+      ${i.amount ? `<p style="margin:0 0 14px;font-size:15px;color:#b32626;font-weight:700">Monto: ${e(i.amount)}</p>` : ''}
+      <p style="margin:0 0 18px;font-size:13px;color:#555">Expediente ${e(i.caseNumber)}</p>
       <a href="${appUrl()}/portal/incumplimientos"
          style="display:inline-block;background:#3B6EF5;color:#fff;text-decoration:none;padding:11px 18px;border-radius:9px;font-size:14px;font-weight:600">
         Ver la notificación completa

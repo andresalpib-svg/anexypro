@@ -100,6 +100,31 @@ const nextConfig = {
           // siquiera una vez. El header por sí solo no inscribe el
           // dominio: eso es un paso aparte, manual, en hstspreload.org.
           { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+          // Ningún módulo usa cámara/micrófono/geolocalización en vivo
+          // (`navigator.mediaDevices`/`getUserMedia`) — las fotos de
+          // evidencia usan `<input type=file capture>`, que abre la
+          // app de cámara del sistema operativo, no la API del
+          // navegador, así que negarlas acá no rompe nada (comprobado
+          // el 20/8, sin usos en todo `src/`). `interest-cohort=()` de
+          // paso saca al sitio de FLoC/Topics, el rastreo publicitario
+          // de Chrome basado en cohortes.
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
+          },
+          // Aísla el grupo de navegación de esta pestaña: una ventana
+          // de otro origen deja de poder tocar `window` vía
+          // `window.opener`. El único `window.open` del código
+          // (repositorio de documentos) ya usa `noopener`, así que no
+          // dependía de eso para empezar.
+          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+          // `same-site` (no `same-origin`, más estricto): dentro del
+          // dominio pero abierto a un futuro subdominio propio
+          // (app.anexypro.com, pendiente) sin tener que volver a tocar
+          // esto — sigue bloqueando que un sitio AJENO cargue un
+          // recurso de acá directo (una imagen, un archivo del
+          // repositorio) como si fuera propio.
+          { key: 'Cross-Origin-Resource-Policy', value: 'same-site' },
         ],
       },
     ];

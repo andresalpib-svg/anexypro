@@ -21,6 +21,7 @@
  * filtros de spam los castigan. Con SPF+DKIM+DMARC alineados, la
  * entregabilidad es la normal de un proveedor transaccional.
  */
+import { escapeHtml as e } from './html-escape';
 
 const RESEND_ENDPOINT = 'https://api.resend.com/emails';
 
@@ -80,15 +81,15 @@ export function welcomeEmailHtml(input: {
   return `
   <div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#1e2a3a">
     <div style="margin-bottom:20px"><b style="font-size:18px">Anexy<span style="color:#3b6ef5">PRO</span></b></div>
-    <h2 style="margin:0 0 8px;font-size:20px">Bienvenido(a), ${input.fullName}</h2>
+    <h2 style="margin:0 0 8px;font-size:20px">Bienvenido(a), ${e(input.fullName)}</h2>
     <p style="margin:0 0 16px;line-height:1.5">
-      La administración de <b>${input.condominiumName}</b> te creó una cuenta en el
+      La administración de <b>${e(input.condominiumName)}</b> te creó una cuenta en el
       Ecosistema Condómino de ANEXYpro: tu estado de cuenta, reservas de áreas
       comunes, comunicados y más, en un solo lugar.
     </p>
     <div style="background:#f4f6fb;border-radius:10px;padding:16px;margin:0 0 16px">
-      <p style="margin:0 0 6px"><b>Usuario:</b> ${input.email}</p>
-      <p style="margin:0"><b>Contraseña temporal:</b> <code style="font-size:15px">${input.password}</code></p>
+      <p style="margin:0 0 6px"><b>Usuario:</b> ${e(input.email)}</p>
+      <p style="margin:0"><b>Contraseña temporal:</b> <code style="font-size:15px">${e(input.password)}</code></p>
     </div>
     <p style="margin:0 0 20px;line-height:1.5">
       Ingresa en <a href="${url}" style="color:#3b6ef5;font-weight:600">${url.replace(/^https?:\/\//, '')}</a>
@@ -125,7 +126,7 @@ export function accountStatementEmailHtml(input: {
   <div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#1e2a3a">
     <div style="margin-bottom:20px"><b style="font-size:18px">Anexy<span style="color:#3b6ef5">PRO</span></b></div>
     <h2 style="margin:0 0 4px;font-size:20px">Estado de cuenta</h2>
-    <p style="margin:0 0 16px;color:#5b6472">${input.propertyCode} · ${input.condominiumName}</p>
+    <p style="margin:0 0 16px;color:#5b6472">${e(input.propertyCode)} · ${e(input.condominiumName)}</p>
 
     <p style="margin:0 0 16px;line-height:1.5">
       Adjunto encontrará el estado de cuenta de esta filial en PDF, con el histórico completo de cobros y pagos.
@@ -141,7 +142,7 @@ export function accountStatementEmailHtml(input: {
     </div>
 
     <p style="margin:24px 0 0;font-size:12px;color:#8a94a6">
-      Este estado de cuenta corresponde únicamente a la filial ${input.propertyCode} de ${input.condominiumName}.
+      Este estado de cuenta corresponde únicamente a la filial ${e(input.propertyCode)} de ${e(input.condominiumName)}.
       Ante cualquier duda, contacte a la administración de su condominio.
     </p>
   </div>`;

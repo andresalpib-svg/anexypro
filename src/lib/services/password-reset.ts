@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/db';
+import { escapeHtml } from '@/lib/html-escape';
 
 /**
  * Recuperación de contraseña desde la pantalla de acceso.
@@ -133,7 +134,7 @@ export function correoDeRecuperacion(nombre: string, enlace: string): string {
   return `
     <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:520px;margin:0 auto;color:#0f172a">
       <h2 style="font-size:1.15rem;margin:0 0 .75rem">Restablecer tu contraseña</h2>
-      <p style="margin:0 0 1rem;line-height:1.55">Hola ${nombre}, recibimos una solicitud para cambiar la contraseña de tu cuenta de ANEXYpro.</p>
+      <p style="margin:0 0 1rem;line-height:1.55">Hola ${escapeHtml(nombre)}, recibimos una solicitud para cambiar la contraseña de tu cuenta de ANEXYpro.</p>
       <p style="margin:0 0 1.5rem;line-height:1.55">Abrí este enlace para elegir una nueva. Vence en 30 minutos y solo se puede usar una vez.</p>
       <p style="margin:0 0 1.5rem">
         <a href="${enlace}" style="display:inline-block;background:#2f5fe0;color:#fff;text-decoration:none;padding:.7rem 1.4rem;border-radius:.6rem;font-weight:600">Elegir contraseña nueva</a>
