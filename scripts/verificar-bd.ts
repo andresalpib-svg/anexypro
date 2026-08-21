@@ -263,30 +263,32 @@ async function main() {
       //    esta consulta con `ssl = false`.
       //  · Pero el pooler de Supabase SÍ ofrece TLS (una sonda directa
       //    del handshake de Postgres, sin credenciales, responde 'S' a
-      //    un SSLRequest — en el puerto 5432 y en el 6543) y, pedida
-      //    verificación estricta del certificado (`sslmode=verify-full`
-      //    con `pg`/node-postgres), el intento SÍ negocia TLS de
-      //    verdad — falla en "self-signed certificate in certificate
-      //    chain" porque el certificado del pooler no está en la
-      //    cadena de confianza por omisión de Node, no porque no haya
-      //    TLS. Es un problema documentado y conocido de Supabase +
-      //    Prisma (prisma/prisma#29060, supabase/supabase#38594): el
-      //    driver de Prisma solo admite "disable|prefer|require" para
-      //    `sslmode` — ni "verify-ca" ni "verify-full" — así que no
-      //    hay forma, con solo un parámetro en la URL, de pedirle a
-      //    Prisma que valide el certificado del pooler.
+      //    un SSLRequest — en el puerto 5432 y en el 6543), y con
+      //    `node-postgres` (`pg`) pidiendo verificación ESTRICTA del
+      //    certificado —con el CA real del pooler ya cargado, no solo
+      //    "aceptar cualquiera"— el handshake termina con éxito.
+      //    `pg_stat_ssl` sobre ESA misma conexión, ya verificada de
+      //    punta a punta, TAMBIÉN reporta `ssl = false`. Eso ya no es
+      //    una hipótesis: es la prueba de que `pg_stat_ssl`, a través
+      //    de este pooler, mide el salto interno pooler→Postgres
+      //    (dentro de la red de Supabase), no el salto real
+      //    aplicación→pooler que cruza internet — que si está cifrado
+      //    y verificado, se comprobó en vivo el 20/8.
       //
-      // Con esa contradicción entre dos mediciones independientes, un
-      // solo booleano de `pg_stat_ssl` no es una base confiable para
-      // tumbar un despliegue — podría estar midiendo el salto interno
-      // pooler→Postgres (dentro de la red de Supabase) y no el salto
-      // real (aplicación→pooler, el que cruza internet). La forma
-      // correcta de cerrar esto del todo es fijar el certificado del
-      // pooler: bajar el CA de Supabase (Settings → Database → SSL
-      // Configuration) y conectar con
-      // "sslmode=require&sslaccept=strict&sslcert=<ruta-al-cert>" — eso
-      // es trabajo aparte, pendiente, no algo para decidir a ciegas en
-      // medio de un despliegue.
+      // Se intentó cerrar esto del todo por el lado de Prisma
+      // (`sslmode=require&sslaccept=strict&sslcert=<CA del pooler>`,
+      // con el CA real extraído del propio handshake TLS, sin ninguna
+      // credencial) y no se pudo: el parámetro `sslcert` de Prisma
+      // para postgresql solo acepta UN certificado, no un paquete con
+      // el intermedio + la raíz que hacen falta para completar esta
+      // cadena de 3 niveles — con uno solo (intermedio o raíz) el
+      // parseo pasa pero la validación de confianza falla
+      // ("certificate was not trusted"); con los dos juntos, Prisma ni
+      // siquiera acepta el parámetro ("parameters... were not valid").
+      // Cerrarlo de verdad pediría cambiar el motor de conexión de
+      // Prisma (un driver adapter sobre `pg`, que si maneja bien esta
+      // cadena) — es una migración aparte, no algo para decidir a
+      // ciegas en medio de un despliegue de seguridad.
       const hostApp = (() => {
         try {
           return new URL(urlApp).hostname;
