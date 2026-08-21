@@ -94,7 +94,12 @@ const nextConfig = {
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains' },
+          // `preload` deja el sitio listo para la lista de precarga de
+          // Chrome/Firefox/Safari (hstspreload.org) — con eso el
+          // navegador nunca intenta HTTP ni en la PRIMERA visita, ni
+          // siquiera una vez. El header por sí solo no inscribe el
+          // dominio: eso es un paso aparte, manual, en hstspreload.org.
+          { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
         ],
       },
     ];

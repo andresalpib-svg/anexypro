@@ -195,7 +195,42 @@ const conSesion = auth((req) => {
  * presente) y se cierra el paso mandando al acceso, que es el lado
  * seguro: ante la duda, sin sesión.
  */
+/**
+ * Fuerza HTTPS antes de cualquier otra cosa.
+ *
+ * Vercel ya redirige HTTP → HTTPS en su borde para cualquier dominio
+ * que sirve, y el `Strict-Transport-Security` de `next.config.js` hace
+ * que el navegador ni siquiera intente HTTP después de la primera
+ * visita. Esto es la tercera capa, a propósito redundante: si el día
+ * de mañana ANEXYpro queda detrás de otro proxy (o de un balanceador
+ * que no fuerce TLS por su cuenta), la aplicación igual rechaza servir
+ * nada por HTTP en vez de confiar en que la capa de enfrente lo hizo.
+ *
+ * `x-forwarded-proto` es el header estándar que un proxy TLS-terminating
+ * (Vercel incluido) agrega con el protocolo ORIGINAL de la petición.
+ * Sin proxy adelante (una prueba local con `next start`) el header no
+ * existe, y ahí no hay nada que forzar: por eso solo actúa cuando el
+ * header está presente y dice explícitamente "http".
+ */
+function forzarHttps(req: NextRequest): NextResponse | null {
+  const proto = req.headers.get('x-forwarded-proto');
+  if (proto !== 'http') return null;
+  const host = req.headers.get('host') ?? '';
+  if (host.startsWith('localhost') || host.startsWith('127.0.0.1')) return null;
+
+  const url = req.nextUrl.clone();
+  url.protocol = 'https:';
+  url.host = host;
+  // 308: conserva el método y el cuerpo (una petición POST por HTTP no
+  // se convierte en GET al redirigir) y no se cachea de forma tan
+  // agresiva como para complicar revertirlo si algún día hiciera falta.
+  return NextResponse.redirect(url, 308);
+}
+
 export default async function middleware(req: NextRequest, ctx: any) {
+  const redirigidoAHttps = forzarHttps(req);
+  if (redirigidoAHttps) return redirigidoAHttps;
+
   try {
     return await (conSesion as any)(req, ctx);
   } catch (e: any) {

@@ -82,15 +82,15 @@ function main() {
     );
   }
 
-  paso('1/5 Reconciliar el registro de migraciones');
+  paso('1/6 Reconciliar el registro de migraciones');
   // Una migración se renombró para corregir su orden; si la base ya la
   // tenía con el nombre viejo, Prisma intentaría aplicarla dos veces.
   correr('npx', ['tsx', path.join('scripts', 'reconciliar-migraciones.ts')]);
 
-  paso('2/5 Migraciones de Prisma');
+  paso('2/6 Migraciones de Prisma');
   correr('npx', ['prisma', 'migrate', 'deploy']);
 
-  paso('3/5 SQL complementario (vistas, triggers, RLS)');
+  paso('3/6 SQL complementario (vistas, triggers, RLS)');
   // Orden alfabético = el orden numerado de los archivos (01…05), que
   // es el orden en que tienen que aplicarse: el 03 endurece lo que
   // creó el 02.
@@ -106,6 +106,15 @@ function main() {
     correr('npx', ['tsx', path.join('scripts', 'aplicar-sql.ts'), path.join('prisma', 'sql', archivo)]);
   }
 
+  paso('4/6 Cifrar cuentas bancarias en reposo (idempotente)');
+  // accountNumber/iban/bankAccount — ver src/lib/crypto/field-encryption.ts.
+  // Se corre en TODOS los despliegues, como el SQL de arriba: una fila
+  // que ya esté cifrada se salta sola. Exige FIELD_ENCRYPTION_KEY — sin
+  // ella la aplicación tampoco podría leer esos campos en producción,
+  // así que es correcto que el despliegue se detenga acá y no más tarde
+  // con un error a medias en el panel de Bancos.
+  correr('npx', ['tsx', path.join('scripts', 'cifrar-datos-bancarios.ts')]);
+
   // ---------- Cuenta inicial ----------
   //
   // `prisma/seed.ts` crea la empresa, su administrador y el catálogo de
@@ -117,10 +126,10 @@ function main() {
   // usa una contraseña conocida y escrita en el repositorio; crear con
   // ella el administrador de producción sería dejar la puerta abierta.
   if (process.env.SEED_ADMIN_PASSWORD) {
-    paso('4/5 Cuenta inicial (solo si la base está vacía)');
+    paso('5/6 Cuenta inicial (solo si la base está vacía)');
     correr('npx', ['tsx', path.join('prisma', 'seed.ts')]);
   } else {
-    paso('4/5 Cuenta inicial — omitida');
+    paso('5/6 Cuenta inicial — omitida');
     console.log(
       '  No hay SEED_ADMIN_PASSWORD definida, así que no se crea ninguna cuenta.\n' +
         '  Es lo correcto salvo que la base esté vacía: en ese caso definí\n' +
@@ -128,7 +137,7 @@ function main() {
     );
   }
 
-  paso('5/5 Verificación');
+  paso('6/6 Verificación');
   correr('npx', ['tsx', path.join('scripts', 'verificar-bd.ts')]);
 
   console.log('\nBase de datos lista.\n');

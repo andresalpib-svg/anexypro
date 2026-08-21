@@ -245,6 +245,34 @@ async function main() {
     try {
       await app.$queryRawUnsafe('SELECT 1');
       anotar(true, 'Conexión de la aplicación (DATABASE_URL)', 'responde');
+
+      // ---------- 9b. La conexión viaja cifrada de verdad ----------
+      // No basta con confiar en que la URL lleva "sslmode=require": eso
+      // es lo que la aplicación PIDE, no lo que Postgres CONCEDIÓ. La
+      // única fuente de verdad de si esta conexión concreta está
+      // cifrada es el propio servidor — `pg_stat_ssl`, no la cadena de
+      // conexión ni ninguna suposición sobre el proveedor.
+      const hostApp = (() => {
+        try {
+          return new URL(urlApp).hostname;
+        } catch {
+          return null;
+        }
+      })();
+      const esLocalApp = hostApp === 'localhost' || hostApp === '127.0.0.1' || hostApp === '::1';
+      if (!esLocalApp) {
+        const ssl: any[] = await app.$queryRawUnsafe(
+          `SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid()`
+        );
+        const cifrada = ssl[0]?.ssl === true;
+        anotar(
+          cifrada,
+          'Conexión a la base cifrada (TLS)',
+          cifrada
+            ? 'pg_stat_ssl confirma TLS activo'
+            : 'SIN TLS: la contraseña del rol y cada fila viajan sin cifrar entre la aplicación y Postgres. Agregar sslmode=require a DATABASE_URL/DIRECT_URL.'
+        );
+      }
     } catch (e: any) {
       const msg = String(e?.message ?? '');
       const pista = msg.includes('ENOIDENTIFIER')
@@ -258,6 +286,32 @@ async function main() {
     } finally {
       await app.$disconnect();
     }
+  }
+
+  // ---------- 9c. Datos bancarios cifrados en reposo ----------
+  // accountNumber/iban (bank_accounts) y bankAccount (suppliers) se
+  // guardan cifrados desde este cambio — ver
+  // src/lib/crypto/field-encryption.ts. Si alguna fila sigue en texto
+  // plano, `scripts/cifrar-datos-bancarios.ts` todavía no corrió contra
+  // esta base.
+  {
+    const sinCifrar: any[] = await prisma.$queryRawUnsafe(`
+      SELECT
+        (SELECT count(*)::int FROM bank_accounts
+          WHERE (account_number IS NOT NULL AND account_number NOT LIKE 'enc:v1:%')
+             OR (iban IS NOT NULL AND iban <> '' AND iban NOT LIKE 'enc:v1:%')) AS cuentas,
+        (SELECT count(*)::int FROM suppliers
+          WHERE bank_account IS NOT NULL AND bank_account <> '' AND bank_account NOT LIKE 'enc:v1:%') AS proveedores
+    `);
+    const cuentas = sinCifrar[0]?.cuentas ?? 0;
+    const proveedores = sinCifrar[0]?.proveedores ?? 0;
+    anotar(
+      cuentas === 0 && proveedores === 0,
+      'Datos bancarios cifrados',
+      cuentas === 0 && proveedores === 0
+        ? 'ninguna fila en texto plano'
+        : `SIN CIFRAR: ${cuentas} cuenta(s) bancaria(s), ${proveedores} proveedor(es). Correr: npx tsx scripts/cifrar-datos-bancarios.ts`
+    );
   }
 
   // ---------- 11. Vistas que la aplicación consulta ----------
