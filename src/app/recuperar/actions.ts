@@ -1,6 +1,7 @@
 'use server';
 
 import { headers } from 'next/headers';
+import { waitUntil } from '@vercel/functions';
 import { prisma } from '@/lib/db';
 import { isEmailConfigured, sendEmail, appUrl } from '@/lib/email';
 import { emitirToken, correoDeRecuperacion, fijarPassword } from '@/lib/services/password-reset';
@@ -58,16 +59,28 @@ export async function solicitarEnlaceAction(
     if (user && isEmailConfigured()) {
       const token = emitirToken(user.id, user.passwordHash);
       const enlace = `${appUrl().replace(/\/$/, '')}/restablecer/${token}`;
-      // Deliberadamente sin `await`: el envío sigue en segundo plano y
-      // la función responde ya. Un error de envío queda en el log del
-      // servidor, no en la respuesta (que sería otro distintivo más).
-      sendEmail({
-        to: user.email,
-        subject: 'Restablecer tu contraseña de ANEXYpro',
-        html: correoDeRecuperacion(user.fullName, enlace),
-      }).catch((e) => {
-        console.error('[recuperar] no se pudo enviar el correo de recuperación:', e);
-      });
+      // Deliberadamente sin `await` en el camino de respuesta: el envío
+      // sigue en segundo plano y la función responde ya, para no delatar
+      // por tiempo qué correos existen (ver el comentario de la función).
+      //
+      // Pero "sin await" NO alcanza en Vercel: en Next 14 (sin `after()`,
+      // estable recién desde 15.1) una función serverless puede
+      // congelarse en cuanto termina de mandar la respuesta, matando
+      // cualquier promesa que siga en vuelo — el `fetch` a Resend podía
+      // no llegar a completarse NUNCA, en silencio, sin que el `.catch`
+      // llegara a correr ni a loguear nada. Es probablemente la causa
+      // real de que el correo de recuperación no llegara (20/8). `waitUntil`
+      // de `@vercel/functions` es la forma soportada de decirle a la
+      // plataforma "esta promesa sigue viva aunque ya respondiste".
+      waitUntil(
+        sendEmail({
+          to: user.email,
+          subject: 'Restablecer tu contraseña de ANEXYpro',
+          html: correoDeRecuperacion(user.fullName, enlace),
+        }).catch((e) => {
+          console.error('[recuperar] no se pudo enviar el correo de recuperación:', e);
+        })
+      );
     } else if (user && !isEmailConfigured()) {
       // Sin correo saliente no hay forma de entregar el enlace. Antes
       // esto se le decía al solicitante — pero solo cuando la cuenta
