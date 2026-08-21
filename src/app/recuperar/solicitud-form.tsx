@@ -1,8 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import { useFormState, useFormStatus } from 'react-dom';
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, Loader2, MailCheck } from 'lucide-react';
+import { CAMPO_TRAMPA, CAMPO_RENDERIZADO } from '@/lib/bot-protection';
 import { solicitarEnlaceAction, type SolicitudState } from './actions';
 
 function Boton() {
@@ -27,6 +29,9 @@ function Boton() {
 
 export function SolicitudForm() {
   const [state, formAction] = useFormState<SolicitudState, FormData>(solicitarEnlaceAction, {});
+  // Antibot — ver src/lib/bot-protection.ts. useState(() => ...) para
+  // que la hora quede fija desde el primer render.
+  const [renderizadoEn] = useState(() => Date.now());
 
   if (state.enviado) {
     return (
@@ -66,6 +71,17 @@ export function SolicitudForm() {
       </p>
 
       <form action={formAction} className="mt-11 space-y-7">
+        {/* Campo trampa + hora de renderizado — ver src/lib/bot-protection.ts. */}
+        <input
+          type="text"
+          name={CAMPO_TRAMPA}
+          tabIndex={-1}
+          autoComplete="off"
+          aria-hidden="true"
+          style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, opacity: 0 }}
+        />
+        <input type="hidden" name={CAMPO_RENDERIZADO} value={renderizadoEn} />
+
         <div>
           <label htmlFor="email" className="liquid-label">
             Correo electrónico

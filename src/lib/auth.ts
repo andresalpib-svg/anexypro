@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { prisma, withTenantContext } from '@/lib/db';
 import { authConfig } from '@/lib/auth.config';
 import { clientIp, isRateLimited, registerHit } from '@/lib/rate-limit';
+import { pareceBot } from '@/lib/bot-protection';
 
 // Mismo esquema de roles que el prototipo: admin_owner, admin_staff,
 // seguridad, condomino. NO hay selector de "tipo de usuario" en el
@@ -12,6 +13,10 @@ import { clientIp, isRateLimited, registerHit } from '@/lib/rate-limit';
 // Usuarios y Permisos (decisión de producto explícita, ver
 // diseno-ajustes-visuales-globales.md sección "Rediseño de la página
 // de autenticación").
+//
+// `sitio_web`/`renderizado_en` van sueltos (no en la validación de
+// email/password): son la señal antibot de src/lib/bot-protection.ts,
+// que se revisa antes de tocar la base — ver `authorize()`.
 const credentialsSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
@@ -34,8 +39,14 @@ const HASH_SENUELO = '$2a$12$2ElpfpIaRIfg0KcInYOzrulbkqwWexWDTWg4KuulYh8N5efXm.4
  * durante un rato. La cuenta NO se bloquea: solo se deja de aceptar
  * intentos hasta que pase la ventana, así nadie puede dejar fuera a un
  * usuario legítimo a base de fallar su contraseña a propósito.
+ *
+ * Bajado de 8 a 4 (20/8, pedido explícito). Sigue sin bloquear la
+ * cuenta —solo la ventana de 15 minutos se corta antes— así que un
+ * ataque de fuerza bruta tiene una cuarta parte de los intentos de
+ * antes para acertar, sin que un usuario real que se equivoca dos o
+ * tres veces quede fuera.
  */
-const MAX_INTENTOS = 8;
+const MAX_INTENTOS = 4;
 const VENTANA_MINUTOS = 15;
 
 /**
@@ -85,6 +96,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Credentials({
       credentials: { email: {}, password: {} },
       async authorize(raw, request) {
+        // Antibot primero: ni siquiera vale la pena calcular la IP para
+        // esto — es la comprobación más barata de todas, y una que
+        // rechaza aquí ni se acerca a la base ni a bcrypt. Ver
+        // src/lib/bot-protection.ts. El rechazo es `return null`, igual
+        // que una contraseña incorrecta: no hay ninguna respuesta
+        // distinta que delate que se detectó un bot.
+        const datos = raw as Record<string, unknown>;
+        if (
+          pareceBot({
+            honeypot: typeof datos.sitio_web === 'string' ? datos.sitio_web : null,
+            renderedAt: typeof datos.renderizado_en === 'string' ? datos.renderizado_en : null,
+          })
+        ) {
+          return null;
+        }
+
         const ip = clientIp(request.headers);
 
         // Freno por IP, antes de tocar la base o calcular el bcrypt: si

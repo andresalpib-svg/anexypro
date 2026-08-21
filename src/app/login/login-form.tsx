@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import { Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { Logo } from '@/components/ui/logo';
+import { CAMPO_TRAMPA, CAMPO_RENDERIZADO } from '@/lib/bot-protection';
 
 /**
  * Pantalla de acceso.
@@ -31,6 +32,11 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // Hora de montaje del formulario y campo trampa — ver
+  // src/lib/bot-protection.ts. useState(() => ...) para que quede
+  // fijo desde el primer render, no desde cada re-render.
+  const [renderizadoEn] = useState(() => Date.now());
+  const trampaRef = useRef<HTMLInputElement>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -40,6 +46,8 @@ export function LoginForm() {
       email,
       password,
       redirect: false,
+      [CAMPO_TRAMPA]: trampaRef.current?.value ?? '',
+      [CAMPO_RENDERIZADO]: String(renderizadoEn),
     });
     setLoading(false);
     if (res?.error) {
@@ -139,6 +147,22 @@ export function LoginForm() {
         </p>
 
         <form onSubmit={handleSubmit} className="mt-11 space-y-7">
+            {/*
+              Campo trampa — ver src/lib/bot-protection.ts. Fuera del
+              viewport (no `display:none`, que algunos rastreadores
+              detectan y evitan) y sin `tab`/lector de pantalla, así
+              que ninguna persona real llega a verlo ni a completarlo.
+            */}
+            <input
+              ref={trampaRef}
+              type="text"
+              name="sitio_web"
+              tabIndex={-1}
+              autoComplete="off"
+              aria-hidden="true"
+              style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, opacity: 0 }}
+            />
+
             <div>
               <label htmlFor="email" className="liquid-label">
                 Correo electrónico

@@ -6,6 +6,7 @@ import { prisma } from '@/lib/db';
 import { isEmailConfigured, sendEmail, appUrl } from '@/lib/email';
 import { emitirToken, correoDeRecuperacion, fijarPassword } from '@/lib/services/password-reset';
 import { clientIp, hitRateLimit } from '@/lib/rate-limit';
+import { pareceBot, CAMPO_TRAMPA, CAMPO_RENDERIZADO } from '@/lib/bot-protection';
 
 export type SolicitudState = { enviado?: boolean; error?: string };
 
@@ -38,6 +39,18 @@ export async function solicitarEnlaceAction(
   if (!email || !email.includes('@')) return { error: 'Escribí tu correo electrónico.' };
 
   const respuestaNeutra: SolicitudState = { enviado: true };
+
+  // Antibot — ver src/lib/bot-protection.ts. Misma respuesta neutra que
+  // el freno por IP de más abajo: nada distingue un rechazo por bot de
+  // un envío real.
+  if (
+    pareceBot({
+      honeypot: String(formData.get(CAMPO_TRAMPA) ?? ''),
+      renderedAt: String(formData.get(CAMPO_RENDERIZADO) ?? ''),
+    })
+  ) {
+    return respuestaNeutra;
+  }
 
   const ip = clientIp(headers());
   if (ip) {
