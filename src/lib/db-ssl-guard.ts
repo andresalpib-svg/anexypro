@@ -27,8 +27,16 @@ function esLocal(host: string | null): boolean {
 }
 
 function tieneSslExigido(url: URL): boolean {
+  // El cliente de Prisma para postgresql SOLO entiende
+  // "disable|prefer|require" en `sslmode` — "verify-ca"/"verify-full"
+  // no están soportados (por eso no se listan acá: sugerirlos sería
+  // pedirle a Prisma algo que no sabe hacer). Para exigir además que
+  // valide el certificado del servidor, el parámetro de Prisma es
+  // `sslaccept=strict` — ver el aviso de `scripts/verificar-bd.ts`
+  // sobre el pooler de Supabase para el porqué de que esto no alcance
+  // a ser, hoy, una garantía completa.
   const modo = url.searchParams.get('sslmode');
-  if (modo && ['require', 'verify-ca', 'verify-full'].includes(modo)) return true;
+  if (modo === 'require') return true;
   // Algunos proveedores (Neon, Prisma Accelerate) usan `ssl=true` en vez
   // de `sslmode`.
   if (url.searchParams.get('ssl') === 'true') return true;
@@ -46,11 +54,10 @@ function revisarUrl(nombreVariable: string, valor: string | undefined): void {
   if (esLocal(url.hostname)) return;
   if (tieneSslExigido(url)) return;
   console.error(
-    `[db-ssl-guard] Aviso: ${nombreVariable} apunta a "${url.hostname}" sin "sslmode=require" ` +
-      '(ni "verify-full") en la URL. Si el proveedor no exige TLS igual del lado del servidor, ' +
-      'la conexión podría viajar sin cifrar. Agregar "?sslmode=require" (o "&sslmode=require" si ' +
-      'ya tiene otros parámetros) a la URL, con "sslmode=verify-full" si el proveedor entrega un ' +
-      'certificado verificable. El build (scripts/verificar-bd.ts) confirma o rechaza el estado real.'
+    `[db-ssl-guard] Aviso: ${nombreVariable} apunta a "${url.hostname}" sin "sslmode=require" en ` +
+      'la URL. Si el proveedor no exige TLS igual del lado del servidor, la conexión podría viajar ' +
+      'sin cifrar. Agregar "?sslmode=require" (o "&sslmode=require" si ya tiene otros parámetros). ' +
+      'El build (scripts/verificar-bd.ts) da más contexto sobre el estado real de esta conexión.'
   );
 }
 

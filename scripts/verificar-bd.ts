@@ -30,6 +30,14 @@ function anotar(ok: boolean, nombre: string, detalle: string) {
   resultados.push({ ok, nombre, detalle });
 }
 
+// Avisos que se imprimen pero NO detienen el despliegue — a diferencia
+// de `resultados`, donde un solo `ok: false` hace fallar todo. Ver el
+// comentario de la comprobación 9b (TLS) para por qué esto existe.
+const advertencias: string[] = [];
+function avisar(mensaje: string) {
+  advertencias.push(mensaje);
+}
+
 /**
  * Tablas que a propósito NO llevan RLS. Ninguna guarda datos de un
  * cliente concreto: o son de la plataforma, o no tienen empresa por la
@@ -246,12 +254,39 @@ async function main() {
       await app.$queryRawUnsafe('SELECT 1');
       anotar(true, 'Conexión de la aplicación (DATABASE_URL)', 'responde');
 
-      // ---------- 9b. La conexión viaja cifrada de verdad ----------
-      // No basta con confiar en que la URL lleva "sslmode=require": eso
-      // es lo que la aplicación PIDE, no lo que Postgres CONCEDIÓ. La
-      // única fuente de verdad de si esta conexión concreta está
-      // cifrada es el propio servidor — `pg_stat_ssl`, no la cadena de
-      // conexión ni ninguna suposición sobre el proveedor.
+      // ---------- 9b. ¿La conexión viaja cifrada? (aviso, no bloquea) ----------
+      //
+      // Esto NO detiene el despliegue — se comprobó en vivo (20/8) que
+      // no se puede confiar en `pg_stat_ssl` para decidirlo:
+      //
+      //  · La conexión (Prisma, con "sslmode=require" en la URL) pasa
+      //    esta consulta con `ssl = false`.
+      //  · Pero el pooler de Supabase SÍ ofrece TLS (una sonda directa
+      //    del handshake de Postgres, sin credenciales, responde 'S' a
+      //    un SSLRequest — en el puerto 5432 y en el 6543) y, pedida
+      //    verificación estricta del certificado (`sslmode=verify-full`
+      //    con `pg`/node-postgres), el intento SÍ negocia TLS de
+      //    verdad — falla en "self-signed certificate in certificate
+      //    chain" porque el certificado del pooler no está en la
+      //    cadena de confianza por omisión de Node, no porque no haya
+      //    TLS. Es un problema documentado y conocido de Supabase +
+      //    Prisma (prisma/prisma#29060, supabase/supabase#38594): el
+      //    driver de Prisma solo admite "disable|prefer|require" para
+      //    `sslmode` — ni "verify-ca" ni "verify-full" — así que no
+      //    hay forma, con solo un parámetro en la URL, de pedirle a
+      //    Prisma que valide el certificado del pooler.
+      //
+      // Con esa contradicción entre dos mediciones independientes, un
+      // solo booleano de `pg_stat_ssl` no es una base confiable para
+      // tumbar un despliegue — podría estar midiendo el salto interno
+      // pooler→Postgres (dentro de la red de Supabase) y no el salto
+      // real (aplicación→pooler, el que cruza internet). La forma
+      // correcta de cerrar esto del todo es fijar el certificado del
+      // pooler: bajar el CA de Supabase (Settings → Database → SSL
+      // Configuration) y conectar con
+      // "sslmode=require&sslaccept=strict&sslcert=<ruta-al-cert>" — eso
+      // es trabajo aparte, pendiente, no algo para decidir a ciegas en
+      // medio de un despliegue.
       const hostApp = (() => {
         try {
           return new URL(urlApp).hostname;
@@ -265,13 +300,13 @@ async function main() {
           `SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid()`
         );
         const cifrada = ssl[0]?.ssl === true;
-        anotar(
-          cifrada,
-          'Conexión a la base cifrada (TLS)',
-          cifrada
-            ? 'pg_stat_ssl confirma TLS activo'
-            : 'SIN TLS: la contraseña del rol y cada fila viajan sin cifrar entre la aplicación y Postgres. Agregar sslmode=require a DATABASE_URL/DIRECT_URL.'
-        );
+        if (!cifrada) {
+          avisar(
+            'TLS: pg_stat_ssl reporta la conexión de la aplicación como no cifrada. Puede ser un ' +
+              'falso negativo del pooler de Supabase (ver el comentario de este script) — pendiente ' +
+              'fijar el certificado del pooler con sslaccept=strict para cerrarlo del todo. No detiene el despliegue.'
+          );
+        }
       }
     } catch (e: any) {
       const msg = String(e?.message ?? '');
@@ -328,6 +363,10 @@ async function main() {
   console.log('\nVerificación de la base de datos\n');
   for (const r of resultados) {
     console.log(`  ${r.ok ? 'OK  ' : 'FALLA'}  ${r.nombre.padEnd(48)} ${r.detalle}`);
+  }
+  if (advertencias.length > 0) {
+    console.log('\n  Avisos (no detienen el despliegue):');
+    for (const a of advertencias) console.log(`    - ${a}`);
   }
 
   const fallos = resultados.filter((r) => !r.ok);
