@@ -7,7 +7,7 @@ HTML estático. Sin framework y sin dependencias: el único paso de build es
 
 | Archivo | Qué es |
 |---|---|
-| `config.json` | **Fuente única** de los destinos: URLs de las plataformas, WhatsApp, correo. |
+| `config.json` | **Fuente única** de los destinos: URLs de las plataformas, WhatsApp, teléfono y correos. |
 | `index.template.html` | El diseño aprobado, con marcadores `%%CLAVE%%`. Se edita esto, nunca `index.html`. |
 | `build.mjs` | Sustituye los marcadores y genera `index.html`, `sitemap.xml` y `robots.txt`. |
 | `index.html` | **Generado.** Vercel lo regenera en cada despliegue; se versiona igual, para que el diff muestre lo que se publica y para que un build fallido no deje el sitio sin página. No editarlo a mano: el siguiente build lo sobrescribe. |
@@ -31,9 +31,13 @@ node build.mjs && python3 -m http.server 8080
 `config.json`, y falla si queda alguno sin resolver o si el marcado usa una
 clave que el config no define.
 
+Los correos se sustituyen como cadena desnuda, no solo dentro del `href`:
+aparecen también como texto visible en la sección de contacto, y así el enlace
+y lo que se lee no pueden quedar desincronizados.
+
 La sintaxis `{{ variable }}` **no** es de este build: la usa el runtime de
-diseño (`assets/dc-runtime.js`) para los bindings del selector interactivo de
-la sección «¿Qué necesita su condominio?». No tocarla.
+diseño (`assets/dc-runtime.js`) para sus bindings — el selector «¿Cuál
+necesito?» y el desplegable de acceso a plataformas. No tocarla.
 
 ## Regenerar el diseño desde un bundle nuevo
 

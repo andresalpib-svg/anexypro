@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ANEXY — Tecnología para la gestión de condominios</title>
-<meta name="description" content="ANEXY reúne dos plataformas independientes y complementarias: una para la administración integral del condominio y otra para su operación diaria en campo.">
+<title>ANEXY — Administración y operación inteligente para condominios</title>
+<meta name="description" content="Un ecosistema digital que conecta la gestión administrativa del condominio con la supervisión y operación diaria en campo.">
 <link rel="canonical" href="%%SITE_URL%%/">
 <meta name="robots" content="index, follow">
 <meta name="theme-color" content="#F6F8FC">
@@ -12,15 +12,15 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="ANEXY">
 <meta property="og:locale" content="es_CR">
-<meta property="og:title" content="ANEXY — Tecnología para la gestión de condominios">
-<meta property="og:description" content="ANEXY reúne dos plataformas independientes y complementarias: una para la administración integral del condominio y otra para su operación diaria en campo.">
+<meta property="og:title" content="ANEXY — Administración y operación inteligente para condominios">
+<meta property="og:description" content="Un ecosistema digital que conecta la gestión administrativa del condominio con la supervisión y operación diaria en campo.">
 <meta property="og:url" content="%%SITE_URL%%/">
 <meta property="og:image" content="%%SITE_URL%%/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="ANEXY — Tecnología para la gestión de condominios">
-<meta name="twitter:description" content="ANEXY reúne dos plataformas independientes y complementarias: una para la administración integral del condominio y otra para su operación diaria en campo.">
+<meta name="twitter:title" content="ANEXY — Administración y operación inteligente para condominios">
+<meta name="twitter:description" content="Un ecosistema digital que conecta la gestión administrativa del condominio con la supervisión y operación diaria en campo.">
 <meta name="twitter:image" content="%%SITE_URL%%/og-image.png">
 
 <link rel="icon" href="/favicon.ico" sizes="48x48">
@@ -28,8 +28,8 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="manifest" href="/site.webmanifest">
 
-<!-- Las dos familias latinas cubren todo el texto visible; las variantes
-     latin-ext e italic las pide el navegador solo si hacen falta. -->
+<!-- Las dos familias latinas cubren todo el texto visible; latin-ext e italic
+     las pide el navegador solo si hacen falta. -->
 <link rel="preload" as="font" type="font/woff2" href="/assets/instrument-sans-latin.woff2" crossorigin>
 
 <!-- El runtime de diseño resuelve React por esta tabla. En el HTML original
@@ -42,7 +42,7 @@
 <x-dc>
 <helmet>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ANEXY — Tecnología para la gestión de condominios</title>
+<title>ANEXY — Administración y operación inteligente para condominios</title>
 <style>/* latin-ext */
 @font-face {
   font-family: 'Instrument Sans';
@@ -153,40 +153,38 @@
   --pro:#3D63E8; --proSoft:rgba(61,99,232,.10); --one:#0E7FBD; --oneSoft:rgba(14,127,189,.10);
   --shadow:0 40px 80px -44px rgba(11,26,56,.30);
 }
-html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;max-width:100%;overflow-x:clip;}
+html{scroll-behavior:smooth;scroll-padding-top:96px;}
 body{font-family:'Instrument Sans',system-ui,sans-serif;font-weight:500;}
 *{box-sizing:border-box;}
 a{color:var(--ink);text-decoration:none;transition:color .25s ease,opacity .25s ease;}
 a:hover{color:var(--pro);}
 button{font-family:inherit;}
-::selection{background:rgba(91,147,255,.28);}
+::selection{background:rgba(61,99,232,.24);}
 img[data-logo]{display:block;width:auto;max-width:100%;flex:0 0 auto;align-self:flex-start;object-fit:contain;}
 @keyframes anx-rise{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
-@keyframes anx-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
-@keyframes anx-float2{0%,100%{transform:translateY(0)}50%{transform:translateY(-16px)}}
 @keyframes anx-shimmer{0%{background-position:-220% 0}100%{background-position:220% 0}}
-@keyframes anx-sweep{0%{transform:translateX(-120%)}100%{transform:translateX(320%)}}
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
 
-@media (max-width:480px){h1[data-anx-hero]{font-size:clamp(24px,7vw,38px)!important}}
+@media (max-width:480px){[data-anx-nav]{font-size:11px!important;gap:9px!important}}
 </style>
 </helmet>
 
-<div style="min-height:100vh;background:var(--bg);overflow-x:hidden;position:relative">
+<div style="min-height:100vh;background:var(--bg);position:relative">
 
-  <div style="position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(900px 520px at 18% -8%,rgba(91,147,255,.16),transparent 70%),radial-gradient(760px 460px at 88% 6%,rgba(103,200,255,.10),transparent 70%)"></div>
+  <div style="position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(900px 520px at 18% -8%,rgba(61,99,232,.14),transparent 70%),radial-gradient(760px 460px at 88% 6%,rgba(14,127,189,.09),transparent 70%)"></div>
 
-  <header style="position:sticky;top:0;z-index:50;backdrop-filter:blur(18px) saturate(140%);background:color-mix(in oklab,var(--bg) 74%,transparent);border-bottom:1px solid var(--line)">
+  <header style="position:sticky;top:0;z-index:50;will-change:transform;backdrop-filter:blur(18px) saturate(140%);background:color-mix(in oklab,var(--bg) 76%,transparent);border-bottom:1px solid var(--line)">
     <nav style="max-width:1240px;margin:0 auto;padding:14px 28px;display:flex;align-items:center;gap:28px;flex-wrap:wrap;row-gap:12px">
       <a href="#top" style="display:flex;align-items:center;flex:0 0 auto">
         <img data-logo="" src="/assets/logo-anexy.png" alt="Anexy" style="height:36px;width:auto">
       </a>
-      <div style="display:flex;align-items:center;gap:18px;font-size:13.5px;color:var(--ink2);white-space:nowrap;flex-wrap:nowrap;min-width:0">
+      <div data-anx-nav="" style="display:flex;align-items:center;gap:20px;font-size:13.5px;color:var(--ink2);white-space:nowrap;min-width:0">
         <span sc-camel-on-mouse-enter="{{ openSol }}" sc-camel-on-mouse-leave="{{ closeSol }}" style="position:relative;display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--ink2)" style-hover="color:var(--ink)">
           <a href="#soluciones" style="color:inherit">Soluciones</a>
           <span style="font-size:9px;color:var(--ink3)">▾</span>
           <sc-if value="{{ solOpen }}">
-            <span style="position:absolute;left:-14px;top:calc(100% + 14px);width:272px;padding:8px;border-radius:16px;border:1px solid var(--line);background:var(--bg2);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:4px;animation:anx-rise .2s ease both">
+            <span style="position:absolute;left:-14px;top:calc(100% + 14px);width:276px;padding:8px;border-radius:16px;border:1px solid var(--line);background:var(--bg2);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:4px;animation:anx-rise .2s ease both">
               <a href="#pro" style="display:flex;align-items:center;gap:12px;padding:11px;border-radius:12px;transition:background .22s ease" style-hover="background:var(--proSoft)">
                 <span style="width:9px;height:9px;border-radius:2px;background:var(--pro);flex:0 0 auto"></span>
                 <span style="display:flex;flex-direction:column;gap:4px">
@@ -198,163 +196,222 @@ img[data-logo]{display:block;width:auto;max-width:100%;flex:0 0 auto;align-self:
                 <span style="width:9px;height:9px;border-radius:50%;background:var(--one);flex:0 0 auto"></span>
                 <span style="display:flex;flex-direction:column;gap:4px">
                   <img data-logo="" src="/assets/logo-anexyone.png" alt="Anexy ONE" style="height:17px;width:auto">
-                  <span style="font-size:12px;color:var(--ink3)">Operación</span>
+                  <span style="font-size:12px;color:var(--ink3)">Operación y supervisión</span>
                 </span>
               </a>
             </span>
           </sc-if>
         </span>
-        <a href="#anexypro" style="color:var(--ink2)" style-hover="color:var(--ink)">Características</a>
+        <a href="#caracteristicas" style="color:var(--ink2)" style-hover="color:var(--ink)">Características</a>
+        <a href="#precios" style="color:var(--ink2)" style-hover="color:var(--ink)">Precios</a>
         <a href="#nosotros" style="color:var(--ink2)" style-hover="color:var(--ink)">Nosotros</a>
         <a href="#contacto" style="color:var(--ink2)" style-hover="color:var(--ink)">Contacto</a>
       </div>
       <div style="flex:1 1 auto"></div>
-      <div style="display:flex;align-items:center;flex:0 0 auto;border:1px solid var(--line);border-radius:12px;background:var(--bg2);box-shadow:0 10px 26px -18px rgba(11,26,56,.55);overflow:hidden">
-        <span style="display:flex;align-items:center;white-space:nowrap;padding:0 12px;font-size:10px;font-weight:700;letter-spacing:.16em;color:var(--ink3);border-right:1px solid var(--line);align-self:stretch">INGRESAR</span>
-        <a href="%%PRO_URL%%" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:7px;white-space:nowrap;padding:10px 13px;font-size:13px;font-weight:700;color:var(--ink);transition:background .28s ease,color .28s ease" style-hover="background:var(--proSoft);color:var(--pro)">
-          <span style="width:8px;height:8px;border-radius:2px;background:var(--pro);flex:0 0 auto"></span>AnexyPRO
-        </a>
-        <span style="width:1px;align-self:stretch;background:var(--line)"></span>
-        <a href="%%ONE_URL%%" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:7px;white-space:nowrap;padding:10px 13px;font-size:13px;font-weight:700;color:var(--ink);transition:background .28s ease,color .28s ease" style-hover="background:var(--oneSoft);color:var(--one)">
-          <span style="width:8px;height:8px;border-radius:50%;background:var(--one);flex:0 0 auto"></span>AnexyONE
-        </a>
+      <div style="display:flex;align-items:center;gap:12px;flex:0 0 auto">
+        <a href="#contacto" style="font-size:13.5px;font-weight:600;padding:11px 18px;border-radius:12px;border:1px solid var(--line);background:var(--bg2);color:var(--ink);white-space:nowrap;transition:all .28s ease" style-hover="border-color:var(--line2);color:var(--pro)">Solicitar demostración</a>
+        <div style="position:relative">
+          <button sc-camel-on-click="{{ toggleLogin }}" style="display:flex;align-items:center;gap:9px;font-size:13.5px;font-weight:700;letter-spacing:.02em;padding:11px 20px;border-radius:12px;border:1px solid transparent;background:var(--pro);color:#fff;cursor:pointer;white-space:nowrap;box-shadow:0 14px 30px -16px rgba(61,99,232,.9);transition:transform .25s ease" style-hover="transform:translateY(-1px)">INGRESAR <span style="font-size:9px;opacity:.85">▾</span></button>
+          <sc-if value="{{ loginOpen }}">
+            <div style="position:absolute;right:0;top:calc(100% + 12px);width:300px;padding:10px;border-radius:16px;border:1px solid var(--line);background:var(--bg2);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:6px;animation:anx-rise .22s ease both">
+              <span style="padding:8px 10px 4px;font-size:10.5px;font-weight:700;letter-spacing:.16em;color:var(--ink3)">ACCESO A PLATAFORMAS</span>
+              <a href="%%PRO_URL%%" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;border:1px solid var(--line);transition:all .22s ease" style-hover="background:var(--proSoft);border-color:var(--pro)">
+                <span style="width:9px;height:9px;border-radius:2px;background:var(--pro);flex:0 0 auto"></span>
+                <span style="flex:1;display:flex;flex-direction:column;gap:4px">
+                  <img data-logo="" src="/assets/logo-anexypro.png" alt="Anexy PRO" style="height:18px;width:auto">
+                  <span style="font-size:12px;color:var(--ink3)">Administración</span>
+                </span>
+                <span style="font-size:14px;color:var(--pro)">→</span>
+              </a>
+              <a href="%%ONE_URL%%" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;border:1px solid var(--line);transition:all .22s ease" style-hover="background:var(--oneSoft);border-color:var(--one)">
+                <span style="width:9px;height:9px;border-radius:50%;background:var(--one);flex:0 0 auto"></span>
+                <span style="flex:1;display:flex;flex-direction:column;gap:4px">
+                  <img data-logo="" src="/assets/logo-anexyone.png" alt="Anexy ONE" style="height:18px;width:auto">
+                  <span style="font-size:12px;color:var(--ink3)">Operación</span>
+                </span>
+                <span style="font-size:14px;color:var(--one)">→</span>
+              </a>
+            </div>
+          </sc-if>
+        </div>
       </div>
     </nav>
   </header>
 
   <main id="top" style="position:relative;z-index:1;max-width:1240px;margin:0 auto;padding:0 28px 0">
 
-    <section style="position:relative;padding:130px 0 140px;display:flex;flex-direction:column;gap:56px">
-      <canvas data-plexus="" style="position:absolute;top:-88px;left:50%;transform:translateX(-50%);width:100vw;height:calc(100% + 88px);pointer-events:none;z-index:0"></canvas>
-      <div style="position:relative;z-index:1;display:flex;flex-direction:column;gap:26px;max-width:820px">
-        <span style="display:inline-flex;align-items:center;gap:10px;font-size:11.5px;font-weight:600;letter-spacing:.24em;color:var(--ink3);animation:anx-rise .7s ease both">
+    <section style="position:relative;padding:clamp(64px,8vw,120px) 0 clamp(72px,9vw,130px);display:flex;flex-direction:column;gap:clamp(38px,5vw,56px)">
+      <canvas data-plexus="" data-intensity="1" style="position:absolute;top:-88px;left:50%;transform:translateX(-50%);width:100vw;height:calc(100% + 88px);pointer-events:none;z-index:0"></canvas>
+      <div style="position:relative;z-index:1;display:flex;flex-direction:column;gap:26px;max-width:860px">
+        <span style="display:inline-flex;align-items:center;gap:10px;font-size:11.5px;font-weight:700;letter-spacing:.24em;color:var(--ink3);animation:anx-rise .7s ease both">
           <span style="width:26px;height:1px;background:var(--pro)"></span>
-          TECNOLOGÍA PARA LA GESTIÓN DE CONDOMINIOS
+          ECOSISTEMA TECNOLÓGICO PARA CONDOMINIOS
         </span>
-        <h1 data-anx-hero="" style="margin:0;font-size:clamp(40px,5.4vw,74px);line-height:1.02;letter-spacing:-.035em;font-weight:700;text-wrap:balance;animation:anx-rise .8s .06s ease both">
-          Una nueva forma de <span style="color: var(--pro);">administrar</span> y <span style="color: var(--one);">supervisar</span>&nbsp;condominios.
+        <h1 style="margin:0;font-size:clamp(36px,5.4vw,74px);line-height:1.02;letter-spacing:-.035em;font-weight:700;text-wrap:balance;animation:anx-rise .8s .06s ease both">
+          Administración y <span style="color:var(--pro)">operación inteligente</span> para condominios.
         </h1>
-        <p style="margin:0;max-width:620px;font-size:19px;line-height:1.6;color:var(--ink2);text-wrap:pretty;animation:anx-rise .8s .14s ease both">
-          ANEXY reúne dos plataformas independientes y complementarias: una para la administración integral del condominio y otra para su operación diaria en campo. Una misma tecnología, dos propósitos claros.
+        <p style="margin:0;max-width:620px;font-size:clamp(16.5px,1.6vw,19px);line-height:1.6;color:var(--ink2);text-wrap:pretty;animation:anx-rise .8s .14s ease both">
+          Un ecosistema digital que conecta la gestión administrativa con la supervisión y operación diaria del condominio.
         </p>
-        <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;animation:anx-rise .8s .22s ease both">
-          <a href="#pro" style="display:inline-flex;align-items:center;gap:10px;font-size:15px;font-weight:600;padding:14px 24px;border-radius:12px;background:var(--pro);color:#fff;box-shadow:0 16px 40px -18px rgba(91,147,255,.95);transition:transform .3s ease" style-hover="transform:translateY(-2px);color:#fff">Conocer ANEXY Pro <span style="opacity:.8">→</span></a>
-          <a href="#one" style="display:inline-flex;align-items:center;gap:10px;font-size:15px;font-weight:600;padding:14px 24px;border-radius:12px;border:1px solid var(--line2);color:var(--ink);transition:all .3s ease" style-hover="border-color:var(--one);color:var(--one);transform:translateY(-2px)">Conocer ANEXY One <span style="opacity:.8">→</span></a>
-        </div>
+      </div>
+
+      <div style="position:relative;z-index:1;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;max-width:860px;animation:anx-rise .8s .2s ease both">
+        <a href="#pro" style="display:flex;flex-direction:column;gap:14px;padding:24px;border-radius:20px;border:1px solid var(--line);background:color-mix(in oklab,var(--bg2) 88%,transparent);backdrop-filter:blur(6px);transition:transform .4s cubic-bezier(.2,.7,.2,1),border-color .4s ease,box-shadow .4s ease" style-hover="transform:translateY(-4px);border-color:var(--pro);box-shadow:0 30px 60px -40px rgba(61,99,232,.75);color:var(--ink)">
+          <span style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+            <img data-logo="" src="/assets/logo-anexypro.png" alt="Anexy PRO" style="height:26px;width:auto">
+            <span style="width:9px;height:9px;border-radius:2px;background:var(--pro);flex:0 0 auto"></span>
+          </span>
+          <span style="font-size:11.5px;font-weight:700;letter-spacing:.2em;color:var(--pro)">ADMINISTRACIÓN</span>
+          <span style="font-size:15px;line-height:1.55;color:var(--ink2)">Finanzas, cuotas, documentos y reportes del condominio, notificaciones, visitas y reservas.</span>
+        </a>
+        <a href="#one" style="display:flex;flex-direction:column;gap:14px;padding:24px;border-radius:20px;border:1px solid var(--line);background:color-mix(in oklab,var(--bg2) 88%,transparent);backdrop-filter:blur(6px);transition:transform .4s cubic-bezier(.2,.7,.2,1),border-color .4s ease,box-shadow .4s ease" style-hover="transform:translateY(-4px);border-color:var(--one);box-shadow:0 30px 60px -40px rgba(14,127,189,.6);color:var(--ink)">
+          <span style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+            <img data-logo="" src="/assets/logo-anexyone.png" alt="Anexy ONE" style="height:26px;width:auto">
+            <span style="width:9px;height:9px;border-radius:50%;background:var(--one);flex:0 0 auto"></span>
+          </span>
+          <span style="font-size:11.5px;font-weight:700;letter-spacing:.2em;color:var(--one)">OPERACIÓN</span>
+          <span style="font-size:15px;line-height:1.55;color:var(--ink2)">Recorridos, incidencias, notificaciones, tareas y evidencia en campo, caja chica.</span>
+        </a>
+      </div>
+
+      <div style="position:relative;z-index:1;display:flex;flex-wrap:wrap;gap:14px;align-items:center;animation:anx-rise .8s .28s ease both">
+        <a href="#pro" style="display:inline-flex;align-items:center;gap:10px;font-size:15px;font-weight:600;padding:14px 24px;border-radius:12px;background:var(--pro);color:#fff;box-shadow:0 16px 40px -18px rgba(61,99,232,.95);transition:transform .3s ease" style-hover="transform:translateY(-2px);color:#fff">Conocer ANEXYpro <span style="opacity:.8">→</span></a>
+        <a href="#one" style="display:inline-flex;align-items:center;gap:10px;font-size:15px;font-weight:600;padding:14px 24px;border-radius:12px;border:1px solid var(--line2);background:color-mix(in oklab,var(--bg2) 70%,transparent);color:var(--ink);transition:all .3s ease" style-hover="border-color:var(--one);color:var(--one);transform:translateY(-2px)">Conocer ANEXYone <span style="opacity:.8">→</span></a>
+        <span style="display:flex;align-items:center;gap:10px;font-size:14.5px;color:var(--ink2)">
+          <span style="width:1px;height:22px;background:var(--line);margin:0 4px"></span>
+          Ya soy usuario
+          <a href="#acceso" style="font-weight:700;color:var(--pro)" style-hover="color:var(--ink)">Ingresar →</a>
+        </span>
       </div>
     </section>
 
-    <section id="caracteristicas" data-reveal="" style="padding:110px 0 20px;display:flex;flex-direction:column;gap:44px">
-      <div style="display:flex;flex-direction:column;gap:16px;max-width:640px">
-        <span style="font-size:11.5px;font-weight:600;letter-spacing:.24em;color:var(--ink3)">LA DIFERENCIA</span>
-        <h2 style="margin:0;font-size:clamp(30px,3.6vw,50px);line-height:1.06;letter-spacing:-.03em;font-weight:700">Administrar no es operar.</h2>
-      </div>
-      <div style="display:flex;flex-wrap:wrap;border:1px solid var(--line);border-radius:26px;overflow:hidden;background:var(--panel)">
-        <div style="flex:1 1 300px;padding:56px 44px;display:flex;flex-direction:column;gap:26px;background:linear-gradient(160deg,rgba(91,147,255,.09),transparent 70%)">
-          <img data-logo="" src="/assets/logo-anexypro.png" alt="Anexy PRO" style="height: 46px; width: 165px">
-          <span style="font-size:clamp(38px,5vw,70px);font-weight:600;letter-spacing:-.04em;line-height:.95">ADMINISTRAR</span>
-          <span style="display:flex;flex-direction:column;gap:12px;font-size:16.5px;color:var(--ink2)">
-            <span>Decidir con información financiera y administrativa.</span>
-            <span>Escritorio. Registros. Estructura. Reportes.</span>
-          </span>
-          <span style="display:flex;flex-direction:column;gap:9px;margin-top:8px">
-            <span style="height:9px;width:88%;border-radius:5px;background:var(--proSoft);border:1px solid rgba(91,147,255,.35)"></span>
-            <span style="height:9px;width:66%;border-radius:5px;background:var(--proSoft);border:1px solid rgba(91,147,255,.35)"></span>
-            <span style="height:9px;width:44%;border-radius:5px;background:var(--proSoft);border:1px solid rgba(91,147,255,.35)"></span>
-          </span>
-        </div>
-        <div style="flex:0 0 1px;background:var(--line);position:relative;display:flex;align-items:center;justify-content:center">
-          <span style="position:absolute;width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--ink3)">vs</span>
-        </div>
-        <div style="flex:1 1 300px;padding:56px 44px;display:flex;flex-direction:column;gap:26px;align-items:flex-end;text-align:right;background:linear-gradient(200deg,rgba(103,200,255,.08),transparent 70%)">
-          <img data-logo="" src="/assets/logo-anexyone.png" alt="Anexy ONE" style="height: 46px; width: 164px">
-          <span style="font-size:clamp(38px,5vw,70px);font-weight:600;letter-spacing:-.04em;line-height:.95">OPERAR</span>
-          <span style="display:flex;flex-direction:column;gap:12px;font-size:16.5px;color:var(--ink2)">
-            <span>Actuar donde ocurren las cosas, con evidencia.</span>
-            <span>Terreno. Recorridos. Tareas. Seguimiento. Proyectos.</span>
-          </span>
-          <span style="display:flex;gap:9px;margin-top:8px">
-            <span style="width:9px;height:44px;border-radius:5px;background:var(--oneSoft);border:1px solid rgba(103,200,255,.4)"></span>
-            <span style="width:9px;height:30px;border-radius:5px;background:var(--oneSoft);border:1px solid rgba(103,200,255,.4)"></span>
-            <span style="width:9px;height:52px;border-radius:5px;background:var(--oneSoft);border:1px solid rgba(103,200,255,.4)"></span>
-            <span style="width:9px;height:22px;border-radius:5px;background:var(--oneSoft);border:1px solid rgba(103,200,255,.4)"></span>
-          </span>
-        </div>
-      </div>
-    </section>
-
-    <section id="soluciones" data-reveal="" style="padding:110px 0 20px;display:flex;flex-direction:column;gap:44px">
+    <section id="soluciones" data-reveal="" style="padding:clamp(64px,8vw,110px) 0 20px;display:flex;flex-direction:column;gap:clamp(30px,4vw,44px)">
       <div style="display:flex;flex-direction:column;gap:16px;max-width:700px">
-        <span style="font-size:11.5px;font-weight:600;letter-spacing:.24em;color:var(--ink3)">SOLUCIONES</span>
-        <h2 style="margin:0;font-size:clamp(30px,3.6vw,50px);line-height:1.06;letter-spacing:-.03em;font-weight:700">Dos soluciones. Dos propósitos.</h2>
-        <p style="margin:0;font-size:17.5px;line-height:1.6;color:var(--ink2)">Productos independientes, con inicio de sesión propio y alcance propio. Se eligen según lo que su condominio necesita resolver.</p>
+        <span style="font-size:11.5px;font-weight:700;letter-spacing:.24em;color:var(--ink3)">EL ECOSISTEMA</span>
+        <h2 style="margin:0;font-size:clamp(28px,3.6vw,50px);line-height:1.06;letter-spacing:-.03em;font-weight:700">Una solución para cada necesidad.</h2>
+        <p style="margin:0;font-size:clamp(16px,1.5vw,17.5px);line-height:1.6;color:var(--ink2)">ANEXY integra dos plataformas especializadas que trabajan dentro de un mismo ecosistema.</p>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:24px">
-        <a id="pro" href="#eleccion" style="position:relative;display:flex;flex-direction:column;gap:24px;padding:36px;border-radius:24px;border:1px solid var(--line);background:linear-gradient(165deg,rgba(91,147,255,.10),var(--panel) 55%);overflow:hidden;transition:transform .45s cubic-bezier(.2,.7,.2,1),border-color .45s ease,box-shadow .45s ease" style-hover="transform:translateY(-6px);border-color:var(--pro);box-shadow:0 40px 80px -46px rgba(91,147,255,.8);color:var(--ink)">
-          <span style="position:absolute;right:-60px;top:-60px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(91,147,255,.28),transparent 68%)"></span>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:24px">
+        <a id="pro" href="#anexypro" style="position:relative;display:flex;flex-direction:column;gap:24px;padding:clamp(26px,3vw,36px);border-radius:24px;border:1px solid var(--line);background:linear-gradient(165deg,rgba(61,99,232,.10),var(--panel) 55%);overflow:hidden;transition:transform .45s cubic-bezier(.2,.7,.2,1),border-color .45s ease,box-shadow .45s ease" style-hover="transform:translateY(-6px);border-color:var(--pro);box-shadow:0 40px 80px -46px rgba(61,99,232,.8);color:var(--ink)">
+          <span style="position:absolute;right:-60px;top:-60px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(61,99,232,.24),transparent 68%)"></span>
           <span style="display:flex;align-items:center;gap:12px">
             <span style="width:40px;height:40px;border-radius:12px;border:1px solid var(--pro);background:var(--proSoft);display:flex;align-items:center;justify-content:center"><span style="width:14px;height:14px;border-radius:4px;background:var(--pro)"></span></span>
-            <span style="font-size:12px;font-weight:600;letter-spacing:.2em;color:var(--pro)">ADMINISTRAR</span>
+            <span style="font-size:12px;font-weight:700;letter-spacing:.2em;color:var(--pro)">ADMINISTRACIÓN</span>
           </span>
-          <span style="display:flex;flex-direction:column;gap:12px">
-            <img data-logo="" src="/assets/logo-anexypro.png" alt="Anexy PRO" style="height:48px;width:auto">
-            <span style="font-size:17px;line-height:1.6;color:var(--ink2)">Administración integral del condominio: finanzas, cuotas, morosidad, reservas, residentes, documentos y reportes en un solo lugar.</span>
+          <span style="display:flex;flex-direction:column;gap:14px">
+            <img data-logo="" src="/assets/logo-anexypro.png" alt="Anexy PRO" style="height:44px;width:auto">
+            <span style="font-size:clamp(18px,2vw,21px);font-weight:700;letter-spacing:-.02em;line-height:1.3">Administrá el condominio desde un solo lugar.</span>
           </span>
           <span style="display:flex;flex-wrap:wrap;gap:8px">
+            <span style="font-size:12.5px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Administración</span>
             <span style="font-size:12.5px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Finanzas</span>
-            <span style="font-size:12.5px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Cuotas y morosidad</span>
-            <span style="font-size:12.5px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Reservas y visitas</span>
-            <span style="font-size:12.5px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Residentes</span>
+            <span style="font-size:12.5px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Cuotas</span>
+            <span style="font-size:12.5px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Morosidad</span>
+            <span style="font-size:12.5px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Documentos</span>
+            <span style="font-size:12.5px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Reservas</span>
+            <span style="font-size:12.5px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Comunicaciones</span>
+            <span style="font-size:12.5px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Control caja chica</span>
+            <span style="font-size:12.5px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Agua potable</span>
             <span style="font-size:12.5px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Reportes</span>
           </span>
-          <span style="margin-top:6px;font-size:15px;font-weight:600;color:var(--pro)">Conocer ANEXY Pro →</span>
+          <span style="margin-top:auto;font-size:15px;font-weight:700;color:var(--pro)">Conocer ANEXYpro →</span>
         </a>
 
-        <a id="one" href="#eleccion" style="position:relative;display:flex;flex-direction:column;gap:24px;padding:36px;border-radius:24px;border:1px solid var(--line);background:var(--panel);overflow:hidden;transition:transform .45s cubic-bezier(.2,.7,.2,1),border-color .45s ease,box-shadow .45s ease" style-hover="transform:translateY(-6px);border-color:var(--one);box-shadow:0 40px 80px -46px rgba(103,200,255,.55);color:var(--ink)">
-          <span style="position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,transparent,var(--one),transparent)"></span>
+        <a id="one" href="#anexyone" style="position:relative;display:flex;flex-direction:column;gap:24px;padding:clamp(26px,3vw,36px);border-radius:24px;border:1px solid var(--line);background:linear-gradient(165deg,rgba(14,127,189,.09),var(--panel) 55%);overflow:hidden;transition:transform .45s cubic-bezier(.2,.7,.2,1),border-color .45s ease,box-shadow .45s ease" style-hover="transform:translateY(-6px);border-color:var(--one);box-shadow:0 40px 80px -46px rgba(14,127,189,.55);color:var(--ink)">
           <span style="position:absolute;right:-70px;bottom:-70px;width:230px;height:230px;border-radius:50%;border:1px solid var(--oneSoft)"></span>
           <span style="display:flex;align-items:center;gap:12px">
             <span style="width:40px;height:40px;border-radius:50%;border:1px solid var(--one);background:var(--oneSoft);display:flex;align-items:center;justify-content:center"><span style="width:14px;height:14px;border-radius:50%;background:var(--one)"></span></span>
-            <span style="font-size:12px;font-weight:600;letter-spacing:.2em;color:var(--one)">OPERAR</span>
+            <span style="font-size:12px;font-weight:700;letter-spacing:.2em;color:var(--one)">OPERACIÓN</span>
           </span>
-          <span style="display:flex;flex-direction:column;gap:12px">
-            <img data-logo="" src="/assets/logo-anexyone.png" alt="Anexy ONE" style="height:48px;width:auto">
-            <span style="font-size:17px;line-height:1.6;color:var(--ink2)">Operación y supervisión diaria: recorridos, incidencias, tareas, activos, mantenimiento y evidencia registrada en campo.</span>
+          <span style="display:flex;flex-direction:column;gap:14px">
+            <img data-logo="" src="/assets/logo-anexyone.png" alt="Anexy ONE" style="height:44px;width:auto">
+            <span style="font-size:clamp(18px,2vw,21px);font-weight:700;letter-spacing:-.02em;line-height:1.3">Supervisá y operá el condominio directamente en campo.</span>
           </span>
           <span style="display:flex;flex-wrap:wrap;gap:8px">
             <span style="font-size:12.5px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Recorridos</span>
-            <span style="font-size:12.5px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Hallazgos</span>
+            <span style="font-size:12.5px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Supervisión</span>
+            <span style="font-size:12.5px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Incidencias</span>
+            <span style="font-size:12.5px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Incumplimientos</span>
             <span style="font-size:12.5px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Tareas</span>
-            <span style="font-size:12.5px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Checklists</span>
-            <span style="font-size:12.5px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Actas y evidencia</span>
+            <span style="font-size:12.5px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Activos</span>
+            <span style="font-size:12.5px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Control caja chica</span>
+            <span style="font-size:12.5px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Agua potable</span>
+            <span style="font-size:12.5px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Reportes</span>
+            <span style="font-size:12.5px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Evidencia</span>
           </span>
-          <span style="margin-top:6px;font-size:15px;font-weight:600;color:var(--one)">Conocer ANEXY One →</span>
+          <span style="margin-top:auto;font-size:15px;font-weight:700;color:var(--one)">Conocer ANEXYone →</span>
         </a>
       </div>
     </section>
 
-    <section id="anexypro" data-reveal="" style="padding:110px 0 20px;display:flex;flex-direction:column;gap:56px">
-      <div style="display:flex;flex-direction:column;gap:16px;max-width:720px">
-        <span style="font-size:11.5px;font-weight:600;letter-spacing:.24em;color:var(--ink3)">ANEXYPRO EN DETALLE</span>
-        <h2 style="margin:0;font-size:clamp(30px,3.6vw,50px);line-height:1.06;letter-spacing:-.03em;font-weight:700">La administración del condominio, en pantalla.</h2>
-        <p style="margin:0;font-size:17.5px;line-height:1.6;color:var(--ink2)">Dos vistas de la plataforma, y los módulos que la componen.</p>
+    <section data-reveal="" style="padding:clamp(64px,8vw,110px) 0 20px;display:flex;flex-direction:column;gap:clamp(30px,4vw,44px)">
+      <div style="display:flex;flex-direction:column;gap:16px;max-width:660px">
+        <span style="font-size:11.5px;font-weight:700;letter-spacing:.24em;color:var(--ink3)">DOS PLATAFORMAS. UN ECOSISTEMA.</span>
+        <h2 style="margin:0;font-size:clamp(28px,3.6vw,50px);line-height:1.06;letter-spacing:-.03em;font-weight:700">Dos plataformas especializadas. Una visión integral del condominio.</h2>
       </div>
-
-      <div style="display:flex;flex-wrap:wrap;gap:44px;align-items:center">
-        <div style="flex:1 1 380px;min-width:0;display:flex;flex-direction:column;gap:18px">
-          <span style="display:flex;align-items:center;gap:10px;font-size:11.5px;font-weight:700;letter-spacing:.18em;color:var(--pro)"><span style="width:8px;height:8px;border-radius:2px;background:var(--pro)"></span>DASHBOARD EJECUTIVO</span>
-          <h3 style="margin:0;font-size:clamp(24px,2.6vw,34px);line-height:1.12;letter-spacing:-.025em;font-weight:700">Todo el estado del condominio al abrir sesión.</h3>
-          <p style="margin:0;font-size:16.5px;line-height:1.62;color:var(--ink2)">Tareas pendientes, certificaciones solicitadas, reservas por aprobar y tickets abiertos en la primera pantalla, con acceso directo a cada módulo y alertas de pendientes con días de atraso y prioridad.</p>
-          <div style="display:flex;flex-wrap:wrap;gap:8px">
-            <span style="font-size:13px;padding:7px 13px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Tareas pendientes</span>
-            <span style="font-size:13px;padding:7px 13px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Certificaciones</span>
-            <span style="font-size:13px;padding:7px 13px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Reservas por aprobar</span>
-            <span style="font-size:13px;padding:7px 13px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Tickets de residentes</span>
+      <div style="display:flex;flex-wrap:wrap;align-items:stretch;border:1px solid var(--line);border-radius:26px;overflow:hidden;background:var(--panel)">
+        <div style="flex:1 1 240px;padding:clamp(30px,4vw,52px) clamp(24px,3vw,40px);display:flex;flex-direction:column;gap:18px;background:linear-gradient(160deg,rgba(61,99,232,.09),transparent 70%)">
+          <img data-logo="" src="/assets/logo-anexypro.png" alt="Anexy PRO" style="height:34px;width:auto">
+          <span style="font-size:clamp(24px,2.8vw,38px);font-weight:700;letter-spacing:-.03em;line-height:1">ADMINISTRACIÓN</span>
+          <span style="font-size:15.5px;line-height:1.6;color:var(--ink2)">Información, finanzas y decisiones ordenadas.</span>
+        </div>
+        <div style="flex:1 1 300px;display:flex;align-items:stretch;min-width:0">
+          <div style="flex:0 0 56px;display:flex;align-items:center;justify-content:center;background:var(--bg2);border-left:1px solid var(--line);border-right:1px solid var(--line)">
+            <span style="font-size:26px;font-weight:600;color:var(--ink3)">+</span>
+          </div>
+          <div style="flex:1;min-width:0;padding:clamp(30px,4vw,52px) clamp(24px,3vw,40px);display:flex;flex-direction:column;gap:18px;background:linear-gradient(160deg,rgba(14,127,189,.09),transparent 70%)">
+            <img data-logo="" src="/assets/logo-anexyone.png" alt="Anexy ONE" style="height:34px;width:auto">
+            <span style="font-size:clamp(24px,2.8vw,38px);font-weight:700;letter-spacing:-.03em;line-height:1">OPERACIÓN</span>
+            <span style="font-size:15.5px;line-height:1.6;color:var(--ink2)">Ejecución, supervisión y evidencia en sitio.</span>
           </div>
         </div>
-        <div style="flex:1 1 460px;min-width:0;border-radius:20px;border:1px solid var(--line);background:var(--bg2);box-shadow:var(--shadow);overflow:hidden">
+        <div style="flex:1 1 300px;display:flex;align-items:stretch;min-width:0">
+          <div style="flex:0 0 56px;display:flex;align-items:center;justify-content:center;background:var(--bg2);border-left:1px solid var(--line);border-right:1px solid var(--line)">
+            <span style="font-size:26px;font-weight:600;color:var(--ink3)">=</span>
+          </div>
+          <div style="flex:1;min-width:0;padding:clamp(30px,4vw,52px) clamp(24px,3vw,40px);display:flex;flex-direction:column;gap:18px;background:linear-gradient(200deg,rgba(61,99,232,.12),rgba(14,127,189,.08))">
+            <img data-logo="" src="/assets/logo-anexy.png" alt="Anexy" style="height:34px;width:auto">
+            <span style="font-size:clamp(24px,2.8vw,38px);font-weight:700;letter-spacing:-.03em;line-height:1">ECOSISTEMA</span>
+            <span style="font-size:15.5px;line-height:1.6;color:var(--ink2)">Una sola visión del condominio, de la gestión al terreno.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section data-reveal="" style="position:relative;padding:clamp(64px,8vw,110px) 0 20px;display:flex;flex-direction:column;gap:clamp(30px,4vw,44px)">
+      <canvas data-plexus="" data-intensity=".5" style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:100vw;height:100%;pointer-events:none;z-index:0"></canvas>
+      <div style="position:relative;z-index:1;display:flex;flex-direction:column;gap:16px;max-width:660px">
+        <span style="font-size:11.5px;font-weight:700;letter-spacing:.24em;color:var(--ink3)">TRAZABILIDAD</span>
+        <h2 style="margin:0;font-size:clamp(28px,3.6vw,50px);line-height:1.06;letter-spacing:-.03em;font-weight:700">Todo conectado.</h2>
+        <p style="margin:0;font-size:clamp(16px,1.5vw,17.5px);line-height:1.6;color:var(--ink2)">Lo que se decide en la administración se ejecuta en el terreno, y lo ejecutado vuelve como evidencia y reporte.</p>
+      </div>
+      <div style="position:relative;z-index:1;display:flex;flex-wrap:wrap;gap:10px;align-items:stretch">
+        <span style="flex:1 1 150px;display:flex;flex-direction:column;gap:12px;padding:22px 20px;border-radius:18px;border:1px solid var(--line);background:color-mix(in oklab,var(--bg2) 88%,transparent)"><span style="width:9px;height:9px;border-radius:2px;background:var(--pro)"></span><span style="font-size:15px;font-weight:700">Administración</span></span>
+        <span style="flex:1 1 172px;display:flex;align-items:stretch;gap:10px;min-width:0"><span style="flex:0 0 22px;display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:14px">→</span><span style="flex:1 1 150px;display:flex;flex-direction:column;gap:12px;padding:22px 20px;border-radius:18px;border:1px solid var(--line);background:color-mix(in oklab,var(--bg2) 88%,transparent)"><span style="width:9px;height:9px;border-radius:50%;background:var(--one)"></span><span style="font-size:15px;font-weight:700">Operación</span></span></span>
+        <span style="flex:1 1 172px;display:flex;align-items:stretch;gap:10px;min-width:0"><span style="flex:0 0 22px;display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:14px">→</span><span style="flex:1 1 150px;display:flex;flex-direction:column;gap:12px;padding:22px 20px;border-radius:18px;border:1px solid var(--line);background:color-mix(in oklab,var(--bg2) 88%,transparent)"><span style="width:9px;height:9px;border-radius:50%;background:var(--one)"></span><span style="font-size:15px;font-weight:700">Supervisión</span></span></span>
+        <span style="flex:1 1 172px;display:flex;align-items:stretch;gap:10px;min-width:0"><span style="flex:0 0 22px;display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:14px">→</span><span style="flex:1 1 150px;display:flex;flex-direction:column;gap:12px;padding:22px 20px;border-radius:18px;border:1px solid var(--line);background:color-mix(in oklab,var(--bg2) 88%,transparent)"><span style="width:9px;height:9px;border-radius:50%;background:var(--one)"></span><span style="font-size:15px;font-weight:700">Evidencia</span></span></span>
+        <span style="flex:1 1 172px;display:flex;align-items:stretch;gap:10px;min-width:0"><span style="flex:0 0 22px;display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:14px">→</span><span style="flex:1 1 150px;display:flex;flex-direction:column;gap:12px;padding:22px 20px;border-radius:18px;border:1px solid var(--line);background:color-mix(in oklab,var(--bg2) 88%,transparent)"><span style="width:9px;height:9px;border-radius:2px;background:var(--pro)"></span><span style="font-size:15px;font-weight:700">Comunicación</span></span></span>
+        <span style="flex:1 1 172px;display:flex;align-items:stretch;gap:10px;min-width:0"><span style="flex:0 0 22px;display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:14px">→</span><span style="flex:1 1 150px;display:flex;flex-direction:column;gap:12px;padding:22px 20px;border-radius:18px;border:1px solid var(--line);background:color-mix(in oklab,var(--bg2) 88%,transparent)"><span style="width:9px;height:9px;border-radius:2px;background:var(--pro)"></span><span style="font-size:15px;font-weight:700">Seguimiento</span></span></span>
+        <span style="flex:1 1 172px;display:flex;align-items:stretch;gap:10px;min-width:0"><span style="flex:0 0 22px;display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:14px">→</span><span style="flex:1 1 150px;display:flex;flex-direction:column;gap:12px;padding:22px 20px;border-radius:18px;border:1px solid var(--pro);background:var(--proSoft)"><span style="width:9px;height:9px;border-radius:2px;background:var(--pro)"></span><span style="font-size:15px;font-weight:700">Reportes</span></span></span>
+      </div>
+    </section>
+
+    <section id="anexypro" data-reveal="" style="padding:clamp(64px,8vw,110px) 0 20px;display:flex;flex-direction:column;gap:clamp(36px,4.5vw,56px)">
+      <div style="display:flex;flex-direction:column;gap:16px;max-width:720px">
+        <span style="display:flex;align-items:center;gap:12px"><img data-logo="" src="/assets/logo-anexypro.png" alt="Anexy PRO" style="height:26px;width:auto"><span style="font-size:11.5px;font-weight:700;letter-spacing:.24em;color:var(--ink3)">ADMINISTRACIÓN</span></span>
+        <h2 style="margin:0;font-size:clamp(28px,3.6vw,50px);line-height:1.06;letter-spacing:-.03em;font-weight:700">Administrá el condominio desde un solo lugar.</h2>
+        <p style="margin:0;font-size:clamp(16px,1.5vw,17.5px);line-height:1.6;color:var(--ink2)">ANEXYpro concentra la administración, las finanzas, los documentos, las cuotas, la morosidad, las reservas, las comunicaciones y los reportes del condominio.</p>
+      </div>
+
+      <div style="display:flex;flex-wrap:wrap;gap:clamp(28px,3.5vw,44px);align-items:center">
+        <div style="flex:1 1 340px;min-width:0;display:flex;flex-direction:column;gap:18px">
+          <span style="display:flex;align-items:center;gap:10px;font-size:11.5px;font-weight:700;letter-spacing:.18em;color:var(--pro)"><span style="width:8px;height:8px;border-radius:2px;background:var(--pro)"></span>DASHBOARD EJECUTIVO</span>
+          <h3 style="margin:0;font-size:clamp(22px,2.6vw,34px);line-height:1.12;letter-spacing:-.025em;font-weight:700">Todo el estado del condominio al abrir sesión.</h3>
+          <p style="margin:0;font-size:16.5px;line-height:1.62;color:var(--ink2)">Tareas pendientes, certificaciones, reservas por aprobar y tickets abiertos en la primera pantalla, con las alertas de pendientes por días de atraso y prioridad.</p>
+        </div>
+        <div style="flex:1 1 440px;min-width:0;border-radius:20px;border:1px solid var(--line);background:var(--bg2);box-shadow:var(--shadow);overflow:hidden">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 18px;border-bottom:1px solid var(--line);background:var(--panel)">
-            <img data-logo="" src="/assets/logo-anexypro.png" alt="Anexy PRO" style="height: 32px; width: 114px">
+            <img data-logo="" src="/assets/logo-anexypro.png" alt="Anexy PRO" style="height:22px;width:auto">
             <span style="font-size:11.5px;letter-spacing:.14em;color:var(--ink3);font-weight:700">DASHBOARD EJECUTIVO</span>
           </div>
           <div style="padding:22px;display:flex;flex-direction:column;gap:16px">
@@ -367,31 +424,20 @@ img[data-logo]{display:block;width:auto;max-width:100%;flex:0 0 auto;align-self:
             <div style="border-radius:14px;border:1px solid var(--line);overflow:hidden">
               <div style="padding:12px 16px;border-bottom:1px solid var(--line);background:var(--panel);display:flex;align-items:center;justify-content:space-between"><span style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--ink3)">PENDIENTES CON ATRASO</span><span style="font-size:11px;color:var(--ink3)">4 tareas</span></div>
               <div style="display:flex;flex-direction:column">
-                <div style="padding:13px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line)"><span style="font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:8px;background:rgba(200,40,40,.10);color:#B02020">29d</span><span style="flex:1;min-width:0;font-size:14px;font-weight:600">Mantenimiento de bomba de agua</span><span style="font-size:11.5px;font-weight:700;color:#946200">MEDIA</span></div>
-                <div style="padding:13px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line)"><span style="font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:8px;background:rgba(200,40,40,.10);color:#B02020">20d</span><span style="flex:1;min-width:0;font-size:14px;font-weight:600">Cambio de tomacorriente en casa club</span><span style="font-size:11.5px;font-weight:700;color:#B02020">ALTA</span></div>
-                <div style="padding:13px 16px;display:flex;align-items:center;gap:12px"><span style="font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:8px;background:rgba(200,40,40,.10);color:#B02020">19d</span><span style="flex:1;min-width:0;font-size:14px;font-weight:600">Pintura de puertas del basurero</span><span style="font-size:11.5px;font-weight:700;color:#946200">MEDIA</span></div>
+                <div style="padding:13px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line)"><span style="font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:8px;background:rgba(176,32,32,.10);color:#B02020">29d</span><span style="flex:1;min-width:0;font-size:14px;font-weight:600">Mantenimiento de bomba de agua</span><span style="font-size:11.5px;font-weight:700;color:#946200">MEDIA</span></div>
+                <div style="padding:13px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line)"><span style="font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:8px;background:rgba(176,32,32,.10);color:#B02020">20d</span><span style="flex:1;min-width:0;font-size:14px;font-weight:600">Cambio de tomacorriente en casa club</span><span style="font-size:11.5px;font-weight:700;color:#B02020">ALTA</span></div>
+                <div style="padding:13px 16px;display:flex;align-items:center;gap:12px"><span style="font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:8px;background:rgba(176,32,32,.10);color:#B02020">19d</span><span style="flex:1;min-width:0;font-size:14px;font-weight:600">Pintura de puertas del basurero</span><span style="font-size:11.5px;font-weight:700;color:#946200">MEDIA</span></div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div style="display:flex;flex-wrap:wrap;gap:44px;align-items:center">
-        <div style="flex:1 1 380px;min-width:0;display:flex;flex-direction:column;gap:18px">
-          <span style="display:flex;align-items:center;gap:10px;font-size:11.5px;font-weight:700;letter-spacing:.18em;color:var(--pro)"><span style="width:8px;height:8px;border-radius:2px;background:var(--pro)"></span>ESTADOS DE CUENTA</span>
-          <h3 style="margin:0;font-size:clamp(24px,2.6vw,34px);line-height:1.12;letter-spacing:-.025em;font-weight:700">El saldo de cada filial, sin planillas paralelas.</h3>
-          <p style="margin:0;font-size:16.5px;line-height:1.62;color:var(--ink2)">Consulta por unidad y propietario, con el saldo y el estado a la vista —al día, saldo pendiente o suspendida—, aplicación de pagos y reenvío del estado de cuenta por correo.</p>
-          <div style="display:flex;flex-wrap:wrap;gap:8px">
-            <span style="font-size:13px;padding:7px 13px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Saldo por unidad</span>
-            <span style="font-size:13px;padding:7px 13px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Morosidad</span>
-            <span style="font-size:13px;padding:7px 13px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Aplicación de pagos</span>
-            <span style="font-size:13px;padding:7px 13px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Envío por correo</span>
-          </div>
-        </div>
-        <div style="flex:1 1 460px;min-width:0;border-radius:20px;border:1px solid var(--line);background:var(--bg2);box-shadow:var(--shadow);overflow:hidden">
+      <div style="display:flex;flex-wrap:wrap-reverse;gap:clamp(28px,3.5vw,44px);align-items:center">
+        <div style="flex:1 1 440px;min-width:0;border-radius:20px;border:1px solid var(--line);background:var(--bg2);box-shadow:var(--shadow);overflow:hidden">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 18px;border-bottom:1px solid var(--line);background:var(--panel)">
-            
-            <img data-logo="" src="/assets/logo-anexypro.png" alt="Anexy PRO" style="height: 36px; width: 128px"><span style="font-size:11.5px;letter-spacing:.14em;color:var(--ink3);font-weight:700">ESTADOS DE CUENTA</span>
+            <img data-logo="" src="/assets/logo-anexypro.png" alt="Anexy PRO" style="height:22px;width:auto">
+            <span style="font-size:11.5px;letter-spacing:.14em;color:var(--ink3);font-weight:700">ESTADOS DE CUENTA</span>
           </div>
           <div style="padding:22px;display:flex;flex-direction:column;gap:14px">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
@@ -417,53 +463,30 @@ img[data-logo]{display:block;width:auto;max-width:100%;flex:0 0 auto;align-self:
             </div>
           </div>
         </div>
-      </div>
-
-      <div style="display:flex;flex-direction:column;gap:20px;padding:34px;border-radius:22px;border:1px solid var(--line);background:var(--panel)">
-        <span style="font-size:11.5px;font-weight:700;letter-spacing:.18em;color:var(--ink3)">MÓDULOS DE ANEXYPRO</span>
-        <div style="display:flex;flex-wrap:wrap;gap:10px">
-          <span style="font-size:14px;font-weight:600;padding:9px 15px;border-radius:11px;border:1px solid var(--line);background:var(--bg2);color:var(--ink)">Dashboard ejecutivo</span>
-          <span style="font-size:14px;font-weight:600;padding:9px 15px;border-radius:11px;border:1px solid var(--line);background:var(--bg2);color:var(--ink)">Gestión de Tareas</span>
-          <span style="font-size:14px;font-weight:600;padding:9px 15px;border-radius:11px;border:1px solid var(--line);background:var(--bg2);color:var(--ink)">Comunicados</span>
-          <span style="font-size:14px;font-weight:600;padding:9px 15px;border-radius:11px;border:1px solid var(--line);background:var(--bg2);color:var(--ink)">Contenido de Valor</span>
-          <span style="font-size:14px;font-weight:600;padding:9px 15px;border-radius:11px;border:1px solid var(--line);background:var(--bg2);color:var(--ink)">Calendario</span>
-          <span style="font-size:14px;font-weight:600;padding:9px 15px;border-radius:11px;border:1px solid var(--line);background:var(--bg2);color:var(--ink)">Reservas</span>
-          <span style="font-size:14px;font-weight:600;padding:9px 15px;border-radius:11px;border:1px solid var(--line);background:var(--bg2);color:var(--ink)">Visitas y Accesos</span>
-          <span style="font-size:14px;font-weight:600;padding:9px 15px;border-radius:11px;border:1px solid var(--line);background:var(--bg2);color:var(--ink)">Seguridad</span>
-          <span style="font-size:14px;font-weight:600;padding:9px 15px;border-radius:11px;border:1px solid var(--line);background:var(--bg2);color:var(--ink)">Gestión de Incumplimientos</span>
-          <span style="font-size:14px;font-weight:600;padding:9px 15px;border-radius:11px;border:1px solid var(--line);background:var(--bg2);color:var(--ink)">Mantenimientos de Áreas Comunes</span>
-          <span style="font-size:14px;font-weight:600;padding:9px 15px;border-radius:11px;border:1px solid var(--line);background:var(--bg2);color:var(--ink)">Activos y Depreciaciones</span>
-          <span style="font-size:14px;font-weight:600;padding:9px 15px;border-radius:11px;border:1px solid var(--line);background:var(--bg2);color:var(--ink)">Proyectos</span>
-          <span style="font-size:14px;font-weight:600;padding:9px 15px;border-radius:11px;border:1px solid var(--line);background:var(--bg2);color:var(--ink)">Administración</span>
-          <span style="font-size:14px;font-weight:600;padding:9px 15px;border-radius:11px;border:1px solid var(--line);background:var(--bg2);color:var(--ink)">Gestión Financiera</span>
-          <span style="font-size:14px;font-weight:600;padding:9px 15px;border-radius:11px;border:1px solid var(--line);background:var(--bg2);color:var(--ink)">Documentación</span>
-          <span style="font-size:14px;font-weight:600;padding:9px 15px;border-radius:11px;border:1px solid var(--line);background:var(--bg2);color:var(--ink)">Auditoría</span>
+        <div style="flex:1 1 340px;min-width:0;display:flex;flex-direction:column;gap:18px">
+          <span style="display:flex;align-items:center;gap:10px;font-size:11.5px;font-weight:700;letter-spacing:.18em;color:var(--pro)"><span style="width:8px;height:8px;border-radius:2px;background:var(--pro)"></span>FINANZAS Y CUOTAS</span>
+          <h3 style="margin:0;font-size:clamp(22px,2.6vw,34px);line-height:1.12;letter-spacing:-.025em;font-weight:700">El saldo de cada filial, sin planillas paralelas.</h3>
+          <p style="margin:0;font-size:16.5px;line-height:1.62;color:var(--ink2)">Estado por unidad y propietario, aplicación de pagos, morosidad a la vista y envío del estado de cuenta por correo.</p>
         </div>
       </div>
     </section>
 
-    <section id="anexyone" data-reveal="" style="padding:110px 0 20px;display:flex;flex-direction:column;gap:56px">
+    <section id="anexyone" data-reveal="" style="padding:clamp(64px,8vw,110px) 0 20px;display:flex;flex-direction:column;gap:clamp(36px,4.5vw,56px)">
       <div style="display:flex;flex-direction:column;gap:16px;max-width:720px">
-        <span style="font-size:11.5px;font-weight:600;letter-spacing:.24em;color:var(--ink3)">ANEXYONE EN DETALLE</span>
-        <h2 style="margin:0;font-size:clamp(30px,3.6vw,50px);line-height:1.06;letter-spacing:-.03em;font-weight:700">La operación diaria, registrada en el momento.</h2>
-        <p style="margin:0;font-size:17.5px;line-height:1.6;color:var(--ink2)">Dos vistas de la plataforma, y los módulos que la componen.</p>
+        <span style="display:flex;align-items:center;gap:12px"><img data-logo="" src="/assets/logo-anexyone.png" alt="Anexy ONE" style="height:26px;width:auto"><span style="font-size:11.5px;font-weight:700;letter-spacing:.24em;color:var(--ink3)">OPERACIÓN Y SUPERVISIÓN</span></span>
+        <h2 style="margin:0;font-size:clamp(28px,3.6vw,50px);line-height:1.06;letter-spacing:-.03em;font-weight:700">Supervisá y operá el condominio directamente en campo.</h2>
+        <p style="margin:0;font-size:clamp(16px,1.5vw,17.5px);line-height:1.6;color:var(--ink2)">AnexyONE cubre los recorridos, las incidencias, los incumplimientos, las tareas, los activos, la supervisión, la evidencia y los reportes operativos.</p>
       </div>
 
-      <div style="display:flex;flex-wrap:wrap;gap:44px;align-items:center">
-        <div style="flex:1 1 380px;min-width:0;display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;flex-wrap:wrap;gap:clamp(28px,3.5vw,44px);align-items:center">
+        <div style="flex:1 1 340px;min-width:0;display:flex;flex-direction:column;gap:18px">
           <span style="display:flex;align-items:center;gap:10px;font-size:11.5px;font-weight:700;letter-spacing:.18em;color:var(--one)"><span style="width:8px;height:8px;border-radius:50%;background:var(--one)"></span>DASHBOARD OPERATIVO</span>
-          <h3 style="margin:0;font-size:clamp(24px,2.6vw,34px);line-height:1.12;letter-spacing:-.025em;font-weight:700">Cuatro acciones para empezar el turno.</h3>
-          <p style="margin:0;font-size:16.5px;line-height:1.62;color:var(--ink2)">Iniciar recorrido, iniciar inspección, registrar hallazgo o crear tarea desde la primera pantalla, con las alertas vencidas, por vencer y recién asignadas listas para completar.</p>
-          <div style="display:flex;flex-wrap:wrap;gap:8px">
-            <span style="font-size:13px;padding:7px 13px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Iniciar recorrido</span>
-            <span style="font-size:13px;padding:7px 13px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Iniciar inspección</span>
-            <span style="font-size:13px;padding:7px 13px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Registrar hallazgo</span>
-            <span style="font-size:13px;padding:7px 13px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Alertas por vencer</span>
-          </div>
+          <h3 style="margin:0;font-size:clamp(22px,2.6vw,34px);line-height:1.12;letter-spacing:-.025em;font-weight:700">Cuatro acciones para empezar el turno.</h3>
+          <p style="margin:0;font-size:16.5px;line-height:1.62;color:var(--ink2)">Iniciar recorrido, iniciar inspección, registrar hallazgo o crear tarea desde la primera pantalla, con las alertas vencidas y por vencer listas para completar.</p>
         </div>
-        <div style="flex:1 1 460px;min-width:0;border-radius:20px;border:1px solid var(--line);background:var(--bg2);box-shadow:var(--shadow);overflow:hidden">
+        <div style="flex:1 1 440px;min-width:0;border-radius:20px;border:1px solid var(--line);background:var(--bg2);box-shadow:var(--shadow);overflow:hidden">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 18px;border-bottom:1px solid var(--line);background:var(--panel)">
-            <img data-logo="" src="/assets/logo-anexyone.png" alt="Anexy ONE" style="height: 37px; width: 132px">
+            <img data-logo="" src="/assets/logo-anexyone.png" alt="Anexy ONE" style="height:22px;width:auto">
             <span style="font-size:11.5px;letter-spacing:.14em;color:var(--ink3);font-weight:700">OPERACIÓN · DASHBOARD</span>
           </div>
           <div style="padding:22px;display:flex;flex-direction:column;gap:16px">
@@ -476,7 +499,7 @@ img[data-logo]{display:block;width:auto;max-width:100%;flex:0 0 auto;align-self:
             <div style="border-radius:14px;border:1px solid var(--line);overflow:hidden">
               <div style="padding:12px 16px;border-bottom:1px solid var(--line);background:var(--panel);display:flex;align-items:center;justify-content:space-between">
                 <span style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--ink3)">ALERTAS</span>
-                <span style="font-size:11px;color:var(--ink3)">Vencidas, por vencer y recién asignadas</span>
+                <span style="font-size:11px;color:var(--ink3)">Vencidas y por vencer</span>
               </div>
               <div style="display:flex;flex-direction:column">
                 <div style="padding:13px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line)"><span style="font-size:11px;font-weight:700;padding:5px 10px;border-radius:999px;background:rgba(200,140,20,.14);color:#946200">Por vencer</span><span style="flex:1;min-width:0;font-size:14px;font-weight:600">Lámpara de emergencia dañada</span><span style="font-size:12px;color:var(--ink3)">9 sept</span></div>
@@ -488,23 +511,17 @@ img[data-logo]{display:block;width:auto;max-width:100%;flex:0 0 auto;align-self:
         </div>
       </div>
 
-      <div style="display:flex;flex-wrap:wrap-reverse;gap:44px;align-items:center">
-        <div style="flex:1 1 460px;min-width:0;border-radius:20px;border:1px solid var(--line);background:var(--bg2);box-shadow:var(--shadow);overflow:hidden">
+      <div style="display:flex;flex-wrap:wrap-reverse;gap:clamp(28px,3.5vw,44px);align-items:center">
+        <div style="flex:1 1 440px;min-width:0;border-radius:20px;border:1px solid var(--line);background:var(--bg2);box-shadow:var(--shadow);overflow:hidden">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 18px;border-bottom:1px solid var(--line);background:var(--panel)">
-            
-            <img data-logo="" src="/assets/logo-anexyone.png" alt="Anexy ONE" style="height: 37px; width: 132px"><span style="font-size:11px;font-weight:700;padding:5px 11px;border-radius:999px;background:var(--oneSoft);color:var(--one)">Finalizado</span>
+            <img data-logo="" src="/assets/logo-anexyone.png" alt="Anexy ONE" style="height:22px;width:auto">
+            <span style="font-size:11px;font-weight:700;padding:5px 11px;border-radius:999px;background:var(--oneSoft);color:var(--one)">Recorrido finalizado</span>
           </div>
           <div style="padding:22px;display:flex;flex-direction:column;gap:16px">
-            <span style="font-size:19px;font-weight:700;letter-spacing:-.025em">Recorrido general</span>
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
               <div style="padding:16px;border-radius:14px;border:1px solid var(--line);display:flex;flex-direction:column;gap:6px"><span style="font-size:28px;font-weight:700;letter-spacing:-.03em;color:var(--one)">21</span><span style="font-size:11.5px;letter-spacing:.1em;color:var(--ink3)">HALLAZGOS</span></div>
               <div style="padding:16px;border-radius:14px;border:1px solid var(--line);display:flex;flex-direction:column;gap:6px"><span style="font-size:28px;font-weight:700;letter-spacing:-.03em">15</span><span style="font-size:11.5px;letter-spacing:.1em;color:var(--ink3)">EVIDENCIAS</span></div>
-              <div style="padding:16px;border-radius:14px;border:1px solid var(--line);display:flex;flex-direction:column;gap:6px"><span style="font-size:28px;font-weight:700;letter-spacing:-.03em;color:var(--ink3)">0</span><span style="font-size:11.5px;letter-spacing:.1em;color:var(--ink3)">NOTIFICADOS</span></div>
-            </div>
-            <div style="display:flex;flex-wrap:wrap;gap:24px;padding:16px 18px;border-radius:14px;border:1px solid var(--line)">
-              <span style="display:flex;flex-direction:column;gap:5px"><span style="font-size:10.5px;letter-spacing:.12em;color:var(--ink3)">INICIO</span><span style="font-size:14px;font-weight:600">10:04 a. m.</span></span>
-              <span style="display:flex;flex-direction:column;gap:5px"><span style="font-size:10.5px;letter-spacing:.12em;color:var(--ink3)">FIN</span><span style="font-size:14px;font-weight:600">11:13 a. m.</span></span>
-              <span style="display:flex;flex-direction:column;gap:5px"><span style="font-size:10.5px;letter-spacing:.12em;color:var(--ink3)">DURACIÓN</span><span style="font-size:14px;font-weight:600">1 h 9 min</span></span>
+              <div style="padding:16px;border-radius:14px;border:1px solid var(--line);display:flex;flex-direction:column;gap:6px"><span style="font-size:28px;font-weight:700;letter-spacing:-.03em;color:var(--ink3)">1h 9m</span><span style="font-size:11.5px;letter-spacing:.1em;color:var(--ink3)">DURACIÓN</span></div>
             </div>
             <div style="display:flex;flex-direction:column;gap:12px;padding:18px;border-radius:14px;border:1px solid var(--line)">
               <span style="font-size:13px;font-weight:700">Resumen por tipo</span>
@@ -512,73 +529,83 @@ img[data-logo]{display:block;width:auto;max-width:100%;flex:0 0 auto;align-self:
                 <span style="font-size:12px;padding:6px 11px;border-radius:999px;background:var(--oneSoft);color:var(--ink2)">Revisión medidor de agua: 2</span>
                 <span style="font-size:12px;padding:6px 11px;border-radius:999px;background:var(--oneSoft);color:var(--ink2)">Tuerca faltante: 3</span>
                 <span style="font-size:12px;padding:6px 11px;border-radius:999px;background:var(--oneSoft);color:var(--ink2)">Paredes con humedad: 1</span>
-                <span style="font-size:12px;padding:6px 11px;border-radius:999px;background:var(--oneSoft);color:var(--ink2)">Cambiar tapas de tomacorrientes: 1</span>
                 <span style="font-size:12px;padding:6px 11px;border-radius:999px;background:var(--oneSoft);color:var(--ink2)">Lámpara de emergencia dañada: 1</span>
               </div>
             </div>
             <span style="align-self:flex-start;font-size:12.5px;font-weight:700;padding:10px 16px;border-radius:11px;background:#0A5F87;color:#fff">Descargar reporte PDF</span>
           </div>
         </div>
-        <div style="flex:1 1 380px;min-width:0;display:flex;flex-direction:column;gap:18px">
-          <span style="display:flex;align-items:center;gap:10px;font-size:11.5px;font-weight:700;letter-spacing:.18em;color:var(--one)"><span style="width:8px;height:8px;border-radius:50%;background:var(--one)"></span>RECORRIDOS</span>
-          <h3 style="margin:0;font-size:clamp(24px,2.6vw,34px);line-height:1.12;letter-spacing:-.025em;font-weight:700">Cada recorrido cierra con su reporte.</h3>
-          <p style="margin:0;font-size:16.5px;line-height:1.62;color:var(--ink2)">Hora de inicio, hora de fin y duración; hallazgos, evidencias y notificados; resumen por tipo de hallazgo y descarga del reporte en PDF. El historial guarda todos los recorridos con su estado.</p>
-          <div style="display:flex;flex-wrap:wrap;gap:8px">
-            <span style="font-size:13px;padding:7px 13px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Hallazgos</span>
-            <span style="font-size:13px;padding:7px 13px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Evidencias</span>
-            <span style="font-size:13px;padding:7px 13px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Duración</span>
-            <span style="font-size:13px;padding:7px 13px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)">Reporte PDF</span>
-          </div>
-        </div>
-      </div>
-
-      <div style="display:flex;flex-direction:column;gap:20px;padding:34px;border-radius:22px;border:1px solid var(--line);background:var(--panel)">
-        <span style="font-size:11.5px;font-weight:700;letter-spacing:.18em;color:var(--ink3)">MÓDULOS DE ANEXYONE</span>
-        <div style="display:flex;flex-wrap:wrap;gap:10px">
-          <span style="font-size:14px;font-weight:600;padding:9px 15px;border-radius:11px;border:1px solid var(--line);background:var(--bg2);color:var(--ink)">Dashboard</span>
-          <span style="font-size:14px;font-weight:600;padding:9px 15px;border-radius:11px;border:1px solid var(--line);background:var(--bg2);color:var(--ink)">Tareas</span>
-          <span style="font-size:14px;font-weight:600;padding:9px 15px;border-radius:11px;border:1px solid var(--line);background:var(--bg2);color:var(--ink)">Proyectos</span>
-          <span style="font-size:14px;font-weight:600;padding:9px 15px;border-radius:11px;border:1px solid var(--line);background:var(--bg2);color:var(--ink)">Reportes</span>
-          <span style="font-size:14px;font-weight:600;padding:9px 15px;border-radius:11px;border:1px solid var(--line);background:var(--bg2);color:var(--ink)">Instalaciones y sistemas</span>
-          <span style="font-size:14px;font-weight:600;padding:9px 15px;border-radius:11px;border:1px solid var(--line);background:var(--bg2);color:var(--ink)">Protocolos</span>
-          <span style="font-size:14px;font-weight:600;padding:9px 15px;border-radius:11px;border:1px solid var(--line);background:var(--bg2);color:var(--ink)">Checklists</span>
-          <span style="font-size:14px;font-weight:600;padding:9px 15px;border-radius:11px;border:1px solid var(--line);background:var(--bg2);color:var(--ink)">Programaciones</span>
-          <span style="font-size:14px;font-weight:600;padding:9px 15px;border-radius:11px;border:1px solid var(--line);background:var(--bg2);color:var(--ink)">Alertas</span>
-          <span style="font-size:14px;font-weight:600;padding:9px 15px;border-radius:11px;border:1px solid var(--line);background:var(--bg2);color:var(--ink)">Mis condominios</span>
-          <span style="font-size:14px;font-weight:600;padding:9px 15px;border-radius:11px;border:1px solid var(--line);background:var(--bg2);color:var(--ink)">Recorridos</span>
-          <span style="font-size:14px;font-weight:600;padding:9px 15px;border-radius:11px;border:1px solid var(--line);background:var(--bg2);color:var(--ink)">Incumplimientos</span>
-          <span style="font-size:14px;font-weight:600;padding:9px 15px;border-radius:11px;border:1px solid var(--line);background:var(--bg2);color:var(--ink)">Actas</span>
-          <span style="font-size:14px;font-weight:600;padding:9px 15px;border-radius:11px;border:1px solid var(--line);background:var(--bg2);color:var(--ink)">Agua potable</span>
-          <span style="font-size:14px;font-weight:600;padding:9px 15px;border-radius:11px;border:1px solid var(--line);background:var(--bg2);color:var(--ink)">Autorizaciones</span>
+        <div style="flex:1 1 340px;min-width:0;display:flex;flex-direction:column;gap:18px">
+          <span style="display:flex;align-items:center;gap:10px;font-size:11.5px;font-weight:700;letter-spacing:.18em;color:var(--one)"><span style="width:8px;height:8px;border-radius:50%;background:var(--one)"></span>RECORRIDOS Y EVIDENCIA</span>
+          <h3 style="margin:0;font-size:clamp(22px,2.6vw,34px);line-height:1.12;letter-spacing:-.025em;font-weight:700">Cada recorrido cierra con su reporte.</h3>
+          <p style="margin:0;font-size:16.5px;line-height:1.62;color:var(--ink2)">Hallazgos, evidencias y duración quedan registrados y el reporte se descarga en PDF. El historial conserva todos los recorridos con su estado.</p>
         </div>
       </div>
     </section>
 
-    <section id="eleccion" data-reveal="" style="padding:110px 0 20px;display:flex;flex-direction:column;gap:40px">
+    <section id="caracteristicas" data-reveal="" style="padding:clamp(64px,8vw,110px) 0 20px;display:flex;flex-direction:column;gap:clamp(30px,4vw,44px)">
       <div style="display:flex;flex-direction:column;gap:16px;max-width:660px">
-        <span style="font-size:11.5px;font-weight:600;letter-spacing:.24em;color:var(--ink3)">¿CUÁL NECESITO?</span>
-        <h2 style="margin:0;font-size:clamp(30px,3.6vw,50px);line-height:1.06;letter-spacing:-.03em;font-weight:700">Elegí la solución que necesitás.</h2>
-        <p style="margin:0;font-size:17.5px;line-height:1.6;color:var(--ink2)">Seleccioná lo que querés resolver y le mostramos la plataforma indicada.</p>
+        <span style="font-size:11.5px;font-weight:700;letter-spacing:.24em;color:var(--ink3)">CARACTERÍSTICAS</span>
+        <h2 style="margin:0;font-size:clamp(28px,3.6vw,50px);line-height:1.06;letter-spacing:-.03em;font-weight:700">Seis capacidades, dos plataformas.</h2>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:22px;overflow:hidden">
+        <div style="padding:clamp(26px,3vw,34px);background:var(--bg);display:flex;flex-direction:column;gap:14px;transition:background .35s ease" style-hover="background:var(--panel2)">
+          <span style="display:flex;align-items:center;gap:10px"><span style="width:9px;height:9px;border-radius:2px;background:var(--pro)"></span><span style="font-size:11px;font-weight:700;letter-spacing:.16em;color:var(--pro)">ANEXYPRO</span></span>
+          <span style="font-size:21px;font-weight:700;letter-spacing:-.02em">Administración</span>
+          <span style="font-size:15.5px;line-height:1.6;color:var(--ink2)">Residentes, filiales, documentos, calendario y gestión administrativa.</span>
+        </div>
+        <div style="padding:clamp(26px,3vw,34px);background:var(--bg);display:flex;flex-direction:column;gap:14px;transition:background .35s ease" style-hover="background:var(--panel2)">
+          <span style="display:flex;align-items:center;gap:10px"><span style="width:9px;height:9px;border-radius:2px;background:var(--pro)"></span><span style="font-size:11px;font-weight:700;letter-spacing:.16em;color:var(--pro)">ANEXYPRO</span></span>
+          <span style="font-size:21px;font-weight:700;letter-spacing:-.02em">Finanzas</span>
+          <span style="font-size:15.5px;line-height:1.6;color:var(--ink2)">Cuotas, morosidad, estados de cuenta, ingresos y gastos.</span>
+        </div>
+        <div style="padding:clamp(26px,3vw,34px);background:var(--bg);display:flex;flex-direction:column;gap:14px;transition:background .35s ease" style-hover="background:var(--panel2)">
+          <span style="display:flex;align-items:center;gap:10px"><span style="width:9px;height:9px;border-radius:50%;background:var(--one)"></span><span style="font-size:11px;font-weight:700;letter-spacing:.16em;color:var(--one)">ANEXYONE</span></span>
+          <span style="font-size:21px;font-weight:700;letter-spacing:-.02em">Operación</span>
+          <span style="font-size:15.5px;line-height:1.6;color:var(--ink2)">Tareas, activos, mantenimiento y programaciones del día a día.</span>
+        </div>
+        <div style="padding:clamp(26px,3vw,34px);background:var(--bg);display:flex;flex-direction:column;gap:14px;transition:background .35s ease" style-hover="background:var(--panel2)">
+          <span style="display:flex;align-items:center;gap:10px"><span style="width:9px;height:9px;border-radius:50%;background:var(--one)"></span><span style="font-size:11px;font-weight:700;letter-spacing:.16em;color:var(--one)">ANEXYONE</span></span>
+          <span style="font-size:21px;font-weight:700;letter-spacing:-.02em">Supervisión</span>
+          <span style="font-size:15.5px;line-height:1.6;color:var(--ink2)">Recorridos, checklists, incidencias e incumplimientos con evidencia, registro caja chica y agua potable.</span>
+        </div>
+        <div style="padding:clamp(26px,3vw,34px);background:var(--bg);display:flex;flex-direction:column;gap:14px;transition:background .35s ease" style-hover="background:var(--panel2)">
+          <span style="display:flex;align-items:center;gap:10px"><span style="width:9px;height:9px;border-radius:2px;background:var(--pro)"></span><span style="width:9px;height:9px;border-radius:50%;background:var(--one)"></span><span style="font-size:11px;font-weight:700;letter-spacing:.16em;color:var(--ink3)">AMBAS</span></span>
+          <span style="font-size:21px;font-weight:700;letter-spacing:-.02em">Comunicación</span>
+          <span style="font-size:15.5px;line-height:1.6;color:var(--ink2)">Comunicados PRO, notificaciones PRO-ONE y actas que llegan a quien corresponde.</span>
+        </div>
+        <div style="padding:clamp(26px,3vw,34px);background:var(--bg);display:flex;flex-direction:column;gap:14px;transition:background .35s ease" style-hover="background:var(--panel2)">
+          <span style="display:flex;align-items:center;gap:10px"><span style="width:9px;height:9px;border-radius:2px;background:var(--pro)"></span><span style="width:9px;height:9px;border-radius:50%;background:var(--one)"></span><span style="font-size:11px;font-weight:700;letter-spacing:.16em;color:var(--ink3)">AMBAS</span></span>
+          <span style="font-size:21px;font-weight:700;letter-spacing:-.02em">Transparencia</span>
+          <span style="font-size:15.5px;line-height:1.6;color:var(--ink2)">Reportes, auditoría y trazabilidad de todo lo ejecutado.</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="eleccion" data-reveal="" style="padding:clamp(64px,8vw,110px) 0 20px;display:flex;flex-direction:column;gap:clamp(28px,3.5vw,40px)">
+      <div style="display:flex;flex-direction:column;gap:16px;max-width:660px">
+        <span style="font-size:11.5px;font-weight:700;letter-spacing:.24em;color:var(--ink3)">¿CUÁL NECESITO?</span>
+        <h2 style="margin:0;font-size:clamp(28px,3.6vw,50px);line-height:1.06;letter-spacing:-.03em;font-weight:700">Elegí la solución que necesitás.</h2>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px;align-items:start">
         <div style="display:flex;flex-direction:column;gap:10px">
           <sc-for list="{{ needs }}" as="need" hint-placeholder-count="6">
-            <button sc-camel-on-click="{{ need.pick }}" style="display:flex;align-items:center;gap:16px;width:100%;text-align:left;padding:20px 22px;border-radius:16px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;transition:all .35s cubic-bezier(.2,.7,.2,1)" style-hover="border-color:var(--line2);background:var(--panel2);transform:translateX(4px)">
-              <span style="flex:1;font-size:17.5px;font-weight:500">{{ need.label }}</span>
+            <button sc-camel-on-click="{{ need.pick }}" style="display:flex;align-items:center;gap:16px;width:100%;text-align:left;padding:18px 22px;border-radius:16px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;transition:all .35s cubic-bezier(.2,.7,.2,1)" style-hover="border-color:var(--line2);background:var(--panel2);transform:translateX(4px)">
+              <span style="flex:1;font-size:16.5px;font-weight:600">{{ need.label }}</span>
               <span style="font-size:12px;letter-spacing:.14em;color:var(--ink3)">{{ need.tag }}</span>
               <span style="font-size:16px;color:var(--ink3)">→</span>
             </button>
           </sc-for>
         </div>
-        <div style="position:sticky;top:100px;padding:34px;border-radius:22px;border:1px solid var(--line);background:linear-gradient(170deg,var(--panel2),var(--panel));box-shadow:var(--shadow);display:flex;flex-direction:column;gap:20px;min-height:300px">
-          <span style="font-size:11.5px;font-weight:600;letter-spacing:.22em;color:var(--ink3)">RECOMENDACIÓN</span>
+        <div style="position:sticky;top:100px;padding:clamp(26px,3vw,34px);border-radius:22px;border:1px solid var(--line);background:linear-gradient(170deg,var(--panel2),var(--panel));box-shadow:var(--shadow);display:flex;flex-direction:column;gap:20px;min-height:280px">
+          <span style="font-size:11.5px;font-weight:700;letter-spacing:.22em;color:var(--ink3)">RECOMENDACIÓN</span>
           <sc-if value="{{ isPro }}" hint-placeholder-val="{{ true }}">
             <div style="display:flex;flex-direction:column;gap:18px;animation:anx-rise .4s ease both">
               <div style="display:flex;align-items:center;gap:14px">
                 <span style="width:44px;height:44px;border-radius:13px;border:1px solid var(--pro);background:var(--proSoft);display:flex;align-items:center;justify-content:center"><span style="width:15px;height:15px;border-radius:4px;background:var(--pro)"></span></span>
-                <span style="display:flex;flex-direction:column;gap:8px"><img data-logo="" src="/assets/logo-anexypro.png" alt="Anexy PRO" style="height:32px;width:auto"><span style="font-size:12.5px;letter-spacing:.16em;color:var(--pro)">ADMINISTRACIÓN</span></span>
+                <span style="display:flex;flex-direction:column;gap:8px"><img data-logo="" src="/assets/logo-anexypro.png" alt="Anexy PRO" style="height:28px;width:auto"><span style="font-size:12.5px;font-weight:700;letter-spacing:.16em;color:var(--pro)">ADMINISTRACIÓN</span></span>
               </div>
-              <p style="margin:0;font-size:17px;line-height:1.6;color:var(--ink2)">{{ selDetail }}</p>
+              <p style="margin:0;font-size:16.5px;line-height:1.6;color:var(--ink2)">{{ selDetail }}</p>
               <a href="#contacto" style="align-self:flex-start;font-size:15px;font-weight:600;padding:13px 22px;border-radius:12px;background:var(--pro);color:#fff;transition:transform .3s ease" style-hover="transform:translateY(-2px);color:#fff">Solicitar demostración</a>
             </div>
           </sc-if>
@@ -586,9 +613,9 @@ img[data-logo]{display:block;width:auto;max-width:100%;flex:0 0 auto;align-self:
             <div style="display:flex;flex-direction:column;gap:18px;animation:anx-rise .4s ease both">
               <div style="display:flex;align-items:center;gap:14px">
                 <span style="width:44px;height:44px;border-radius:50%;border:1px solid var(--one);background:var(--oneSoft);display:flex;align-items:center;justify-content:center"><span style="width:15px;height:15px;border-radius:50%;background:var(--one)"></span></span>
-                <span style="display:flex;flex-direction:column;gap:8px"><img data-logo="" src="/assets/logo-anexyone.png" alt="Anexy ONE" style="height:32px;width:auto"><span style="font-size:12.5px;letter-spacing:.16em;color:var(--one)">OPERACIÓN</span></span>
+                <span style="display:flex;flex-direction:column;gap:8px"><img data-logo="" src="/assets/logo-anexyone.png" alt="Anexy ONE" style="height:28px;width:auto"><span style="font-size:12.5px;font-weight:700;letter-spacing:.16em;color:var(--one)">OPERACIÓN</span></span>
               </div>
-              <p style="margin:0;font-size:17px;line-height:1.6;color:var(--ink2)">{{ selDetail }}</p>
+              <p style="margin:0;font-size:16.5px;line-height:1.6;color:var(--ink2)">{{ selDetail }}</p>
               <a href="#contacto" style="align-self:flex-start;font-size:15px;font-weight:600;padding:13px 22px;border-radius:12px;background:#0A5F87;color:#fff;transition:transform .3s ease" style-hover="transform:translateY(-2px);color:#fff">Solicitar demostración</a>
             </div>
           </sc-if>
@@ -596,112 +623,182 @@ img[data-logo]{display:block;width:auto;max-width:100%;flex:0 0 auto;align-self:
       </div>
     </section>
 
-    <section data-reveal="" style="padding:110px 0 20px;display:flex;flex-direction:column;gap:44px">
-      <div style="display:flex;flex-direction:column;gap:16px;max-width:620px">
-        <span style="font-size:11.5px;font-weight:600;letter-spacing:.24em;color:var(--ink3)">BENEFICIOS</span>
-        <h2 style="margin:0;font-size:clamp(30px,3.6vw,50px);line-height:1.06;letter-spacing:-.03em;font-weight:700">Lo que cambia en su condominio.</h2>
+    <section id="precios" data-reveal="" style="padding:clamp(64px,8vw,110px) 0 20px;display:flex;flex-direction:column;gap:clamp(28px,3.5vw,40px)">
+      <div style="display:flex;flex-direction:column;gap:16px;max-width:680px">
+        <span style="font-size:11.5px;font-weight:700;letter-spacing:.24em;color:var(--ink3)">PRECIOS</span>
+        <h2 style="margin:0;font-size:clamp(28px,3.6vw,50px);line-height:1.06;letter-spacing:-.03em;font-weight:700">Un plan por plataforma, según el tamaño del condominio.</h2>
+        <p style="margin:0;font-size:clamp(16px,1.5vw,17.5px);line-height:1.6;color:var(--ink2)">AnexyPRO y AnexyONE se contratan por separado o en conjunto. La tarifa se define según la cantidad de filiales y los módulos activos.</p>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:22px;overflow:hidden">
-        <div style="padding:34px;background:var(--bg);display:flex;flex-direction:column;gap:18px;transition:background .35s ease" style-hover="background:var(--panel2)">
-          <span style="width:34px;height:34px;border-radius:9px;border:1px solid var(--line2);position:relative"><span style="position:absolute;left:8px;top:8px;width:16px;height:16px;border-radius:4px;background:var(--pro)"></span></span>
-          <span style="font-size:22px;font-weight:600;letter-spacing:-.02em">Más control</span>
-          <span style="font-size:16px;line-height:1.6;color:var(--ink2)">Una sola fuente de verdad para lo que se administra y lo que se opera.</span>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px;align-items:stretch">
+        <div style="display:flex;flex-direction:column;gap:22px;padding:clamp(26px,3vw,34px);border-radius:24px;border:1px solid var(--line);background:var(--panel)">
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <img data-logo="" src="/assets/logo-anexypro.png" alt="Anexy PRO" style="height:26px;width:auto">
+            <span style="font-size:11.5px;font-weight:700;letter-spacing:.18em;color:var(--pro)">ADMINISTRACIÓN</span>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:10px">
+            <span style="font-size:clamp(30px,3.4vw,40px);font-weight:700;letter-spacing:-.03em">Según cantidad de filiales</span>
+          </div>
+          <span style="font-size:14.5px;line-height:1.6;color:var(--ink2)">Plataforma de administración completa, con la implementación y la capacitación incluidas.</span>
+          <div style="display:flex;flex-direction:column;gap:11px;padding-top:6px;border-top:1px solid var(--line)">
+            <span style="display:flex;align-items:center;gap:10px;font-size:14.5px;color:var(--ink2)"><span style="width:6px;height:6px;border-radius:2px;background:var(--pro);flex:0 0 auto"></span>Finanzas, cuotas y morosidad</span>
+            <span style="display:flex;align-items:center;gap:10px;font-size:14.5px;color:var(--ink2)"><span style="width:6px;height:6px;border-radius:2px;background:var(--pro);flex:0 0 auto"></span>Reservas, visitas y residentes</span>
+            <span style="display:flex;align-items:center;gap:10px;font-size:14.5px;color:var(--ink2)"><span style="width:6px;height:6px;border-radius:2px;background:var(--pro);flex:0 0 auto"></span>Documentos y comunicados</span>
+            <span style="display:flex;align-items:center;gap:10px;font-size:14.5px;color:var(--ink2)"><span style="width:6px;height:6px;border-radius:2px;background:var(--pro);flex:0 0 auto"></span>Agua potable y caja chica</span>
+            <span style="display:flex;align-items:center;gap:10px;font-size:14.5px;color:var(--ink2)"><span style="width:6px;height:6px;border-radius:2px;background:var(--pro);flex:0 0 auto"></span>Reportes y auditoría</span>
+          </div>
+          <a href="#contacto" style="margin-top:auto;align-self:stretch;text-align:center;font-size:15px;font-weight:600;padding:14px 22px;border-radius:12px;border:1px solid var(--line2);color:var(--ink);transition:all .3s ease" style-hover="border-color:var(--pro);color:var(--pro)">Solicitar cotización</a>
         </div>
-        <div style="padding:34px;background:var(--bg);display:flex;flex-direction:column;gap:18px;transition:background .35s ease" style-hover="background:var(--panel2)">
-          <span style="display:flex;align-items:flex-end;gap:4px;height:34px"><span style="width:6px;height:14px;border-radius:2px;background:var(--line2)"></span><span style="width:6px;height:24px;border-radius:2px;background:var(--line2)"></span><span style="width:6px;height:34px;border-radius:2px;background:var(--pro)"></span></span>
-          <span style="font-size:22px;font-weight:600;letter-spacing:-.02em">Más información</span>
-          <span style="font-size:16px;line-height:1.6;color:var(--ink2)">Datos ordenados y comparables para decidir sin suposiciones.</span>
+
+        <div style="position:relative;display:flex;flex-direction:column;gap:22px;padding:clamp(26px,3vw,34px);border-radius:24px;border:1px solid var(--pro);background:linear-gradient(165deg,rgba(61,99,232,.12),var(--panel) 60%);box-shadow:0 40px 80px -50px rgba(61,99,232,.75);overflow:hidden">
+          <span style="position:absolute;right:-60px;top:-60px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(61,99,232,.22),transparent 68%)"></span>
+          <div style="position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:12px">
+            <img data-logo="" src="/assets/logo-anexy.png" alt="Anexy" style="height:30px;width:auto">
+            <span style="font-size:10.5px;font-weight:700;letter-spacing:.16em;padding:6px 11px;border-radius:999px;background:var(--pro);color:#fff;white-space:nowrap">RECOMENDADO</span>
+          </div>
+          <span style="position:relative;z-index:1;font-size:11.5px;font-weight:700;letter-spacing:.18em;color:var(--ink3)">ECOSISTEMA COMPLETO</span>
+          <div style="position:relative;z-index:1;display:flex;align-items:baseline;gap:10px">
+            <span style="font-size:clamp(30px,3.4vw,40px);font-weight:700;letter-spacing:-.03em">Plan integrado</span>
+          </div>
+          <span style="position:relative;z-index:1;font-size:14.5px;line-height:1.6;color:var(--ink2)">Las dos plataformas con tarifa conjunta: la administración y la operación del condominio conectadas.</span>
+          <div style="position:relative;z-index:1;display:flex;flex-direction:column;gap:11px;padding-top:6px;border-top:1px solid var(--line)">
+            <span style="display: flex; align-items: center; gap: 10px; font-size: 14.5px; color: var(--ink2);"><span style="width: 6px; height: 6px; border-radius: 2px; background: var(--pro); flex: 0 0 auto;"></span>Todo AnexyPRO</span>
+            <span style="display: flex; align-items: center; gap: 10px; font-size: 14.5px; color: var(--ink2);"><span style="width: 6px; height: 6px; border-radius: 50%; background: var(--one); flex: 0 0 auto;"></span>Todo AnexyONE</span>
+            <span style="display: flex; align-items: center; gap: 10px; font-size: 14.5px; color: var(--ink2);"><span style="width: 6px; height: 6px; border-radius: 2px; background: var(--pro); flex: 0 0 auto;"></span>Trazabilidad de punta a punta</span>
+            <span style="display: flex; align-items: center; gap: 10px; font-size: 14.5px; color: var(--ink2);"><span style="width: 6px; height: 6px; border-radius: 50%; background: var(--one); flex: 0 0 auto;"></span>Soporte y acompañamiento</span>
+          </div>
+          <a href="#contacto" style="position:relative;z-index:1;margin-top:auto;align-self:stretch;text-align:center;font-size:15px;font-weight:600;padding:14px 22px;border-radius:12px;background:var(--pro);color:#fff;box-shadow:0 16px 40px -20px rgba(61,99,232,.95);transition:transform .3s ease" style-hover="transform:translateY(-2px);color:#fff">Solicitar demostración</a>
         </div>
-        <div style="padding:34px;background:var(--bg);display:flex;flex-direction:column;gap:18px;transition:background .35s ease" style-hover="background:var(--panel2)">
-          <span style="width:34px;height:34px;border-radius:50%;border:1px solid var(--line2);position:relative"><span style="position:absolute;left:50%;top:50%;width:11px;height:1.5px;background:var(--one);transform-origin:left center;transform:rotate(-45deg)"></span><span style="position:absolute;left:50%;top:50%;width:8px;height:1.5px;background:var(--one);transform-origin:left center"></span></span>
-          <span style="font-size:22px;font-weight:600;letter-spacing:-.02em">Mejor seguimiento</span>
-          <span style="font-size:16px;line-height:1.6;color:var(--ink2)">Cada tarea, incidencia o gestión con estado y responsable visible.</span>
-        </div>
-        <div style="padding:34px;background:var(--bg);display:flex;flex-direction:column;gap:18px;transition:background .35s ease" style-hover="background:var(--panel2)">
-          <span style="display:flex;flex-direction:column;gap:5px;width:34px"><span style="height:1.5px;background:var(--line2)"></span><span style="height:1.5px;background:var(--line2)"></span><span style="height:1.5px;width:40%;background:var(--pro)"></span></span>
-          <span style="font-size:22px;font-weight:600;letter-spacing:-.02em">Menos procesos manuales</span>
-          <span style="font-size:16px;line-height:1.6;color:var(--ink2)">Menos planillas paralelas, menos reprocesos, menos tiempo perdido.</span>
-        </div>
-        <div style="padding:34px;background:var(--bg);display:flex;flex-direction:column;gap:18px;transition:background .35s ease" style-hover="background:var(--panel2)">
-          <span style="display:grid;grid-template-columns:repeat(2,1fr);gap:4px;width:34px;height:34px"><span style="background:var(--line2);border-radius:3px"></span><span style="background:var(--line2);border-radius:3px"></span><span style="background:var(--line2);border-radius:3px"></span><span style="background:var(--one);border-radius:3px"></span></span>
-          <span style="font-size:22px;font-weight:600;letter-spacing:-.02em">Mayor organización</span>
-          <span style="font-size:16px;line-height:1.6;color:var(--ink2)">Roles, rutinas y documentación en un orden que se sostiene solo.</span>
-        </div>
-        <div style="padding:34px;background:var(--bg);display:flex;flex-direction:column;gap:18px;transition:background .35s ease" style-hover="background:var(--panel2)">
-          <span style="width:34px;height:34px;border-radius:9px;border:1px solid var(--line2);background:linear-gradient(135deg,transparent 48%,var(--pro) 48%,var(--pro) 52%,transparent 52%)"></span>
-          <span style="font-size:22px;font-weight:600;letter-spacing:-.02em">Mayor transparencia</span>
-          <span style="font-size:16px;line-height:1.6;color:var(--ink2)">Lo ejecutado queda registrado y se puede mostrar a la comunidad.</span>
+
+        <div style="display:flex;flex-direction:column;gap:22px;padding:clamp(26px,3vw,34px);border-radius:24px;border:1px solid var(--line);background:var(--panel)">
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <img data-logo="" src="/assets/logo-anexyone.png" alt="Anexy ONE" style="height:26px;width:auto">
+            <span style="font-size:11.5px;font-weight:700;letter-spacing:.18em;color:var(--one)">OPERACIÓN</span>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:10px">
+            <span style="font-size:clamp(30px,3.4vw,40px);font-weight:700;letter-spacing:-.03em">Según equipo de trabajo</span>
+          </div>
+          <span style="font-size:14.5px;line-height:1.6;color:var(--ink2)">Plataforma operativa para el equipo en campo, con la implementación y la capacitación incluidas.</span>
+          <div style="display:flex;flex-direction:column;gap:11px;padding-top:6px;border-top:1px solid var(--line)">
+            <span style="display:flex;align-items:center;gap:10px;font-size:14.5px;color:var(--ink2)"><span style="width:6px;height:6px;border-radius:50%;background:var(--one);flex:0 0 auto"></span>Recorridos y checklists</span>
+            <span style="display:flex;align-items:center;gap:10px;font-size:14.5px;color:var(--ink2)"><span style="width:6px;height:6px;border-radius:50%;background:var(--one);flex:0 0 auto"></span>Incidencias e incumplimientos</span>
+            <span style="display:flex;align-items:center;gap:10px;font-size:14.5px;color:var(--ink2)"><span style="width:6px;height:6px;border-radius:50%;background:var(--one);flex:0 0 auto"></span>Tareas, activos y mantenimiento</span>
+            <span style="display:flex;align-items:center;gap:10px;font-size:14.5px;color:var(--ink2)"><span style="width:6px;height:6px;border-radius:50%;background:var(--one);flex:0 0 auto"></span>Agua potable y caja chica</span>
+            <span style="display:flex;align-items:center;gap:10px;font-size:14.5px;color:var(--ink2)"><span style="width:6px;height:6px;border-radius:50%;background:var(--one);flex:0 0 auto"></span>Evidencia y reportes operativos</span>
+          </div>
+          <a href="#contacto" style="margin-top:auto;align-self:stretch;text-align:center;font-size:15px;font-weight:600;padding:14px 22px;border-radius:12px;border:1px solid var(--line2);color:var(--ink);transition:all .3s ease" style-hover="border-color:var(--one);color:var(--one)">Solicitar cotización</a>
         </div>
       </div>
+      <span style="font-size:13.5px;color:var(--ink3)">Las tarifas se definen por condominio. Escribinos y armamos una propuesta con el alcance que necesitás.</span>
     </section>
 
-    <section id="nosotros" data-reveal="" style="padding:110px 0 20px;display:flex;flex-direction:column;gap:40px">
+    <section id="nosotros" data-reveal="" style="padding:clamp(64px,8vw,110px) 0 20px;display:flex;flex-direction:column;gap:clamp(28px,3.5vw,40px)">
       <div style="display:flex;flex-direction:column;gap:16px;max-width:620px">
-        <span style="font-size:11.5px;font-weight:600;letter-spacing:.24em;color:var(--ink3)">CONFIANZA</span>
-        <h2 style="margin:0;font-size:clamp(30px,3.6vw,50px);line-height:1.06;letter-spacing:-.03em;font-weight:700">Construido junto a quienes administran.</h2>
-        <p style="margin:0;font-size:17.5px;line-height:1.6;color:var(--ink2)">Los indicadores y los clientes se incorporan cuando estén confirmados; el espacio ya está definido.</p>
+        <span style="font-size:11.5px;font-weight:700;letter-spacing:.24em;color:var(--ink3)">CONFIANZA</span>
+        <h2 style="margin:0;font-size:clamp(28px,3.6vw,50px);line-height:1.06;letter-spacing:-.03em;font-weight:700">Construido junto a quienes administran.</h2>
+        <p style="margin:0;font-size:clamp(16px,1.5vw,17.5px);line-height:1.6;color:var(--ink2)">Los indicadores y los clientes se incorporan cuando estén confirmados; el espacio ya está definido.</p>
       </div>
-      <div style="display:flex;flex-direction:column;gap:0;border-radius:22px;border:1px solid var(--line);background:var(--panel);overflow:hidden">
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:1px;background:var(--line)">
-          <div style="padding:30px 26px;background:var(--bg);display:flex;flex-direction:column;gap:8px"><span style="font-size:34px;font-weight:700;letter-spacing:-.03em;color:var(--pro)">—</span><span style="font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--ink3)">CONDOMINIOS</span></div>
-          <div style="padding:30px 26px;background:var(--bg);display:flex;flex-direction:column;gap:8px"><span style="font-size:34px;font-weight:700;letter-spacing:-.03em;color:var(--pro)">—</span><span style="font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--ink3)">USUARIOS</span></div>
-          <div style="padding:30px 26px;background:var(--bg);display:flex;flex-direction:column;gap:8px"><span style="font-size:34px;font-weight:700;letter-spacing:-.03em;color:var(--one)">—</span><span style="font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--ink3)">GESTIONES</span></div>
-          <div style="padding:30px 26px;background:var(--bg);display:flex;flex-direction:column;gap:8px"><span style="font-size:34px;font-weight:700;letter-spacing:-.03em;color:var(--one)">—</span><span style="font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--ink3)">RECORRIDOS</span></div>
+      <div style="display:flex;flex-direction:column;border-radius:22px;border:1px solid var(--line);background:var(--panel);overflow:hidden">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1px;background:var(--line)">
+          <div style="padding:28px 26px;background:var(--bg);display:flex;flex-direction:column;gap:8px"><span style="font-size:32px;font-weight:700;letter-spacing:-.03em;color:var(--pro)">1</span><span style="font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--ink3)">CONDOMINIOS</span></div>
+          <div style="padding:28px 26px;background:var(--bg);display:flex;flex-direction:column;gap:8px"><span style="font-size:32px;font-weight:700;letter-spacing:-.03em;color:var(--pro)">3</span><span style="font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--ink3)">USUARIOS</span></div>
+          <div style="padding:28px 26px;background:var(--bg);display:flex;flex-direction:column;gap:8px"><span style="font-size:32px;font-weight:700;letter-spacing:-.03em;color:var(--one)">+30</span><span style="font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--ink3)">GESTIONES</span></div>
+          <div style="padding:28px 26px;background:var(--bg);display:flex;flex-direction:column;gap:8px"><span style="font-size:32px;font-weight:700;letter-spacing:-.03em;color:var(--one)">+500</span><span style="font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--ink3)">RECORRIDOS</span></div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:18px;padding:28px 26px;border-top:1px solid var(--line)">
+        <div style="display:flex;flex-direction:column;gap:18px;padding:26px;border-top:1px solid var(--line)">
           <span style="font-size:11.5px;font-weight:700;letter-spacing:.18em;color:var(--ink3)">CONDOMINIOS QUE YA TRABAJAN CON ANEXY</span>
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px">
-            <div style="height:58px;border-radius:13px;border:1px solid var(--line);background:var(--bg2)"></div>
-            <div style="height:58px;border-radius:13px;border:1px solid var(--line);background:var(--bg2)"></div>
-            <div style="height:58px;border-radius:13px;border:1px solid var(--line);background:var(--bg2)"></div>
-            <div style="height:58px;border-radius:13px;border:1px solid var(--line);background:var(--bg2)"></div>
-            <div style="height:58px;border-radius:13px;border:1px solid var(--line);background:var(--bg2)"></div>
+          <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:stretch">
+            <div style="flex:0 1 300px;min-width:220px;height:96px;border-radius:13px;border:1px solid var(--line);background:var(--bg2);display:flex;align-items:center;justify-content:center;padding:16px 22px;overflow:hidden"><img src="/assets/naos-condominio-resort.png" alt="NAOS Condominio Resort" style="height:100%;width:auto;max-width:100%;object-fit:contain"></div>
+            <div style="flex:1 1 200px;min-width:180px;height:96px;border-radius:13px;border:1px dashed var(--line2);background:var(--panel);display:flex;align-items:center;justify-content:center"><span style="font-size:11.5px;font-weight:700;letter-spacing:.16em;color:var(--ink3)">PRÓXIMAMENTE</span></div>
           </div>
         </div>
       </div>
     </section>
 
-    <section id="contacto" data-reveal="" style="padding:120px 0 120px">
-      <div style="position:relative;overflow:hidden;border-radius:28px;border:1px solid var(--line);background:linear-gradient(160deg,rgba(91,147,255,.14),var(--panel) 45%,rgba(103,200,255,.10));padding:clamp(44px,6vw,92px);display:flex;flex-direction:column;gap:30px;align-items:center;text-align:center">
-        <span style="position:absolute;left:50%;top:-140px;transform:translateX(-50%);width:640px;height:320px;border-radius:50%;background:radial-gradient(circle,rgba(91,147,255,.22),transparent 68%);pointer-events:none"></span>
-        <span style="font-size:11.5px;font-weight:600;letter-spacing:.24em;color:var(--ink3)">DEMOSTRACIÓN</span>
-        <h2 style="margin:0;max-width:820px;font-size:clamp(32px,4.6vw,64px);line-height:1.03;letter-spacing:-.035em;font-weight:700;text-wrap:balance">El futuro de la gestión condominal empieza aquí.</h2>
-        <p style="margin:0;max-width:560px;font-size:18px;line-height:1.6;color:var(--ink2)">Le mostramos AnexyPRO y AnexyOne en una demostración guiada, según lo que su condominio necesita.</p>
-        <div style="display:flex;flex-wrap:wrap;gap:14px;justify-content:center">
-          <a href="%%WHATSAPP_URL%%" target="_blank" rel="noopener" style="font-size:16px;font-weight:600;padding:16px 30px;border-radius:13px;background:var(--pro);color:#fff;box-shadow:0 18px 44px -18px rgba(91,147,255,.95);transition:transform .3s ease" style-hover="transform:translateY(-2px);color:#fff">Solicitar demostración</a>
-          <a href="#soluciones" style="font-size:16px;font-weight:600;padding:16px 30px;border-radius:13px;border:1px solid var(--line2);color:var(--ink);transition:all .3s ease" style-hover="border-color:var(--ink3);transform:translateY(-2px)">Conocer nuestras soluciones</a>
+    <section id="acceso" data-reveal="" style="padding:clamp(64px,8vw,110px) 0 20px;display:flex;flex-direction:column;gap:clamp(24px,3vw,32px)">
+      <div style="display:flex;flex-direction:column;gap:14px;max-width:620px">
+        <span style="font-size:11.5px;font-weight:700;letter-spacing:.24em;color:var(--ink3)">USUARIOS EXISTENTES</span>
+        <h2 style="margin:0;font-size:clamp(24px,2.8vw,38px);line-height:1.08;letter-spacing:-.03em;font-weight:700">Acceso a plataformas</h2>
+        <p style="margin:0;font-size:16px;line-height:1.6;color:var(--ink2)">Cada plataforma tiene su propio acceso independiente.</p>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:22px;overflow:hidden">
+        <a href="%%PRO_URL%%" target="_blank" rel="noopener" style="padding:clamp(26px,3vw,34px);background:var(--bg);display:flex;align-items:center;gap:20px;transition:background .35s ease" style-hover="background:var(--proSoft);color:var(--ink)">
+          <span style="width:44px;height:44px;border-radius:13px;border:1px solid var(--pro);background:var(--proSoft);display:flex;align-items:center;justify-content:center;flex:0 0 auto"><span style="width:15px;height:15px;border-radius:4px;background:var(--pro)"></span></span>
+          <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px">
+            <img data-logo="" src="/assets/logo-anexypro.png" alt="Anexy PRO" style="height:26px;width:auto">
+            <span style="font-size:13px;color:var(--ink3)">Administración · api.anexypro.com</span>
+          </span>
+          <span style="font-size:14px;font-weight:700;color:var(--pro);white-space:nowrap">Ingresar →</span>
+        </a>
+        <a href="%%ONE_URL%%" target="_blank" rel="noopener" style="padding:clamp(26px,3vw,34px);background:var(--bg);display:flex;align-items:center;gap:20px;transition:background .35s ease" style-hover="background:var(--oneSoft);color:var(--ink)">
+          <span style="width:44px;height:44px;border-radius:50%;border:1px solid var(--one);background:var(--oneSoft);display:flex;align-items:center;justify-content:center;flex:0 0 auto"><span style="width:15px;height:15px;border-radius:50%;background:var(--one)"></span></span>
+          <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px">
+            <img data-logo="" src="/assets/logo-anexyone.png" alt="Anexy ONE" style="height:26px;width:auto">
+            <span style="font-size:13px;color:var(--ink3)">Operación · one.anexypro.com</span>
+          </span>
+          <span style="font-size:14px;font-weight:700;color:var(--one);white-space:nowrap">Ingresar →</span>
+        </a>
+      </div>
+    </section>
+
+    <section id="contacto" data-reveal="" style="padding:clamp(72px,9vw,120px) 0 clamp(72px,9vw,120px)">
+      <div style="position:relative;overflow:hidden;border-radius:28px;border:1px solid var(--line);background:linear-gradient(160deg,rgba(61,99,232,.13),var(--panel) 45%,rgba(14,127,189,.10));padding:clamp(40px,6vw,92px);display:flex;flex-direction:column;gap:26px;align-items:center;text-align:center">
+        <canvas data-plexus="" data-intensity=".7" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0"></canvas>
+        <span style="position:relative;z-index:1;font-size:11.5px;font-weight:700;letter-spacing:.24em;color:var(--ink3)">DEMOSTRACIÓN</span>
+        <h2 style="position:relative;z-index:1;margin:0;max-width:820px;font-size:clamp(28px,4.6vw,60px);line-height:1.04;letter-spacing:-.035em;font-weight:700;text-wrap:balance">Tu condominio merece una gestión más inteligente.</h2>
+        <p style="position:relative;z-index:1;margin:0;max-width:580px;font-size:clamp(16px,1.6vw,18px);line-height:1.6;color:var(--ink2)">Conocé cómo ANEXY puede ayudarte a administrar, supervisar y operar tu condominio desde un mismo ecosistema.</p>
+        <div style="position:relative;z-index:1;display:flex;flex-wrap:wrap;gap:14px;justify-content:center">
+          <a href="%%WHATSAPP_URL%%?text=Hola%2C%20quiero%20una%20demostraci%C3%B3n%20de%20ANEXY" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:10px;font-size:16px;font-weight:600;padding:16px 30px;border-radius:13px;background:#1FA855;color:#fff;box-shadow:0 18px 44px -20px rgba(31,168,85,.85);transition:transform .3s ease" style-hover="transform:translateY(-2px);color:#fff">
+            <svg sc-camel-view-box="0 0 24 24" width="19" height="19" fill="currentColor" aria-hidden="true"><path d="M12.04 2C6.6 2 2.2 6.4 2.2 11.84c0 1.9.53 3.68 1.46 5.2L2 22l5.1-1.62a9.9 9.9 0 0 0 4.94 1.32h.01c5.43 0 9.84-4.4 9.84-9.84C21.89 6.4 17.48 2 12.04 2Zm5.75 14.02c-.24.68-1.4 1.3-1.93 1.35-.53.05-1.03.24-3.47-.72-2.95-1.16-4.8-4.22-4.95-4.42-.14-.2-1.17-1.56-1.17-2.97 0-1.42.74-2.11 1-2.4.26-.29.57-.36.76-.36.19 0 .38 0 .55.01.17.01.42-.07.65.5.24.58.8 1.99.87 2.14.07.14.12.31.02.5-.1.2-.15.32-.29.5-.15.17-.31.39-.44.52-.14.14-.29.29-.13.58.17.29.74 1.2 1.58 1.94 1.09.96 2 1.26 2.29 1.4.29.15.46.13.63-.08.17-.2.72-.84.91-1.13.19-.29.39-.24.65-.14.26.09 1.66.78 1.95.92.29.15.48.22.55.34.07.13.07.75-.17 1.43Z"></path></svg>
+            WhatsApp 7166-8900
+          </a>
+          <a href="mailto:%%EMAIL%%?subject=Solicitud%20de%20demostraci%C3%B3n%20ANEXY" style="font-size:16px;font-weight:600;padding:16px 30px;border-radius:13px;background:var(--pro);color:#fff;box-shadow:0 18px 44px -18px rgba(61,99,232,.95);transition:transform .3s ease" style-hover="transform:translateY(-2px);color:#fff">Solicitar demostración →</a>
+          <a href="#soluciones" style="font-size:16px;font-weight:600;padding:16px 30px;border-radius:13px;border:1px solid var(--line2);background:color-mix(in oklab,var(--bg2) 70%,transparent);color:var(--ink);transition:all .3s ease" style-hover="border-color:var(--ink3);transform:translateY(-2px)">Conocer ANEXY →</a>
+        </div>
+        <div style="position:relative;z-index:1;display:flex;flex-wrap:wrap;gap:10px 28px;justify-content:center;align-items:center;padding-top:22px;margin-top:6px;border-top:1px solid var(--line);width:100%;max-width:760px">
+          <a href="tel:%%TEL%%" style="display:inline-flex;align-items:center;gap:9px;font-size:15px;font-weight:600;color:var(--ink2)" style-hover="color:var(--pro)"><span style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--ink3)">TEL</span>7166-8900</a>
+          <a href="mailto:%%EMAIL%%" style="display:inline-flex;align-items:center;gap:9px;font-size:15px;font-weight:600;color:var(--ink2)" style-hover="color:var(--pro)"><span style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--ink3)">MAIL</span>%%EMAIL%%</a>
+          <a href="mailto:%%EMAIL_ALT%%" style="display:inline-flex;align-items:center;gap:9px;font-size:15px;font-weight:600;color:var(--ink2)" style-hover="color:var(--pro)"><span style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--ink3)">MAIL</span>%%EMAIL_ALT%%</a>
         </div>
       </div>
     </section>
   </main>
 
   <footer style="position:relative;z-index:1;border-top:1px solid var(--line);background:var(--bg2)">
-    <div style="max-width:1240px;margin:0 auto;padding:64px 28px 34px;display:flex;flex-direction:column;gap:52px">
+    <div style="max-width:1240px;margin:0 auto;padding:clamp(44px,6vw,64px) 28px 34px;display:flex;flex-direction:column;gap:clamp(36px,5vw,52px)">
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:40px">
         <div style="display:flex;flex-direction:column;gap:16px;max-width:280px">
-          <img data-logo="" src="/assets/logo-anexy.png" alt="Anexy" style="height: 71px; width: 167px">
-          
-          <span style="font-size:14.5px;line-height:1.6;color:var(--ink2)">Tecnología para la gestión de condominios.</span><span style="font-size:13.5px;color:var(--ink3)">anexypro.com</span>
+          <img data-logo="" src="/assets/logo-anexy.png" alt="Anexy" style="height:56px;width:auto">
+          <span style="font-size:14.5px;line-height:1.6;color:var(--ink2)">Ecosistema tecnológico para la gestión de condominios.</span>
+          <span style="font-size:13.5px;color:var(--ink3)">anexypro.com</span>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <a href="%%WHATSAPP_URL%%" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:9px;font-size:14.5px;font-weight:600;color:var(--ink2)" style-hover="color:#1FA855">
+              <svg sc-camel-view-box="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M12.04 2C6.6 2 2.2 6.4 2.2 11.84c0 1.9.53 3.68 1.46 5.2L2 22l5.1-1.62a9.9 9.9 0 0 0 4.94 1.32h.01c5.43 0 9.84-4.4 9.84-9.84C21.89 6.4 17.48 2 12.04 2Zm5.75 14.02c-.24.68-1.4 1.3-1.93 1.35-.53.05-1.03.24-3.47-.72-2.95-1.16-4.8-4.22-4.95-4.42-.14-.2-1.17-1.56-1.17-2.97 0-1.42.74-2.11 1-2.4.26-.29.57-.36.76-.36.19 0 .38 0 .55.01.17.01.42-.07.65.5.24.58.8 1.99.87 2.14.07.14.12.31.02.5-.1.2-.15.32-.29.5-.15.17-.31.39-.44.52-.14.14-.29.29-.13.58.17.29.74 1.2 1.58 1.94 1.09.96 2 1.26 2.29 1.4.29.15.46.13.63-.08.17-.2.72-.84.91-1.13.19-.29.39-.24.65-.14.26.09 1.66.78 1.95.92.29.15.48.22.55.34.07.13.07.75-.17 1.43Z"></path></svg>
+              7166-8900
+            </a>
+            <a href="mailto:%%EMAIL%%" style="font-size:14.5px;color:var(--ink2)">%%EMAIL%%</a>
+            <a href="mailto:%%EMAIL_ALT%%" style="font-size:14.5px;color:var(--ink2)">%%EMAIL_ALT%%</a>
+          </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:14px">
-          <span style="font-size:11.5px;font-weight:600;letter-spacing:.18em;color:var(--ink3)">SOLUCIONES</span>
-          <a href="#pro" style="font-size:14.5px;color:var(--ink2)" style-hover="color:var(--pro)">ANEXY Pro</a>
-          <a href="#one" style="font-size:14.5px;color:var(--ink2)" style-hover="color:var(--one)">ANEXY One</a>
+          <span style="font-size:11.5px;font-weight:700;letter-spacing:.18em;color:var(--ink3)">SOLUCIONES</span>
+          <a href="#anexypro" style="font-size:14.5px;color:var(--ink2)" style-hover="color:var(--pro)">ANEXYpro</a>
+          <a href="#anexyone" style="font-size:14.5px;color:var(--ink2)" style-hover="color:var(--one)">ANEXYone</a>
         </div>
         <div style="display:flex;flex-direction:column;gap:14px">
-          <span style="font-size:11.5px;font-weight:600;letter-spacing:.18em;color:var(--ink3)">EMPRESA</span>
+          <span style="font-size:11.5px;font-weight:700;letter-spacing:.18em;color:var(--ink3)">EMPRESA</span>
           <a href="#nosotros" style="font-size:14.5px;color:var(--ink2)">Nosotros</a>
           <a href="#contacto" style="font-size:14.5px;color:var(--ink2)">Contacto</a>
         </div>
         <div style="display:flex;flex-direction:column;gap:14px">
-          <span style="font-size:11.5px;font-weight:600;letter-spacing:.18em;color:var(--ink3)">AYUDA</span>
-          <a href="mailto:%%EMAIL%%" style="font-size:14.5px;color:var(--ink2)">Soporte</a>
-          
+          <span style="font-size:11.5px;font-weight:700;letter-spacing:.18em;color:var(--ink3)">AYUDA</span>
+          <a href="#contacto" style="font-size:14.5px;color:var(--ink2)">Soporte</a>
+          <a href="#caracteristicas" style="font-size:14.5px;color:var(--ink2)">Características</a>
+          <a href="#precios" style="font-size:14.5px;color:var(--ink2)">Precios</a>
         </div>
         <div style="display:flex;flex-direction:column;gap:14px">
-          <span style="font-size:11.5px;font-weight:600;letter-spacing:.18em;color:var(--ink3)">INGRESAR</span>
-          <a href="%%PRO_URL%%" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:8px;font-size:14.5px;color:var(--ink2)" style-hover="color:var(--pro)"><span style="width:7px;height:7px;border-radius:2px;background:var(--pro)"></span>AnexyPRO</a>
-          <a href="%%ONE_URL%%" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:8px;font-size:14.5px;color:var(--ink2)" style-hover="color:var(--one)"><span style="width:7px;height:7px;border-radius:50%;background:var(--one)"></span>AnexyONE</a>
+          <span style="font-size:11.5px;font-weight:700;letter-spacing:.18em;color:var(--ink3)">INGRESAR</span>
+          <a href="%%PRO_URL%%" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:8px;font-size:14.5px;color:var(--ink2)" style-hover="color:var(--pro)"><span style="width:7px;height:7px;border-radius:2px;background:var(--pro)"></span>ANEXYpro</a>
+          <a href="%%ONE_URL%%" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:8px;font-size:14.5px;color:var(--ink2)" style-hover="color:var(--one)"><span style="width:7px;height:7px;border-radius:50%;background:var(--one)"></span>ANEXYone</a>
         </div>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:18px;justify-content:space-between;align-items:center;padding-top:26px;border-top:1px solid var(--line)">
@@ -717,19 +814,18 @@ img[data-logo]{display:block;width:auto;max-width:100%;flex:0 0 auto;align-self:
 </x-dc>
 <script type="text/x-dc" data-dc-script="">
 const NEEDS = [
-  {label:"Necesito administrar las finanzas.", product:"pro", tag:"FINANZAS", detail:"Ingresos, gastos, presupuestos y estados financieros del condominio se gestionan en ANEXY Pro, la plataforma de administración."},
-  {label:"Necesito gestionar reservas.", product:"pro", tag:"RESERVAS", detail:"Reservas de áreas comunes, visitas y registros de residentes forman parte de la administración: ANEXY Pro."},
-  {label:"Necesito controlar recorridos.", product:"one", tag:"RECORRIDOS", detail:"Los recorridos de supervisión, con registro en terreno y evidencia, se realizan en ANEXY One."},
-  {label:"Necesito registrar incidencias.", product:"one", tag:"INCIDENCIAS", detail:"Incidencias e incumplimientos se levantan y siguen desde ANEXY One, con evidencia fotográfica y audiovisual."},
-  {label:"Necesito organizar tareas.", product:"one", tag:"TAREAS", detail:"Tareas, activos y mantenimiento se planifican y siguen en ANEXY One, la plataforma operativa."},
-  {label:"Necesito administrar el condominio.", product:"pro", tag:"ADMINISTRACIÓN", detail:"La gestión administrativa completa —cuotas, morosidad, documentos, comunicaciones y reportes— vive en ANEXY Pro."}
+  {label:"Necesito administrar las finanzas.", product:"pro", tag:"FINANZAS", detail:"Ingresos, gastos, presupuestos y estados financieros del condominio se gestionan en ANEXYpro, la plataforma de administración."},
+  {label:"Necesito gestionar reservas.", product:"pro", tag:"RESERVAS", detail:"Reservas de áreas comunes, visitas y registros de residentes forman parte de la administración: ANEXYpro."},
+  {label:"Necesito controlar recorridos.", product:"one", tag:"RECORRIDOS", detail:"Los recorridos de supervisión, con registro en terreno y evidencia, se realizan en ANEXYone."},
+  {label:"Necesito registrar incidencias.", product:"one", tag:"INCIDENCIAS", detail:"Incidencias e incumplimientos se levantan y siguen desde ANEXYone, con evidencia fotográfica y audiovisual."},
+  {label:"Necesito organizar tareas.", product:"one", tag:"TAREAS", detail:"Tareas, activos y mantenimiento se planifican y siguen en ANEXYone, la plataforma operativa."},
+  {label:"Necesito administrar el condominio.", product:"pro", tag:"ADMINISTRACIÓN", detail:"La gestión administrativa completa —cuotas, morosidad, documentos, comunicaciones y reportes— vive en ANEXYpro."}
 ];
 
 class Component extends DCLogic {
   state = { sel: 0, loginOpen: false, solOpen: false };
 
   componentDidMount() {
-    document.documentElement.setAttribute("data-anexy", "light");
     this._obs = new IntersectionObserver((entries) => {
       entries.forEach((e) => {
         if (e.isIntersecting) {
@@ -738,7 +834,7 @@ class Component extends DCLogic {
           this._obs.unobserve(e.target);
         }
       });
-    }, { threshold: 0.08, rootMargin: "0px 0px -8% 0px" });
+    }, { threshold: 0.06, rootMargin: "0px 0px -6% 0px" });
     document.querySelectorAll("[data-reveal]").forEach((el) => {
       el.style.opacity = "0";
       el.style.transform = "translateY(26px)";
@@ -747,22 +843,25 @@ class Component extends DCLogic {
     });
     this._onDoc = () => { if (this.state.loginOpen) this.setState({ loginOpen: false }); };
     document.addEventListener("click", this._onDoc);
-    this.startPlexus();
+    this._plexus = [];
+    document.querySelectorAll("[data-plexus]").forEach((cv) => this.startPlexus(cv));
   }
 
-  startPlexus() {
-    const cv = document.querySelector("[data-plexus]");
-    if (!cv) return;
+  startPlexus(cv) {
     const ctx = cv.getContext("2d");
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const k = parseFloat(cv.getAttribute("data-intensity") || "1");
+    const inst = { raf: 0 };
+    this._plexus.push(inst);
     let W = 0, H = 0, dpr = Math.min(window.devicePixelRatio || 1, 2), nodes = [];
     const LINK = 168;
 
     const build = () => {
       W = cv.clientWidth; H = cv.clientHeight;
+      if (!W || !H) return;
       cv.width = W * dpr; cv.height = H * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const count = Math.max(46, Math.min(110, Math.round((W * H) / 17000)));
+      const count = Math.max(34, Math.min(110, Math.round((W * H) / 17000)));
       nodes = Array.from({ length: count }, () => {
         const z = Math.pow(Math.random(), 1.7);
         return {
@@ -775,10 +874,9 @@ class Component extends DCLogic {
       nodes.sort((a, b) => a.z - b.z);
     };
 
-    const palette = () => ({ a: "61,99,232", b: "108,92,231", line: 0.34, node: 0.62, tri: 0.075, bokeh: 0.26 });
+    const p = { a: "61,99,232", b: "108,92,231", line: 0.34 * k, node: 0.62 * k, tri: 0.075 * k, bokeh: 0.26 * k };
 
     const frame = (t) => {
-      const p = palette();
       ctx.clearRect(0, 0, W, H);
       for (const n of nodes) {
         if (!reduce) {
@@ -829,25 +927,27 @@ class Component extends DCLogic {
           ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2); ctx.fill();
         }
       }
-      if (!reduce) this._raf = requestAnimationFrame(frame);
+      if (!reduce) inst.raf = requestAnimationFrame(frame);
     };
 
     const kick = () => {
       if (!cv.clientWidth || !cv.clientHeight) { requestAnimationFrame(kick); return; }
       build();
-      if (reduce) frame(0); else { if (this._raf) cancelAnimationFrame(this._raf); this._raf = requestAnimationFrame(frame); }
+      if (reduce) frame(0); else { if (inst.raf) cancelAnimationFrame(inst.raf); inst.raf = requestAnimationFrame(frame); }
     };
     kick();
-    this._onResize = () => { if (cv.clientWidth && cv.clientHeight) { build(); if (reduce) frame(0); } };
-    window.addEventListener("resize", this._onResize);
-    if (window.ResizeObserver) { this._ro = new ResizeObserver(this._onResize); this._ro.observe(cv); }
+    inst.onResize = () => { if (cv.clientWidth && cv.clientHeight) { build(); if (reduce) frame(0); } };
+    window.addEventListener("resize", inst.onResize);
+    if (window.ResizeObserver) { inst.ro = new ResizeObserver(inst.onResize); inst.ro.observe(cv); }
   }
 
   componentWillUnmount() {
     if (this._obs) this._obs.disconnect();
-    if (this._raf) cancelAnimationFrame(this._raf);
-    if (this._onResize) window.removeEventListener("resize", this._onResize);
-    if (this._ro) this._ro.disconnect();
+    (this._plexus || []).forEach((i) => {
+      if (i.raf) cancelAnimationFrame(i.raf);
+      if (i.onResize) window.removeEventListener("resize", i.onResize);
+      if (i.ro) i.ro.disconnect();
+    });
     document.removeEventListener("click", this._onDoc);
   }
 
@@ -864,7 +964,9 @@ class Component extends DCLogic {
       selDetail: sel.detail,
       solOpen: this.state.solOpen,
       openSol: () => this.setState({ solOpen: true }),
-      closeSol: () => this.setState({ solOpen: false })
+      closeSol: () => this.setState({ solOpen: false }),
+      loginOpen: this.state.loginOpen,
+      toggleLogin: (e) => { e.stopPropagation(); this.setState((s) => ({ loginOpen: !s.loginOpen })); }
     };
   }
 }
