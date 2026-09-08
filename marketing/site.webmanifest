@@ -1,13 +1,13 @@
 {
-  "name": "ANEXYpro",
-  "short_name": "ANEXYpro",
-  "description": "Administra tus condominios",
+  "name": "ANEXY",
+  "short_name": "ANEXY",
+  "description": "Tecnología para la gestión de condominios",
   "icons": [
     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
   ],
-  "theme_color": "#101114",
-  "background_color": "#F4F3F0",
+  "theme_color": "#F6F8FC",
+  "background_color": "#F6F8FC",
   "display": "browser",
   "start_url": "/"
 }
