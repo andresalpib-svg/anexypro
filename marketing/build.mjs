@@ -46,6 +46,7 @@ fs.writeFileSync(path.join(aqui, 'sitemap.xml'),
 fs.writeFileSync(path.join(aqui, 'robots.txt'),
 `User-agent: *
 Allow: /
+Disallow: /og/
 
 Sitemap: ${config.SITE_URL}/sitemap.xml
 `);

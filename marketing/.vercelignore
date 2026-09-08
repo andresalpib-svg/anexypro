@@ -1,0 +1,4 @@
+# El generador de la tarjeta es una herramienta de escritorio: se ejecuta a
+# mano cuando cambia el mensaje de la portada y no forma parte del sitio.
+# Sin esto quedaría publicado en https://anexypro.com/og/.
+og/

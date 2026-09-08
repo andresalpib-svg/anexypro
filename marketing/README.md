@@ -12,6 +12,8 @@ HTML estático. Sin framework y sin dependencias: el único paso de build es
 | `build.mjs` | Sustituye los marcadores y genera `index.html`, `sitemap.xml` y `robots.txt`. |
 | `index.html` | **Generado.** Vercel lo regenera en cada despliegue; se versiona igual, para que el diff muestre lo que se publica y para que un build fallido no deje el sitio sin página. No editarlo a mano: el siguiente build lo sobrescribe. |
 | `assets/` | Imágenes, fuentes (Instrument Sans) y JS del diseño. |
+| `og-image.png` | La tarjeta que se ve al pegar el enlace en WhatsApp o redes. **Generada** — ver abajo. |
+| `og/` | Generador de esa tarjeta. No se publica (`.vercelignore`). |
 
 ## Cambiar una URL o un dato de contacto
 
@@ -46,3 +48,26 @@ del diseño. Si llega una versión nueva, hay que volver a desempaquetarlo:
 extraer cada recurso del manifiesto a `assets/`, sustituir los UUID por esas
 rutas y rehacer el `<head>` con el SEO de este repositorio (el bundle no lo
 trae). El `<head>` actual sirve de referencia.
+
+## La tarjeta de WhatsApp (og-image.png)
+
+Es lo que ve alguien cuando le pegan el enlace en un chat. Se genera con los
+mismos archivos del sitio —la fuente, los logos y los tokens de color— para
+que no pueda quedar diciendo algo distinto a la portada:
+
+```
+node og/servidor.mjs      # y abrir http://localhost:4330
+```
+
+La página se dibuja sola y guarda `og-image.png`. **Después hay que subir
+`OG_VERSION` en `config.json`**: WhatsApp, Facebook y Slack cachean la tarjeta
+por URL, y el `?v=` del `<meta og:image>` sale de ahí. Sin ese cambio siguen
+mostrando la anterior.
+
+Aun subiendo la versión, cada plataforma guarda además su propia copia de la
+previsualización del enlace durante días. Para verla al instante conviene
+probar con un parámetro cualquiera (`anexypro.com/?x=1`), que para ellas es
+un enlace nuevo.
+
+Si cambia el titular de la portada, hay que regenerar la tarjeta: el texto
+está en `og/tarjeta.html`.
