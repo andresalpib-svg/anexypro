@@ -71,3 +71,13 @@ un enlace nuevo.
 
 Si cambia el titular de la portada, hay que regenerar la tarjeta: el texto
 está en `og/tarjeta.html`.
+
+**El contenido va centrado y dentro de una franja de 570 px por una razón:**
+WhatsApp no muestra la tarjeta entera, la recorta al centro — en escritorio,
+casi al cuadrado. Con la composición alineada a la izquierda se perdían la
+«A» de «Administración», el logo y medio chip. Los halos del fondo también
+están corridos hacia el centro; en las esquinas quedaban fuera del recorte y
+la tarjeta se veía como un fondo plano.
+
+Al cambiarla conviene comprobar el recorte, no sólo la imagen completa:
+recortar los 630 px centrales y mirar que no falte nada.

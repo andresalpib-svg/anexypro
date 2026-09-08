@@ -46,61 +46,73 @@ async function dibujar(){
 
   const ctx = document.getElementById('c').getContext('2d');
   ctx.fillStyle = BG; ctx.fillRect(0, 0, W, H);
-  halo(ctx, 216, -50, 450, 260, '61,99,232', .14);
-  halo(ctx, 1056, 38, 380, 230, '14,127,189', .09);
+  // Los halos del hero, corridos hacia el centro: en las esquinas quedarían
+  // fuera del recorte de WhatsApp y la tarjeta se vería como un fondo plano.
+  halo(ctx, 340, -40, 430, 280, '61,99,232', .16);
+  halo(ctx, 900, 20, 390, 250, '14,127,189', .11);
 
-  // ── zonas del lienzo ──────────────────────────────────────────────────
-  // Nada de posiciones a ojo: el titular se dimensiona con lo que sobra entre
-  // el logo y los chips, y se mide de verdad con measureText.
-  const logoH = 50, logoY = 68;
-  ctx.drawImage(anexy, M, logoY, logoH * anexy.width / anexy.height, logoH);
-
-  const platH = 34, etiquetaPx = 19;
-  const chipTop = 500;                       // borde superior de los logos de plataforma
-  const techo = logoY + logoH + 42;          // el titular no sube más allá del logo
-  const suelo = chipTop - 34;                // ni baja hasta los chips
-
+  // ── composición ───────────────────────────────────────────────────────
+  // WhatsApp NO muestra la tarjeta entera: la recorta al centro. En el peor
+  // caso (escritorio) enseña poco más que el cuadrado central, así que todo
+  // el contenido vive dentro de esa franja y va centrado. Alineado a la
+  // izquierda, como estaba antes, se perdían la «A» de Administración, el
+  // logo y medio chip.
+  const CX = W / 2;
+  const SEGURO = 570;                 // cabe en el cuadrado central de 630
   const lineas = [['Administración y', INK], ['operación inteligente', PRO], ['para condominios.', INK]];
-  const util = W - M * 2;
+
   const fijar = px => { ctx.font = `700 ${px}px 'Instrument Sans'`; ctx.letterSpacing = '-0.035em'; };
   const anchoMax = px => { fijar(px); return Math.max(...lineas.map(([t]) => ctx.measureText(t).width)); };
-  function altoBloque(px){
-    fijar(px);
-    const m = ctx.measureText('Ágp');        // con acento y descendente
-    return m.actualBoundingBoxAscent + m.actualBoundingBoxDescent + px * 1.03 * 2;
-  }
 
-  // El mayor cuerpo que cabe a la vez de ancho y de alto.
-  let TIT = 60;
-  for (let px = 60; px <= 120; px += 0.5) {
-    if (anchoMax(px) <= util * 0.96 && altoBloque(px) <= suelo - techo) TIT = px; else break;
-  }
-  const LH = TIT * 1.03;
+  // El mayor cuerpo cuya línea más larga entra en la franja segura.
+  let TIT = 40;
+  for (let px = 40; px <= 90; px += 0.5) { if (anchoMax(px) <= SEGURO) TIT = px; else break; }
+  const LH = TIT * 1.06;
 
+  // Alturas de cada bloque, para centrar el conjunto en vertical.
+  const logoH = 44, platH = 30, etiquetaPx = 17;
   fijar(TIT);
+  const mT = ctx.measureText('Ágp');
+  const altoTitulo = mT.actualBoundingBoxAscent + mT.actualBoundingBoxDescent + LH * 2;
+  const altoChips = platH + 24;
+  const HUECO1 = 52, HUECO2 = 56;
+  const total = logoH + HUECO1 + altoTitulo + HUECO2 + altoChips;
+  let cursor = (H - total) / 2;
+
+  // Logo
+  const logoW = logoH * anexy.width / anexy.height;
+  ctx.drawImage(anexy, CX - logoW / 2, cursor, logoW, logoH);
+  cursor += logoH + HUECO1;
+
+  // Titular
+  fijar(TIT);
+  ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
-  const asc = ctx.measureText('Á').actualBoundingBoxAscent;
-  const alto = altoBloque(TIT);
-  let y = techo + (suelo - techo - alto) / 2 + asc;   // bloque centrado en su zona
-  for (const [t, color] of lineas){ ctx.fillStyle = color; ctx.fillText(t, M, y); y += LH; }
+  let y = cursor + mT.actualBoundingBoxAscent;
+  for (const [t, color] of lineas){ ctx.fillStyle = color; ctx.fillText(t, CX, y); y += LH; }
   ctx.letterSpacing = '0px';
+  cursor += altoTitulo + HUECO2;
 
-  // Chips de plataforma, como los del hero pero a un tamaño que sobreviva a
-  // la miniatura del chat.
-  function chip(x, img, color, txt){
+  // Chips de plataforma, centrados como grupo
+  ctx.textAlign = 'left';
+  const anchoPlat = img => platH * img.width / img.height;
+  const SEP = 26, ENTRE = 64;                       // punto→logo, chip→chip
+  const anchoChip = img => 15 + SEP + anchoPlat(img);
+  const anchoGrupo = anchoChip(pro) + ENTRE + anchoChip(one);
+  let x = CX - anchoGrupo / 2;
+  function chip(img, color, txt){
     ctx.fillStyle = color;
-    ctx.beginPath(); ctx.roundRect(x, chipTop + 5, 15, 15, 3.5); ctx.fill();
-    const w = platH * img.width / img.height;
-    ctx.drawImage(img, x + 31, chipTop, w, platH);
+    ctx.beginPath(); ctx.roundRect(x, cursor + 8, 14, 14, 3.5); ctx.fill();
+    ctx.drawImage(img, x + 15 + SEP, cursor, anchoPlat(img), platH);
     ctx.font = `500 ${etiquetaPx}px 'Instrument Sans'`; ctx.fillStyle = INK3;
-    ctx.fillText(txt, x + 31, chipTop + platH + 26);
-    return 31 + w;
+    ctx.fillText(txt, x + 15 + SEP, cursor + platH + 22);
+    x += anchoChip(img) + ENTRE;
   }
-  const ancho = chip(M, pro, PRO, 'Administración');
-  chip(M + ancho + 92, one, ONE, 'Operación');
+  chip(pro, PRO, 'Administración');
+  chip(one, ONE, 'Operación');
 
-  window.__medidas = { TIT, anchoTitular: Math.round(anchoMax(TIT)), util,
-                       altoTitular: Math.round(alto), zona: suelo - techo };
+  window.__medidas = { TIT, anchoTitular: Math.round(anchoMax(TIT)), seguro: SEGURO,
+                       alturaUsada: Math.round(total), anchoGrupoChips: Math.round(anchoGrupo) };
 
   estado('dibujado — guardando…');
   const blob = await new Promise(r => document.getElementById('c').toBlob(r, 'image/png'));

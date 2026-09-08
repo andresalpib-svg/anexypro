@@ -24,16 +24,22 @@ const MARKETING = path.join(RAIZ, '..');
 const SALIDA = path.join(MARKETING, 'og-image.png');
 const MIME = { '.html':'text/html; charset=utf-8', '.png':'image/png', '.woff2':'font/woff2' };
 
-// Opcional: si hay sharp a mano, se recomprime con paleta — baja de ~180 KB a
-// ~40 KB sin diferencia visible, y una tarjeta liviana es una tarjeta que
-// WhatsApp muestra. Sin sharp se guarda tal cual, que también sirve.
+// El PNG que produce el navegador ronda los 190 KB: el degradado del fondo
+// tiene demasiados tonos distintos y deflate no lo aprovecha. Recomprimirlo
+// con paleta lo deja en ~45 KB sin diferencia visible.
+//
+// sharp no es dependencia de este repositorio y no vale la pena añadirla sólo
+// para esto, así que es opcional: si no está, el PNG se guarda igual. Los
+// ~190 KB siguen por debajo del límite con el que WhatsApp deja de mostrar la
+// previsualización, así que la tarjeta funciona; sólo tarda más en cargar.
 async function comprimir(buf) {
   try {
     const { createRequire } = await import('node:module');
     const sharp = createRequire(import.meta.url)('sharp');
     return await sharp(buf).png({ compressionLevel: 9, palette: true, effort: 10 }).toBuffer();
   } catch {
-    console.warn('[aviso] sin sharp: se guarda el PNG del navegador, más pesado');
+    console.warn(`[aviso] sin sharp: se guarda sin recomprimir (${(buf.length / 1024).toFixed(0)} KB).`);
+    console.warn('        Para dejarlo en ~45 KB: npx sharp-cli -i og-image.png -o . png --palette');
     return buf;
   }
 }

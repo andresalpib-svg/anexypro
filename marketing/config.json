@@ -1,7 +1,7 @@
 {
   "_": "Fuente única de los destinos del sitio. Cambiar acá y ejecutar `node build.mjs` (Vercel lo corre solo en cada despliegue). Ningún otro archivo debe llevar estas URLs escritas a mano.",
   "SITE_URL": "https://anexypro.com",
-  "OG_VERSION": "2",
+  "OG_VERSION": "3",
   "PRO_URL": "https://api.anexypro.com",
   "ONE_URL": "https://one.anexypro.com",
   "WHATSAPP_URL": "https://wa.me/50671668900",
