@@ -46,8 +46,18 @@ necesito?» y el desplegable de acceso a plataformas. No tocarla.
 `index.template.html` y `assets/` salen de un archivo «standalone» exportado
 del diseño. Si llega una versión nueva, hay que volver a desempaquetarlo:
 extraer cada recurso del manifiesto a `assets/`, sustituir los UUID por esas
-rutas y rehacer el `<head>` con el SEO de este repositorio (el bundle no lo
-trae). El `<head>` actual sirve de referencia.
+rutas y rehacer el `<head>` con lo que el bundle no trae. El `<head>` actual
+sirve de referencia; lo que hay que conservar es:
+
+- El SEO: `description`, `canonical`, Open Graph y Twitter.
+- Los iconos y el `manifest`.
+- **`<meta name="color-scheme" content="light">` y el `<style>` que fija el
+  fondo.** El sitio es claro y no tiene variante oscura. El CSS del diseño ya
+  lo dice, pero viaja dentro del `<helmet>`, o sea en el cuerpo: para cuando
+  el navegador llega ahí ya decidió de qué color pintar. Sin la declaración en
+  el `<head>`, un teléfono en modo oscuro enseña un destello oscuro al abrir y
+  el «tema oscuro automático» de Chrome en Android invierte los colores.
+- El `<script>window.__resources</script>` y el `<script src="/assets/dc-runtime.js">`.
 
 ## La tarjeta de WhatsApp (og-image.png)
 

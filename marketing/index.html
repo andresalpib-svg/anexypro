@@ -3,6 +3,21 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- El diseño es claro y no tiene variante oscura. Esto se declara acá, y no
+     sólo en el CSS del diseño, porque ese CSS viaja dentro del <helmet> —o
+     sea, ya en el cuerpo del documento— y el navegador tiene que decidir de
+     qué color pinta la página antes de llegar ahí. Sin esta declaración
+     temprana, un teléfono en modo oscuro enseña un destello oscuro mientras
+     carga, y el «tema oscuro automático» de Chrome en Android se toma la
+     libertad de invertir los colores de una página que no dice cuál es su
+     esquema. Con `color-scheme: light` se abstiene. -->
+<meta name="color-scheme" content="light">
+<style>
+  :root { color-scheme: light; }
+  html, body { background: #F6F8FC; color: #08132A; }
+</style>
+
 <title>ANEXY — Administración y operación inteligente para condominios</title>
 <meta name="description" content="Un ecosistema digital que conecta la gestión administrativa del condominio con la supervisión y operación diaria en campo.">
 <link rel="canonical" href="https://anexypro.com/">
